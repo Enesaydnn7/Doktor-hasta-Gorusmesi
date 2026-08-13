@@ -262,3 +262,42 @@ async function downloadPdf(btn) {
     btn.innerHTML = original;
   }
 }
+
+/* ---------------- Ses -> metin ---------------- */
+let mediaRec=null, recChunks=[], recStream=null;
+const audStatus=()=>$("audio-status");
+$("btn-upload").addEventListener("click",()=>$("audio-file").click());
+$("audio-file").addEventListener("change",e=>{const f=e.target.files[0];if(f)sendAudio(f,f.name);e.target.value="";});
+$("btn-rec").addEventListener("click",toggleRec);
+
+async function toggleRec(){
+  const btn=$("btn-rec");
+  if(mediaRec&&mediaRec.state==="recording"){mediaRec.stop();return;}
+  try{recStream=await navigator.mediaDevices.getUserMedia({audio:true});}
+  catch(e){audStatus().textContent="Mikrofon izni gerekli.";return;}
+  recChunks=[];
+  mediaRec=new MediaRecorder(recStream);
+  mediaRec.ondataavailable=ev=>{if(ev.data.size>0)recChunks.push(ev.data);};
+  mediaRec.onstop=()=>{
+    const blob=new Blob(recChunks,{type:mediaRec.mimeType||"audio/webm"});
+    recStream.getTracks().forEach(t=>t.stop());
+    btn.innerHTML='<i class="bi bi-mic"></i> Kaydet';btn.classList.remove("rec-on");
+    sendAudio(blob,"kayit.webm");
+  };
+  mediaRec.start();
+  btn.innerHTML='<i class="bi bi-stop-circle"></i> Durdur';btn.classList.add("rec-on");
+  audStatus().textContent="Kaydediliyor… bitince Durdur'a basın.";
+}
+
+async function sendAudio(fileOrBlob,name){
+  const fd=new FormData();
+  fd.append("file",fileOrBlob,name||"ses");
+  audStatus().innerHTML='<span class="mini-spin"></span> Ses metne dökülüyor…';
+  try{
+    const res=await fetch("/transcribe",{method:"POST",body:fd});
+    const data=await res.json();
+    if(!res.ok||data.error)throw new Error(data.error||"hata");
+    $("transcript").value=data.transcript;
+    audStatus().innerHTML='<i class="bi bi-check-circle" style="color:var(--ok)"></i> Metne döküldü — kontrol edip “Analiz et”e basın.';
+  }catch(e){audStatus().textContent="Ses metne dökülemedi: "+e.message;}
+}
