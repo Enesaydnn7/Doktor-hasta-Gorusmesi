@@ -130,3 +130,20 @@ GEMINI_MODEL=gemini-2.5-flash
     ama hep aynı örnek çıktıyı gösterir.
   - Yöneticine/güvendiğin birkaç kişiye göstereceksen `DEMO=false` + anahtar gayet uygun.
 - KVKK: canlı demoda gerçek hasta verisi girme; örnek/senaryo metinleriyle göster.
+
+---
+
+## Yenilik: Sesten analiz (ses → metin → rapor)
+
+Panelde metin kutusunun üstünde **Kaydet** ve **Ses dosyası yükle** var:
+1. Görüşme sesini mikrofonla kaydet ya da hazır ses dosyası (mp3/wav/m4a/ogg...) yükle.
+2. Sistem sesi **Gemini** ile Türkçe metne döker (konuşmacıları "Doktor:" / "Hasta:" diye ayırır).
+3. Metin, düzenlenebilir kutuya düşer — kontrol edip düzeltirsin.
+4. "Analiz et" ile 3 rapor + epikriz üretilir.
+
+- Ses motoru ayrı bir dosyadadır: `stt.py`. Kalite yetmezse (gürültü/aksan) sadece burayı
+  Whisper/Deepgram/Azure'a çevirirsin; gerisi aynı kalır.
+- `DEMO=true` iken ses yüklenince örnek bir transkript döner (anahtarsız akış testi için).
+- Tarayıcı kaydı `.webm` üretir; Docker imajına `ffmpeg` eklendi, gerekirse otomatik mp3'e çevrilir.
+- Not: 20 MB üstü ses için daha kısa kayıt kullanın (uzun görüşmeler için ileride parçalama eklenebilir).
+- KVKK: ses metinden daha hassastır. Gerçek hasta kayıtlarında kendi sunucunuzda Whisper'a geçmeyi planlayın.
