@@ -4,15 +4,15 @@ LLM katmanı — tek motor: Gemini.
 - Üç rapor (hasta / doktor / yönetim) paralel üretilir.
 - Görüşme tarihini kullanıcı mesajına ekleriz ki model "3 haftadır" gibi göreli
   süreleri KESİN TARİHE çevirebilsin (sigorta için kritik).
-DEMO modunda mock_data kullanılır.
 """
 import json
 import asyncio
+import time
 from datetime import date
 
 import config
 import prompts
-import mock_data
+import pricing
 
 
 def _extract_json(text: str) -> dict:
@@ -27,7 +27,8 @@ def _extract_json(text: str) -> dict:
     return json.loads(text)
 
 
-def _gemini(system: str, user: str) -> dict:
+def _gemini(system: str, user: str):
+    """(json, kullanım) döndürür. kullanım = {input, output, total} token."""
     import google.generativeai as genai
     genai.configure(api_key=config.GEMINI_API_KEY)
     model = genai.GenerativeModel(
@@ -37,7 +38,15 @@ def _gemini(system: str, user: str) -> dict:
                            "temperature": config.TEMPERATURE,
                            "top_p": 0.1, "top_k": 1},  # tutarlılık için
     )
-    return _extract_json(model.generate_content(user).text)
+    resp = model.generate_content(user)
+    data = _extract_json(resp.text)
+    um = getattr(resp, "usage_metadata", None)
+    usage = {
+        "input": int(getattr(um, "prompt_token_count", 0) or 0),
+        "output": int(getattr(um, "candidates_token_count", 0) or 0),
+        "total": int(getattr(um, "total_token_count", 0) or 0),
+    }
+    return data, usage
 
 
 def _user_message(transcript: str) -> str:
@@ -48,16 +57,22 @@ def _user_message(transcript: str) -> str:
 
 
 async def analyze_all(transcript: str) -> dict:
-    if config.DEMO:
-        data = mock_data.results()
-        data["provider"] = config.label()
-        return data
-
     user = _user_message(transcript)
-    hasta, doktor, yonetim = await asyncio.gather(
+    t0 = time.time()
+    (hasta, uh), (doktor, ud), (yonetim, uy) = await asyncio.gather(
         asyncio.to_thread(_gemini, prompts.SYSTEM_HASTA, user),
         asyncio.to_thread(_gemini, prompts.SYSTEM_DOKTOR, user),
         asyncio.to_thread(_gemini, prompts.SYSTEM_YONETIM, user),
     )
-    return {"hasta": hasta, "doktor": doktor, "yonetim": yonetim,
-            "provider": config.label()}
+    secs = round(time.time() - t0, 1)
+    inp = uh["input"] + ud["input"] + uy["input"]
+    out = uh["output"] + ud["output"] + uy["output"]
+    return {
+        "hasta": hasta, "doktor": doktor, "yonetim": yonetim,
+        "provider": config.label(),
+        "usage": {
+            "input": inp, "output": out, "total": inp + out,
+            "cost_usd": round(pricing.text_cost(inp, out), 6),
+            "seconds": secs, "calls": 3,
+        },
+    }

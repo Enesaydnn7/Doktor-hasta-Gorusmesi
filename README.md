@@ -44,11 +44,10 @@ uvicorn main:app --reload
 
 Tarayıcı: **http://127.0.0.1:8000** → "Örnek yükle" → "Analiz et".
 
-İlk açılışta `DEMO=true` olduğundan **API anahtarı olmadan** örnek çıktı verir.
-Gerçek analiz için `.env`:
+`.env` içine anahtarını yaz:
 
 ```env
-DEMO=false
+
 GEMINI_API_KEY=...
 GEMINI_MODEL=gemini-2.5-flash
 ```
@@ -61,7 +60,6 @@ GEMINI_MODEL=gemini-2.5-flash
 | `llm.py` | Gemini çağrısı; görüşme tarihini ekler; 3 rapor paralel |
 | `prompts.py` | 3 system prompt (detaylı epikriz şeması burada) |
 | `pdf_report.py` | Rapor PDF üretimi (epikriz formatı) |
-| `mock_data.py` | DEMO verisi |
 | `config.py` | `.env` ayarları |
 | `templates/`, `static/` | panel arayüzü |
 
@@ -82,8 +80,8 @@ GEMINI_MODEL=gemini-2.5-flash
   (Türkçe karakter destekli). Sunucuda `/pdf` uç noktası üretir.
 
 > `.env` düzenledikten sonra sunucuyu **tam kapatıp** yeniden başlat (`uvicorn --reload` yalnızca
-> `.py` dosyalarını izler, `.env`'i görmez). Terminaldeki `[klinik-analiz] DEMO=... | model=...`
-> satırından hangi modda olduğunu görebilirsin.
+> `.py` dosyalarını izler, `.env`'i görmez). Terminalde açılışta `[klinik-analiz] model=... | anahtar=...`
+> satırı çıkar.
 
 ---
 
@@ -105,7 +103,6 @@ GEMINI_MODEL=gemini-2.5-flash
    - Start Command: `uvicorn main:app --host 0.0.0.0 --port $PORT`
    - Instance Type: **Free**
 4. **Environment** sekmesinden değişkenleri gir:
-   - `DEMO` = `false`   (gerçek analiz için; sadece göstermelik istiyorsan `true` bırak)
    - `GEMINI_API_KEY` = (anahtarın)
    - `GEMINI_MODEL` = `gemini-2.5-flash`
 5. Deploy bitince sana `https://klinik-analiz-xxxx.onrender.com` gibi bir link verir.
@@ -119,16 +116,14 @@ GEMINI_MODEL=gemini-2.5-flash
 2. **SDK: Docker** seç (repoda `Dockerfile` hazır).
 3. Space'in dosyalarına bu projeyi yükle (yine `.env` hariç).
 4. Space **Settings  →  Secrets** kısmına ekle:
-   - `GEMINI_API_KEY`, `GEMINI_MODEL=gemini-2.5-flash`, `DEMO=false`
+   - `GEMINI_API_KEY`, `GEMINI_MODEL=gemini-2.5-flash`
 5. Space otomatik derlenir; `https://kullanici-adi-space-adi.hf.space` linkini paylaşırsın.
 
 ### ÖNEMLİ — anahtar ve maliyet
 - API anahtarını **asla** GitHub'a koyma; her zaman platformun "Environment/Secrets"
   bölümüne gir (`.env` yüklenmez).
-- Linki paylaştığın herkes senin Gemini kotanı kullanır (masraf sana yazar).
-  - Herkese açık paylaşacaksan güvenli yol: `DEMO=true` bırak — anahtar gerekmez, ücret çıkmaz,
-    ama hep aynı örnek çıktıyı gösterir.
-  - Yöneticine/güvendiğin birkaç kişiye göstereceksen `DEMO=false` + anahtar gayet uygun.
+- Linki paylaştığın herkes senin Gemini kotanı kullanır (masraf sana yazar). Yöneticine/güvendiğin
+  birkaç kişiye göstermek için uygundur; herkese açık yayacaksan kota/masrafı göz önünde bulundur.
 - KVKK: canlı demoda gerçek hasta verisi girme; örnek/senaryo metinleriyle göster.
 
 ---
@@ -143,7 +138,22 @@ Panelde metin kutusunun üstünde **Kaydet** ve **Ses dosyası yükle** var:
 
 - Ses motoru ayrı bir dosyadadır: `stt.py`. Kalite yetmezse (gürültü/aksan) sadece burayı
   Whisper/Deepgram/Azure'a çevirirsin; gerisi aynı kalır.
-- `DEMO=true` iken ses yüklenince örnek bir transkript döner (anahtarsız akış testi için).
 - Tarayıcı kaydı `.webm` üretir; Docker imajına `ffmpeg` eklendi, gerekirse otomatik mp3'e çevrilir.
 - Not: 20 MB üstü ses için daha kısa kayıt kullanın (uzun görüşmeler için ileride parçalama eklenebilir).
 - KVKK: ses metinden daha hassastır. Gerçek hasta kayıtlarında kendi sunucunuzda Whisper'a geçmeyi planlayın.
+
+---
+
+## Yenilik: Maliyet / token izleme (monitoring)
+
+Her analizden sonra sonuçların üstünde küçük bir çubuk çıkar:
+- **Süre** (analiz kaç saniye sürdü)
+- **Token** (toplam = giriş + çıkış)
+- **Tahmini maliyet** (USD) + "≈ .../1000 analiz" projeksiyonu
+
+Ses yüklendiğinde de o dökümün token/maliyeti "metne döküldü" satırında gösterilir.
+
+Fiyatlar `pricing.py` içindedir — **Gemini 2.5 Flash standart (ücretli) katman**:
+giriş metin $0.30, giriş ses $1.00, çıkış $2.50 (1M token başına). Canlı API kullanıldığı için
+standart fiyat geçerlidir (Batch/toplu yarı-fiyat bu akışta geçmez). Token sayıları Gemini'nin
+kendi cevabından (`usage_metadata`) okunur — tahmin değildir. Fiyat değişirse sadece `pricing.py`'yi güncelleyin.

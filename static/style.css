@@ -209,3 +209,18 @@ textarea:focus{outline:none; border-color:var(--teal); box-shadow:0 0 0 3px var(
 .audio-hint{font-size:12.5px;color:var(--muted);margin-bottom:10px;display:flex;gap:7px;align-items:flex-start}
 .audio-hint .bi{color:var(--teal);margin-top:2px}
 .mini-spin{width:14px;height:14px;border-radius:50%;border:2px solid var(--teal-soft);border-top-color:var(--teal);display:inline-block;animation:spin .8s linear infinite}
+
+/* ---- izleme / maliyet tablosu ---- */
+.monitor{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-top:20px}
+.mon-title{font-size:12px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.mon-title .bi{color:var(--teal);font-size:14px}
+.mon-model{margin-left:auto;text-transform:none;letter-spacing:0;font-weight:500;font-size:11.5px;color:var(--slate);background:var(--slate-soft);padding:2px 9px;border-radius:10px}
+.mon-table{display:flex;flex-direction:column;gap:2px}
+.mon-hd,.mon-row{display:grid;grid-template-columns:1.7fr 1.5fr 1fr .7fr;gap:10px;align-items:center;padding:8px 10px;font-size:13.5px}
+.mon-hd{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);border-bottom:1px solid var(--line)}
+.mon-hd span:not(:first-child),.mon-row span:not(:first-child){text-align:right;font-variant-numeric:tabular-nums}
+.mon-row{border-radius:8px}
+.mon-row:nth-child(odd){background:#fafbfc}
+.mon-row .mon-sub{font-size:11px;color:var(--muted);margin-left:3px}
+.mon-tot{font-weight:700;color:var(--ink);background:var(--teal-soft)!important;margin-top:3px}
+.mon-foot{font-size:11px;color:var(--muted);margin-top:11px;line-height:1.55}

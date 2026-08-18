@@ -25,7 +25,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
 
-print(f"[klinik-analiz] DEMO={config.DEMO} | model={config.GEMINI_MODEL} | "
+print(f"[klinik-analiz] model={config.GEMINI_MODEL} | "
       f"anahtar={'var' if config.GEMINI_API_KEY else 'YOK'}")
 
 
@@ -42,7 +42,7 @@ class PdfIn(BaseModel):
 async def index(request: Request):
     return templates.TemplateResponse(
         request, "index.html",
-        {"provider": config.label(), "demo": config.DEMO},
+        {"provider": config.label()},
     )
 
 
@@ -76,14 +76,14 @@ async def transcribe(file: UploadFile = File(...)):
     if not data:
         return JSONResponse({"error": "Ses dosyası boş."}, status_code=400)
     try:
-        text = await asyncio.to_thread(
+        text, usage = await asyncio.to_thread(
             stt.transcribe, data, file.content_type or "audio/mpeg", file.filename or ""
         )
-        return {"transcript": text}
+        return {"transcript": text, "usage": usage}
     except Exception as e:  # noqa: BLE001
         return JSONResponse({"error": f"Ses metne dökülemedi: {e}"}, status_code=500)
 
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "demo": config.DEMO}
+    return {"status": "ok", "model": config.GEMINI_MODEL}
