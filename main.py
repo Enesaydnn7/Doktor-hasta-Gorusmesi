@@ -7,7 +7,9 @@ Klinik Görüşme Analiz Paneli (Gemini).
 Tarayıcı:
     http://127.0.0.1:8000
 """
-from fastapi import FastAPI, Request
+import asyncio
+
+from fastapi import FastAPI, Request, UploadFile, File
 from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -15,6 +17,7 @@ from pydantic import BaseModel
 
 import config
 import llm
+import stt
 import pdf_report
 
 app = FastAPI(title="Klinik Görüşme Analiz Paneli")
@@ -65,6 +68,20 @@ async def pdf(body: PdfIn):
         )
     except Exception as e:  # noqa: BLE001
         return JSONResponse({"error": f"PDF oluşturulamadı: {e}"}, status_code=500)
+
+
+@app.post("/transcribe")
+async def transcribe(file: UploadFile = File(...)):
+    data = await file.read()
+    if not data:
+        return JSONResponse({"error": "Ses dosyası boş."}, status_code=400)
+    try:
+        text = await asyncio.to_thread(
+            stt.transcribe, data, file.content_type or "audio/mpeg", file.filename or ""
+        )
+        return {"transcript": text}
+    except Exception as e:  # noqa: BLE001
+        return JSONResponse({"error": f"Ses metne dökülemedi: {e}"}, status_code=500)
 
 
 @app.get("/health")
