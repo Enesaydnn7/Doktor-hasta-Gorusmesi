@@ -4,4 +4,3 @@ jinja2
 python-dotenv
 google-generativeai
 reportlab
-python-multipart

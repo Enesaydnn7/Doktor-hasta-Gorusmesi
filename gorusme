@@ -1,0 +1,134 @@
+# Test Görüşmeleri — Sistemi Sınamak İçin
+
+Üç farklı senaryo. Her birini panele yapıştırıp "Analiz et" deyince sistemin
+nasıl davrandığına bak. Altında "beklenen sonuç" var — sistemin yakalaması gerekeni
+söylüyor, kendin kıyaslayabilirsin.
+
+---
+
+## SENARYO 1 — İYİ GÖRÜŞME (kaliteli anamnez, saygılı dil)
+
+Doktor: Merhaba, hoş geldiniz, buyurun oturun. Sizi bugün buraya getiren şikayet nedir?
+Hasta: Merhaba doktor hanım. Yaklaşık on gündür midemin üst kısmında bir yanma, ağrı var.
+Doktor: Anladım. Tam olarak ne zaman başladı, hatırlıyor musunuz?
+Hasta: Sanırım geçen hafta pazartesi, yani 10 gün kadar oldu. Önce hafifti, şimdi arttı.
+Doktor: Ağrı daha çok ne zaman oluyor; aç karnına mı, yoksa yemekten sonra mı?
+Hasta: Genelde aç karnına, sabahları ve gece. Bir şeyler yiyince biraz geçiyor.
+Doktor: Şiddetini 10 üzerinden puanlarsanız kaç dersiniz?
+Hasta: Ağrılı zamanlarda 6 civarı, ama gece uykumu bölecek kadar oluyor bazen.
+Doktor: Bulantı, kusma, kilo kaybı ya da yutma güçlüğü var mı?
+Hasta: Hafif bulantı var, kusma yok. Kilo kaybı fark etmedim, yutmada da sorun yok.
+Doktor: Peki dışkınızda siyah renk ya da kanlı kusma gibi bir durum oldu mu? Bunu özellikle soruyorum.
+Hasta: Yok öyle bir şey görmedim, dikkat ettim aslında.
+Doktor: Güzel. Bilinen bir hastalığınız, düzenli kullandığınız ilaç var mı?
+Hasta: Şeker ya da tansiyon yok. Sadece ara ara baş ağrısı için ağrı kesici alıyorum, son zamanlarda sık aldım.
+Doktor: Bu önemli olabilir, çünkü sık ağrı kesici mideyi yorar. Ameliyat, alerji durumunuz?
+Hasta: Alerjim yok. 2019'da safra kesesi ameliyatı oldum, başka yok.
+Doktor: Sigara, alkol?
+Hasta: Sigarayı bıraktım iki yıl önce, alkol nadiren.
+Doktor: Ailede mide hastalığı, ülser ya da kanser öyküsü var mı?
+Hasta: Babamda ülser vardı, onun dışında bilmiyorum.
+Doktor: Teşekkürler, çok net anlattınız. Şimdi karnınıza bakayım... Batın rahat, üst orta bölgede hafif hassasiyet var, başka bulgu yok.
+Hasta: Ciddi bir şey mi doktor hanım? Açıkçası biraz endişelendim.
+Doktor: Anlattıklarınız ve muayene büyük olasılıkla gastrit yani mide iltihabına uyuyor; sık ağrı kesici ve stres tetiklemiş olabilir. Endişelenecek bir bulgu şu an yok.
+Hasta: Çok rahatladım. Ne yapmam gerekiyor peki?
+Doktor: Mide koruyucu bir ilaç başlıyorum, aç karnına içeceksiniz. Ağrı kesicileri şimdilik keselim, baş ağrısı için ayrı konuşuruz. Asitli, baharatlı, çok yağlı yiyeceklerden uzak durun, öğünleri düzenli yapın.
+Hasta: Tamam, not aldım.
+Doktor: Üç hafta sonra kontrole gelin. Eğer bu sürede kanlı kusma, siyah dışkı, şiddetli ağrı ya da kilo kaybı olursa beklemeden başvurun. Geçmezse mide endoskopisi planlarız.
+Hasta: Anladım, çok teşekkür ederim ilginiz için.
+Doktor: Rica ederim, geçmiş olsun. Kontrolde görüşürüz.
+
+**Bu senaryo neyi test ediyor:** Kaliteli, eksiksiz bir görüşme. Doktor tarih, ağrı skoru,
+kırmızı bayrak (kanlı kusma/kilo kaybı), özgeçmiş, soygeçmiş, alışkanlık hepsini soruyor;
+tanıyı açık anlatıyor; plan + kontrol net.
+
+**Beklenen sonuç:**
+- **Doktor raporu:** epikriz dolu olmalı — başlangıç "10 gün önce (kesin tarih)", ağrı skoru 6/10,
+  ameliyat (safra kesesi 2019), soygeçmiş (baba ülser), ön tanı gastrit, ICD (K29), kontrol 3 hafta.
+- **Yönetim:** güvenlik *temiz*, skorlar yüksek, **verimlilik yüksek**, risk *yok*.
+- Koçlukta büyük eksik çıkmamalı.
+
+---
+
+## SENARYO 2 — PROBLEMLİ GÖRÜŞME (aceleci, eksik anamnez, riskli atlama — ama dil kaba değil)
+
+Doktor: Evet, buyurun, neyiniz var?
+Hasta: Doktor bey, iki gündür göğsümde bir ağrı, baskı gibi bir şey var.
+Doktor: Kas ağrısıdır, çok takmayın. Spor mu yaptınız?
+Hasta: Yok aslında, öyle bir şey yapmadım. Bazen sol koluma da vuruyor gibi.
+Doktor: Strestendir muhtemelen, bu aralar herkeste var. Geçer.
+Hasta: Ama yürüyünce artıyor doktor bey, durunca biraz geçiyor.
+Doktor: Tamam tamam, anladım. Başka şikayetiniz var mı, çabuk olalım sıra çok.
+Hasta: Biraz nefes darlığı oluyor, bir de terleme falan oldu dün.
+Doktor: Yaşınız kaç?
+Hasta: 56.
+Doktor: Sigara içiyor musunuz?
+Hasta: İçiyorum, günde bir paket falan, yıllardır.
+Doktor: İşte ondandır, bırakın şu sigarayı. Ağrı kesici yazayım geçer.
+Hasta: Tansiyonum falan yüksek mi bir bakılsa mı acaba?
+Doktor: Gerek yok şimdilik, çok da abartmayalım. Bir hafta bekleyin, geçmezse gelirsiniz.
+Hasta: Peki kalple ilgili bir şey olamaz mı? Babam kalpten gitmişti de.
+Doktor: Olsa şu an burada anlardık zaten, merak etmeyin. Ağrı kesiciyi kullanın.
+Hasta: Tamam ama emin misiniz, biraz korkuyorum açıkçası.
+Doktor: Emin olun, gençsiniz daha. Geçmiş olsun, sıradaki hastayı alalım.
+Hasta: Peki ne zaman tekrar geleyim?
+Doktor: Geçmezse bir ara uğrarsınız işte. Hadi geçmiş olsun.
+Hasta: İyi, teşekkürler o zaman.
+
+**Bu senaryo neyi test ediyor:** Kaba söz yok, ama görüşme kalitesiz ve TEHLİKELİ. 56 yaş,
+efor ile artan göğüs ağrısı, sol kola yayılım, nefes darlığı, terleme, sigara, ailede kalp
+öyküsü — klasik kardiyak alarm tablosu. Doktor EKG/tansiyon istemeden "kastır/strestir" deyip
+geçiştiriyor, kırmızı bayrakları görmezden geliyor.
+
+**Beklenen sonuç:**
+- **Doktor raporu:** epikrizde çok alan "belirtilmedi" (muayene yok, tetkik yok, kesin tanı yok).
+  Koçlukta ciddi uyarı: efor anjini/kardiyak değerlendirme (EKG, troponin) atlanmış, acil
+  yönlendirme önerilmeli.
+- **Yönetim:** dil *temiz* ama **empati/netlik/dinleme/verimlilik DÜŞÜK**, verimlilik notu "kritik
+  anamnez ve tetkik eksik" demeli, **risk orta/yüksek**. Sistem "kaba değil ama kötü/riskli"yi
+  yakalayabiliyor mu — asıl test bu.
+
+---
+
+## SENARYO 3 — KÖTÜ GÖRÜŞME (argo / kaba dil, gergin — güvenlik katmanı yakalamalı)
+
+Hasta: Ya nihayet! İki saattir bekliyorum, bu ne rezalet bir yer böyle.
+Doktor: Bakın herkes bekliyor, bir tek siz değilsiniz. Derdinizi anlatın.
+Hasta: Belim tutuldu, kıpırdayamıyorum, sen de tut böyle konuş bir de.
+Doktor: Bana bağırmayın, öyle konuşursanız bakmam. Ne zaman başladı?
+Hasta: Dün kaldırırken oldu işte, ne zaman olacak. Saçma sorular sorup durma.
+Doktor: Siz doktor musunuz ben mi? İşimi bilmediğimi mi söylüyorsunuz?
+Hasta: Bilseniz iki saat bekletmezdiniz beceriksizler. Google'dan mı okudunuz bu işi?
+Doktor: Bu terbiyesizliğe devam ederseniz güvenliği çağırırım, haddinizi bilin.
+Hasta: Çağır çağır, umurumda değil. Bir ağrı kesici ver de gideyim şu berbat yerden.
+Doktor: Ağrı kesiciyi ben uygun görürsem yazarım, size kalmış değil.
+Hasta: Ver işte şunu, kafamı şişirme, akşama işim var.
+Doktor: Böyle hastalarla uğraşmaktan bıktım artık, oturun şurada.
+Hasta: Sen bıkmışsın da biz ne diyelim, maaşını boşuna alıyorsun zaten.
+Doktor: Konuşmanıza dikkat edin. Belinize bakacağım, uzanın masaya.
+Hasta: Elini yavaş tut, canımı yakarsan fena olur ama.
+Doktor: Tehdit mi ediyorsunuz şimdi beni? Pes yani.
+Hasta: Tehdit değil, uyarı. Çabuk ol da kurtulalım birbirimizden.
+Doktor: Alın reçetenizi, ağrı kesici yazdım. Çıkışta ödeme yapın.
+Hasta: Oh be, iki saatte bir reçete. Helal olsun size.
+Doktor: Güle güle, bir daha da sakin gelin.
+
+**Bu senaryo neyi test ediyor:** Hem hastada hem doktorda argo/hakaret/tehdit ve profesyonellik
+ihlali var. Klinik içerik neredeyse yok (sadece "bel ağrısı, dün kaldırırken"). Güvenlik
+katmanının HER İKİ tarafı da yakalaması lazım.
+
+**Beklenen sonuç:**
+- **Yönetim raporu:** güvenlik durumu **sorun/dikkat**, *tespitler* listesinde her iki taraftan
+  birebir alıntılar ("beceriksizler", "haddinizi bilin", tehdit ifadeleri...), **empati çok düşük**,
+  **risk yüksek** (şikayet/hukuki risk + hasta güvenliği).
+- **Doktor raporu:** epikriz çok zayıf, birçok alan "belirtilmedi" — çünkü anamnez alınmamış.
+- **Hasta raporu:** elde çok az bilgi olduğundan kısa/temkinli olmalı.
+
+---
+
+### Nasıl kıyaslarsın
+Üçünü sırayla yapıştır, üç sekmeyi (Hasta / Doktor / Yönetim) de aç.
+- Senaryo 1'de yönetim skorları yüksek + risk yok olmalı.
+- Senaryo 2'de dil temiz ama skorlar düşük + risk orta/yüksek (asıl zekâ testi burada).
+- Senaryo 3'te güvenlik "sorun", tespitler dolu, risk yüksek.
+Böylece modelin iyiyi, kalitesiz-ama-kibar'ı ve kaba'yı ayırt edip etmediğini görürsün.

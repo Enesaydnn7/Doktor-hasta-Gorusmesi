@@ -199,13 +199,3 @@ textarea:focus{outline:none; border-color:var(--teal); box-shadow:0 0 0 3px var(
   .score-top{flex-direction:column; align-items:flex-start}
   .meta-strip{flex-direction:column}
 }
-
-/* ---- ses çubuğu ---- */
-.audio-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
-.aud-btn{border-radius:10px;padding:9px 15px;font-size:13.5px;font-weight:500;font-family:inherit;cursor:pointer;display:inline-flex;align-items:center;gap:7px;background:#fff;color:var(--slate);border:1px solid var(--line);transition:.15s}
-.aud-btn:hover{background:var(--slate-soft)}
-.aud-btn.rec-on{background:#fbe9e9;color:#b5322d;border-color:#f0c6c6}
-.audio-status{font-size:13px;color:var(--muted);display:inline-flex;align-items:center;gap:7px}
-.audio-hint{font-size:12.5px;color:var(--muted);margin-bottom:10px;display:flex;gap:7px;align-items:flex-start}
-.audio-hint .bi{color:var(--teal);margin-top:2px}
-.mini-spin{width:14px;height:14px;border-radius:50%;border:2px solid var(--teal-soft);border-top-color:var(--teal);display:inline-block;animation:spin .8s linear infinite}
