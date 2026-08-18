@@ -32,7 +32,7 @@ const MISS = "belirtilmedi";
 const isMiss = (v) => !v || String(v).trim().toLowerCase() === MISS;
 const val = (v) => isMiss(v) ? `<span class="val-missing">belirtilmedi</span>` : esc(v);
 
-$("btn-example").addEventListener("click", () => { $("transcript").value = EXAMPLE; });
+$("btn-example").addEventListener("click", () => { $("transcript").value = EXAMPLE; lastTranscribeUsage = null; });
 $("btn-analyze").addEventListener("click", analyze);
 document.querySelectorAll(".recipient").forEach(btn =>
   btn.addEventListener("click", () => showTab(btn.dataset.tab)));
@@ -60,6 +60,7 @@ async function analyze() {
     renderHasta(data.hasta);
     renderDoktor(data.doktor);
     renderYonetim(data.yonetim);
+    renderMonitor(data.usage, lastTranscribeUsage);
     bindPdfButtons();
     showTab("hasta");
     $("results").classList.remove("hidden");
@@ -298,6 +299,43 @@ async function sendAudio(fileOrBlob,name){
     const data=await res.json();
     if(!res.ok||data.error)throw new Error(data.error||"hata");
     $("transcript").value=data.transcript;
-    audStatus().innerHTML='<i class="bi bi-check-circle" style="color:var(--ok)"></i> Metne döküldü — kontrol edip “Analiz et”e basın.';
+    lastTranscribeUsage = data.usage || null;
+    let ek="";
+    if(data.usage){ek=` <span class="mon-sub">(ses: ${fmtNum(data.usage.total)} token, ${fmtUsd(data.usage.cost_usd)})</span>`;}
+    audStatus().innerHTML='<i class="bi bi-check-circle" style="color:var(--ok)"></i> Metne döküldü — kontrol edip “Analiz et”e basın.'+ek;
   }catch(e){audStatus().textContent="Ses metne dökülemedi: "+e.message;}
+}
+
+
+/* ---------------- İzleme (token / maliyet / süre) ---------------- */
+function fmtNum(n){return Number(n||0).toLocaleString("tr-TR");}
+function fmtUsd(c){
+  c=Number(c||0);
+  const d = c>0 && c<0.01 ? 6 : 4;
+  return "$"+c.toLocaleString("en-US",{minimumFractionDigits:d,maximumFractionDigits:d});
+}
+function monRow(label, u){
+  const sub = `<span class="mon-sub">(${fmtNum(u.input)}+${fmtNum(u.output)})</span>`;
+  const sure = (u.seconds!=null) ? (u.seconds + " sn") : "—";
+  return `<div class="mon-row"><span>${label}</span><span>${fmtNum(u.total)} ${sub}</span><span>${fmtUsd(u.cost_usd)}</span><span>${sure}</span></div>`;
+}
+function renderMonitor(analiz, ses){
+  const box=$("monitor");
+  if(!analiz){ box.classList.add("hidden"); return; }
+  const model=((document.querySelector(".pill-model")||{}).textContent||"Gemini").trim();
+  const rows=[];
+  if(ses){ rows.push(monRow("Ses → metin", ses)); }
+  rows.push(monRow("Analiz (3 rapor)", analiz));
+  const totTok=(ses?ses.total:0)+analiz.total;
+  const totCost=(ses?ses.cost_usd:0)+analiz.cost_usd;
+  box.innerHTML=`
+    <div class="mon-title"><i class="bi bi-graph-up-arrow"></i> İzleme · maliyet <span class="mon-model">${model}</span></div>
+    <div class="mon-table">
+      <div class="mon-hd"><span>İşlem</span><span>Token</span><span>Maliyet</span><span>Süre</span></div>
+      ${rows.join("")}
+      <div class="mon-row mon-tot"><span>TOPLAM</span><span>${fmtNum(totTok)}</span><span>${fmtUsd(totCost)}</span><span>—</span></div>
+    </div>
+    <div class="mon-foot">Gemini 2.5 Flash standart fiyat: giriş metin $0.30, giriş ses $1.00, çıkış $2.50 / 1M token.
+      Token'lar Gemini'nin kendi cevabından okunur. ≈ ${fmtUsd(totCost*1000)} / 1000 işlem.</div>`;
+  box.classList.remove("hidden");
 }

@@ -1,15 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-Ayarlar (.env'den okunur).
-Bu sürüm TEK MODEL kullanır: Gemini (karşılaştırmada en iyi çıkan model).
-DEMO=true iken API anahtarı gerekmez, örnek veriyle çalışır.
+Ayarlar (.env'den okunur). Tek motor: Gemini 2.5 Flash.
 """
 import os
 from dotenv import load_dotenv
 
-load_dotenv(override=True)  # .env her zaman kazanır (eski ortam değişkenini ezer)
-
-DEMO = os.getenv("DEMO", "true").strip().lower() in ("1", "true", "yes", "on")
+load_dotenv(override=True)  # .env her zaman kazanır
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
@@ -19,4 +15,4 @@ TEMPERATURE = float(os.getenv("TEMPERATURE", "0"))
 
 
 def label() -> str:
-    return "DEMO (örnek veri)" if DEMO else f"Gemini · {GEMINI_MODEL}"
+    return f"Gemini · {GEMINI_MODEL}"

@@ -3,7 +3,6 @@
 Ses -> metin (konuşmacı ayrımlı) katmanı.
 Motor: Gemini (aynı model, aynı anahtar) — ayrı bir STT servisi gerekmez.
 Kalite yetmezse SADECE bu dosya değiştirilir (Whisper / Deepgram / Azure vb.).
-DEMO modunda örnek transkript döner (anahtarsız test için).
 """
 import os
 import shutil
@@ -27,16 +26,6 @@ STT_PROMPT = (
     "Duyduğun konuşmayı olduğu gibi aktar; yorum, başlık, tarih veya açıklama EKLEME. "
     "Yalnızca konuşma dökümünü ver."
 )
-
-DEMO_TRANSCRIPT = """Doktor: Merhaba, hoş geldiniz. Sizi buraya getiren şikayet nedir?
-Hasta: Merhaba doktor bey, üç gündür başım ağrıyor ve kendimi çok halsiz hissediyorum.
-Doktor: Ağrı ne zaman başladı, gün içinde artıyor mu?
-Hasta: Üç gün önce başladı, özellikle öğleden sonra ve akşama doğru artıyor.
-Doktor: Bulantı, kusma ya da ateş oldu mu?
-Hasta: Ateşim yok ama hafif bir mide bulantım var.
-Doktor: Uyku ve stres durumunuz nasıl son zamanlarda?
-Hasta: Açıkçası işler yoğun, gece 4-5 saat ancak uyuyabiliyorum.
-Doktor: Anladım. Muayene edelim; büyük ihtimalle yorgunluk ve strese bağlı gerilim tipi baş ağrısı. Endişelenecek bir durum görünmüyor."""
 
 
 def _maybe_convert(data: bytes, mime: str, filename: str):
@@ -66,7 +55,8 @@ def _maybe_convert(data: bytes, mime: str, filename: str):
                     pass
 
 
-def _gemini(data: bytes, mime: str) -> str:
+def _gemini(data: bytes, mime: str):
+    """(metin, kullanım) döndürür. kullanım = {input, output, total} token."""
     import google.generativeai as genai
     genai.configure(api_key=config.GEMINI_API_KEY)
     model = genai.GenerativeModel(config.GEMINI_MODEL)
@@ -74,19 +64,28 @@ def _gemini(data: bytes, mime: str) -> str:
         [{"mime_type": mime, "data": data}, STT_PROMPT],
         generation_config={"temperature": 0},
     )
-    return (resp.text or "").strip()
+    um = getattr(resp, "usage_metadata", None)
+    usage = {
+        "input": int(getattr(um, "prompt_token_count", 0) or 0),
+        "output": int(getattr(um, "candidates_token_count", 0) or 0),
+        "total": int(getattr(um, "total_token_count", 0) or 0),
+    }
+    return (resp.text or "").strip(), usage
 
 
-def transcribe(data: bytes, mime: str = "audio/mpeg", filename: str = "") -> str:
-    """Ses baytlarını konuşmacı ayrımlı Türkçe metne çevirir."""
-    if config.DEMO:
-        return DEMO_TRANSCRIPT
+def transcribe(data: bytes, mime: str = "audio/mpeg", filename: str = ""):
+    """Ses baytlarını (metin, kullanım) olarak döndürür."""
+    import time
+    import pricing
     if not data:
         raise ValueError("Ses verisi boş.")
     if len(data) > MAX_BYTES:
         raise ValueError("Ses dosyası çok büyük (20 MB üstü). Lütfen daha kısa bir kayıt yükleyin.")
     data, mime = _maybe_convert(data, mime, filename)
-    text = _gemini(data, mime)
+    t0 = time.time()
+    text, u = _gemini(data, mime)
+    u["seconds"] = round(time.time() - t0, 1)
     if not text:
         raise ValueError("Ses metne dökülemedi (boş yanıt). Kaydı ve konuşma dilini kontrol edin.")
-    return text
+    u["cost_usd"] = round(pricing.audio_cost(u["input"], u["output"]), 6)
+    return text, u
