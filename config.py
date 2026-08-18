@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 
 load_dotenv(override=True)  # .env her zaman kazanır (eski ortam değişkenini ezer)
 
-DEMO = os.getenv("DEMO", "false").strip().lower() in ("1", "true", "yes", "on")
+DEMO = os.getenv("DEMO", "true").strip().lower() in ("1", "true", "yes", "on")
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
