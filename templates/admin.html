@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin · Klinik Görüşme Kayıtları</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="/static/style.css" rel="stylesheet">
+  <link href="/static/admin.css" rel="stylesheet">
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <span class="brand-mark"><i class="bi bi-shield-lock"></i></span>
+        <div>
+          <div class="brand-name">Admin · Görüşme Kayıtları</div>
+          <div class="brand-sub">tüm analizler · ses kayıtları · raporlar</div>
+        </div>
+      </div>
+      <div class="topbar-meta">
+        <span class="pill"><i class="bi bi-person-badge"></i> {{ user }}</span>
+        <a class="pill pill-link" href="/"><i class="bi bi-arrow-left"></i> Panele dön</a>
+        <a class="pill pill-out" href="/admin/logout"><i class="bi bi-box-arrow-right"></i> Çıkış</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap wrap-wide">
+
+    <div class="stat-strip">
+      <div class="stat-box"><div class="s-lbl">Toplam kayıt</div><div class="s-val">{{ stat.kayit }}</div></div>
+      <div class="stat-box"><div class="s-lbl">Toplam token</div><div class="s-val">{{ "{:,}".format(stat.token).replace(",", ".") }}</div></div>
+      <div class="stat-box"><div class="s-lbl">Toplam maliyet</div><div class="s-val val-teal">${{ "%.4f"|format(stat.cost_usd) }}</div></div>
+      <div class="stat-box"><div class="s-lbl">Model</div><div class="s-val s-sm">{{ provider }}</div></div>
+    </div>
+
+    <div class="admin-tools">
+      <div class="search-wrap">
+        <i class="bi bi-search"></i>
+        <input id="q" type="text" placeholder="Kayıtlarda ara (tanı, şikayet, kayıt no)...">
+      </div>
+      <button class="btn-ghost" onclick="location.reload()"><i class="bi bi-arrow-clockwise"></i> Yenile</button>
+    </div>
+
+    {% if kayitlar %}
+    <div class="rec-head">
+      <span>No</span><span>Tarih / Saat</span><span>Özet (tanı / şikayet)</span><span>Ses</span><span class="ta-r">İşlem</span>
+    </div>
+
+    <div id="rec-list">
+      {% for k in kayitlar %}
+      <div class="rec-item" data-id="{{ k.id }}" data-search="{{ (k.ozet ~ ' ' ~ k.id) | lower }}">
+        <div class="rec-row">
+          <span class="rec-no">#{{ k.id }}</span>
+          <span class="rec-date">{{ k.olusturma.replace("T", " ") }}</span>
+          <span class="rec-ozet" title="{{ k.ozet }}">{{ k.ozet or "—" }}</span>
+          <span class="rec-audio">
+            {% if k.ses_var %}<span class="badge-ses"><i class="bi bi-volume-up"></i> var</span>
+            {% else %}<span class="badge-none">yok</span>{% endif %}
+          </span>
+          <span class="rec-act">
+            {% if k.ses_var %}
+            <button class="mini-btn" data-act="ses" data-id="{{ k.id }}" title="Sesi dinle"><i class="bi bi-play-fill"></i> Dinle</button>
+            {% endif %}
+            <button class="mini-btn primary" data-act="ac" data-id="{{ k.id }}"><i class="bi bi-file-earmark-text"></i> Raporlar</button>
+            <button class="mini-btn danger" data-act="sil" data-id="{{ k.id }}" title="Sil"><i class="bi bi-trash"></i></button>
+          </span>
+        </div>
+        <div class="rec-detail hidden" id="det-{{ k.id }}"></div>
+      </div>
+      {% endfor %}
+    </div>
+    <div id="bos-arama" class="empty-box hidden">Aramaya uyan kayıt yok.</div>
+    {% else %}
+    <div class="empty-box">
+      <i class="bi bi-inbox"></i>
+      <p>Henüz kayıt yok. Panelden bir görüşme analiz edildiğinde burada listelenir.</p>
+      <a class="btn-primary" href="/"><i class="bi bi-plus-lg"></i> Panele git</a>
+    </div>
+    {% endif %}
+
+    <div class="db-note"><i class="bi bi-info-circle"></i>
+      Kayıtlar SQLite (<code>kayitlar.db</code>) içinde tutulur. Render ücretsiz planda disk kalıcı
+      olmadığından servis yeniden başlarsa kayıtlar sıfırlanabilir; kalıcılık için Postgres'e geçilmelidir.
+    </div>
+  </main>
+
+  <script src="/static/admin.js"></script>
+</body>
+</html>
