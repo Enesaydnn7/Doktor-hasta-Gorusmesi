@@ -157,3 +157,26 @@ Fiyatlar `pricing.py` içindedir — **Gemini 2.5 Flash standart (ücretli) katm
 giriş metin $0.30, giriş ses $1.00, çıkış $2.50 (1M token başına). Canlı API kullanıldığı için
 standart fiyat geçerlidir (Batch/toplu yarı-fiyat bu akışta geçmez). Token sayıları Gemini'nin
 kendi cevabından (`usage_metadata`) okunur — tahmin değildir. Fiyat değişirse sadece `pricing.py`'yi güncelleyin.
+
+---
+
+## Admin paneli (`/admin`)
+
+Aynı adresin `/admin` yolunda açılır. Kendi **giriş sayfası** vardır (kullanıcı adı/şifre kutuları,
+şifre göster düğmesi); tarayıcının açılır kutusu kullanılmaz. Varsayılan: **admin / admin**
+(değiştirmek için `.env` veya Render Environment: `ADMIN_USER`, `ADMIN_PASS`).
+Oturum imzalı çerezle tutulur (`SESSION_HOURS`, varsayılan 12 saat); sağ üstten **Çıkış** yapılır.
+
+- Üstte özet: toplam kayıt, toplam token, toplam maliyet.
+- Her analiz bir **satır**: kayıt no, tarih-saat, özet (tanı/şikayet), ses var mı.
+- **Dinle**: görüşmenin ses kaydı panelden çalınır.
+- **Raporlar**: satır açılır; doktor epikrizi / hasta özeti / yönetim raporu / görüşme metni
+  sekmeleri ve her rapor için **PDF indir**.
+- **Sil**: kaydı siler. Arama kutusundan tanı/şikayet/kayıt no ile filtrelenir.
+
+Veriler `db.py` üzerinden **SQLite** (`kayitlar.db`) dosyasında tutulur; ses kaydı da
+veritabanına yazılır. `DB_PATH` ile konum değiştirilebilir.
+
+> **Önemli:** Render ücretsiz planda disk kalıcı değildir — servis yeniden başlarsa kayıtlar
+> sıfırlanabilir. Kalıcı saklama için Render'ın ücretsiz **Postgres**'ine geçilmelidir;
+> o durumda yalnızca `db.py` değişir.

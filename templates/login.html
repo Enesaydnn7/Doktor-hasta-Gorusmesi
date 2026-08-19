@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Girişi · Klinik Görüşme Analiz Paneli</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --ink:#0f2233;--teal:#0e9488;--teal-2:#0b7d73;--teal-soft:#e6f4f2;
+      --slate:#334e68;--slate-soft:#eef2f6;--line:#e4eaee;--muted:#647680;
+      --text:#15242e;--bad:#d64545;--bad-bg:#fbe9e9;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
+      background:linear-gradient(160deg,#0f2233 0%,#17364d 55%,#0b3b39 100%);
+      font-family:'Inter',system-ui,-apple-system,sans-serif;color:var(--text);padding:24px}
+    .login-card{width:100%;max-width:400px;background:#fff;border-radius:18px;
+      box-shadow:0 24px 60px rgba(4,18,30,.35);padding:34px 32px 28px}
+    .brand{display:flex;flex-direction:column;align-items:center;text-align:center;margin-bottom:26px}
+    .brand-mark{width:52px;height:52px;border-radius:15px;background:var(--teal);color:#fff;
+      display:grid;place-items:center;font-size:25px;margin-bottom:14px;
+      box-shadow:0 6px 18px rgba(14,148,136,.32)}
+    .brand h1{font-size:18px;font-weight:600;margin:0 0 4px;color:var(--ink);letter-spacing:-.2px}
+    .brand p{font-size:13px;color:var(--muted);margin:0}
+    .field{margin-bottom:16px}
+    .field label{display:block;font-size:12.5px;font-weight:600;color:var(--slate);margin-bottom:7px}
+    .input-wrap{position:relative;display:flex;align-items:center}
+    .input-wrap>.bi{position:absolute;left:14px;color:var(--muted);font-size:15px;pointer-events:none}
+    .input-wrap input{width:100%;border:1px solid var(--line);border-radius:11px;
+      padding:13px 44px 13px 40px;font-family:inherit;font-size:14.5px;color:var(--text);
+      background:#fbfcfd;transition:.15s}
+    .input-wrap input:focus{outline:none;border-color:var(--teal);background:#fff;
+      box-shadow:0 0 0 3px var(--teal-soft)}
+    .input-wrap input::placeholder{color:#a9b6bf}
+    .toggle-eye{position:absolute;right:8px;background:none;border:none;color:var(--muted);
+      cursor:pointer;padding:8px;font-size:15px;line-height:1;border-radius:8px}
+    .toggle-eye:hover{color:var(--slate);background:var(--slate-soft)}
+    .btn-login{width:100%;border:none;border-radius:11px;background:var(--teal);color:#fff;
+      padding:13px;font-family:inherit;font-size:15px;font-weight:600;cursor:pointer;
+      display:flex;align-items:center;justify-content:center;gap:9px;transition:.15s;margin-top:6px}
+    .btn-login:hover{background:var(--teal-2)}
+    .btn-login:active{transform:translateY(1px)}
+    .err{background:var(--bad-bg);border:1px solid #f3c9c9;color:#9c2a2a;border-radius:10px;
+      padding:11px 14px;font-size:13.5px;margin-bottom:18px;display:flex;gap:9px;align-items:flex-start}
+    .err .bi{margin-top:2px}
+    .foot{text-align:center;margin-top:22px;padding-top:18px;border-top:1px solid var(--line)}
+    .foot a{color:var(--muted);font-size:12.5px;text-decoration:none;display:inline-flex;gap:6px;align-items:center}
+    .foot a:hover{color:var(--teal-2)}
+    .hint{text-align:center;font-size:11.5px;color:var(--muted);margin-top:14px}
+  </style>
+</head>
+<body>
+  <div class="login-card">
+    <div class="brand">
+      <span class="brand-mark"><i class="bi bi-shield-lock"></i></span>
+      <h1>Admin Girişi</h1>
+      <p>Klinik Görüşme Analiz Paneli</p>
+    </div>
+
+    {% if hata %}
+    <div class="err"><i class="bi bi-exclamation-triangle-fill"></i>
+      <span>{{ hata }}</span></div>
+    {% endif %}
+
+    <form method="post" action="/admin/login" autocomplete="on">
+      <div class="field">
+        <label for="user">Kullanıcı adı</label>
+        <div class="input-wrap">
+          <i class="bi bi-person"></i>
+          <input id="user" name="user" type="text" placeholder="admin"
+                 autocomplete="username" required autofocus>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="pass">Şifre</label>
+        <div class="input-wrap">
+          <i class="bi bi-key"></i>
+          <input id="pass" name="password" type="password" placeholder="••••••"
+                 autocomplete="current-password" required>
+          <button type="button" class="toggle-eye" id="eye" aria-label="Şifreyi göster">
+            <i class="bi bi-eye"></i>
+          </button>
+        </div>
+      </div>
+
+      <button class="btn-login" type="submit">
+        <i class="bi bi-box-arrow-in-right"></i> Giriş yap
+      </button>
+    </form>
+
+    <div class="foot">
+      <a href="/"><i class="bi bi-arrow-left"></i> Analiz paneline dön</a>
+    </div>
+  </div>
+
+  <script>
+    const eye = document.getElementById('eye');
+    const pass = document.getElementById('pass');
+    eye.addEventListener('click', () => {
+      const goster = pass.type === 'password';
+      pass.type = goster ? 'text' : 'password';
+      eye.innerHTML = goster ? '<i class="bi bi-eye-slash"></i>' : '<i class="bi bi-eye"></i>';
+      pass.focus();
+    });
+  </script>
+</body>
+</html>

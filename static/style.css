@@ -224,3 +224,5 @@ textarea:focus{outline:none; border-color:var(--teal); box-shadow:0 0 0 3px var(
 .mon-row .mon-sub{font-size:11px;color:var(--muted);margin-left:3px}
 .mon-tot{font-weight:700;color:var(--ink);background:var(--teal-soft)!important;margin-top:3px}
 .mon-foot{font-size:11px;color:var(--muted);margin-top:11px;line-height:1.55}
+.pill-link{text-decoration:none;background:rgba(255,255,255,.12);color:#cfe6e3}
+.pill-link:hover{background:rgba(255,255,255,.2);color:#fff}

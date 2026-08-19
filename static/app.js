@@ -32,7 +32,7 @@ const MISS = "belirtilmedi";
 const isMiss = (v) => !v || String(v).trim().toLowerCase() === MISS;
 const val = (v) => isMiss(v) ? `<span class="val-missing">belirtilmedi</span>` : esc(v);
 
-$("btn-example").addEventListener("click", () => { $("transcript").value = EXAMPLE; lastTranscribeUsage = null; });
+$("btn-example").addEventListener("click", () => { $("transcript").value = EXAMPLE; lastTranscribeUsage = null; lastAudioId = null; });
 $("btn-analyze").addEventListener("click", analyze);
 document.querySelectorAll(".recipient").forEach(btn =>
   btn.addEventListener("click", () => showTab(btn.dataset.tab)));
@@ -52,7 +52,7 @@ async function analyze() {
   try {
     const res = await fetch("/analyze", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ transcript })
+      body: JSON.stringify({ transcript, audio_id: lastAudioId, stt_usage: lastTranscribeUsage })
     });
     const data = await res.json();
     if (!res.ok || data.error) throw new Error(data.error || "Bilinmeyen hata");
@@ -300,6 +300,7 @@ async function sendAudio(fileOrBlob,name){
     if(!res.ok||data.error)throw new Error(data.error||"hata");
     $("transcript").value=data.transcript;
     lastTranscribeUsage = data.usage || null;
+    lastAudioId = data.audio_id || null;
     let ek="";
     if(data.usage){ek=` <span class="mon-sub">(ses: ${fmtNum(data.usage.total)} token, ${fmtUsd(data.usage.cost_usd)})</span>`;}
     audStatus().innerHTML='<i class="bi bi-check-circle" style="color:var(--ok)"></i> Metne döküldü — kontrol edip “Analiz et”e basın.'+ek;
