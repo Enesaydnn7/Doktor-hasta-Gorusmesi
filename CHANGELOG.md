@@ -1,5 +1,12 @@
 # Sürüm Geçmişi
 
+## v1.7.2 — 27 Ağustos 2026
+
+- Private repoda korunan yönetici demo kaydı yeni/geçici SQLite veritabanına uygulama açılışında otomatik ekleniyor.
+- Render Free uyku, yeniden başlatma veya deploy nedeniyle SQLite'ı sıfırlasa bile demo kayıt admin panelinde tekrar oluşuyor.
+- Aynı demo kaydının birden fazla eklenmesini önleyen kalıcı `demo_key` alanı ve benzersiz indeks eklendi.
+- SQLite işlemlerinden sonra bağlantıların açık kalmasına neden olan bağlantı yaşam döngüsü düzeltildi.
+
 ## v1.7.1 — 27 Ağustos 2026
 
 - Yönetici sunumu için kullanılan gastrit demo sesinin orijinal WebM kopyası private repoda korumaya alındı.
