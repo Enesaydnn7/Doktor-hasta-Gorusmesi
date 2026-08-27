@@ -33,6 +33,11 @@ class MicrophoneUiTests(unittest.TestCase):
         self.assertIn("boş kayıt API'ye gönderilmedi", self.js)
         self.assertIn(".mic-meter.is-live", self.css)
 
+    def test_current_version_is_visible_in_topbar(self):
+        self.assertIn('class="pill pill-version"', self.html)
+        self.assertIn("{{ version }}", self.html)
+        self.assertIn(".pill-version", self.css)
+
 
 if __name__ == "__main__":
     unittest.main()

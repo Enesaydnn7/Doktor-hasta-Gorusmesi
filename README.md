@@ -1,4 +1,4 @@
-# Klinik Görüşme Analiz Paneli — OpenAI ses dökümü + Gemini analiz
+# Klinik Görüşme Analiz Paneli — Scribe/OpenAI ses dökümü + Gemini analiz
 
 Doktor–hasta görüşmesinin metnini alır, **Gemini** ile aynı görüşmeden **üç rapor** üretir.
 Epikriz şeması, gerçek hastane epikrizlerinin yapısına göre kurulmuştur (sigorta/kayıt uyumlu).
@@ -50,6 +50,10 @@ Tarayıcı: **http://127.0.0.1:8000** → "Örnek yükle" → "Analiz et".
 
 GEMINI_API_KEY=...
 GEMINI_MODEL=gemini-2.5-flash
+APP_VERSION=v1.7.0
+ELEVENLABS_API_KEY=...
+ELEVENLABS_STT_MODEL=scribe_v2
+ELEVENLABS_STT_LANGUAGE=tr
 OPENAI_API_KEY=...
 OPENAI_STT_MODEL=gpt-4o-transcribe-diarize
 OPENAI_STT_FALLBACK_MODEL=gpt-transcribe
@@ -61,7 +65,7 @@ OPENAI_STT_FALLBACK_MODEL=gpt-transcribe
 |---|---|
 | `main.py` | FastAPI; `/analyze` |
 | `llm.py` | Gemini çağrısı; görüşme tarihini ekler; 3 raporu sırayla üretir |
-| `stt.py` | OpenAI Transcription API çağrısı ve konuşmacı etiketleme |
+| `stt.py` | ElevenLabs Scribe v2, OpenAI yedeği ve konuşmacı etiketleme |
 | `role_classifier.py` | Konuşmacı metinlerinden Gemini ile yalnızca doktor/hasta rol eşlemesi |
 | `prompts.py` | 3 system prompt (detaylı epikriz şeması burada) |
 | `pdf_report.py` | Rapor PDF üretimi (epikriz formatı) |
@@ -70,7 +74,7 @@ OPENAI_STT_FALLBACK_MODEL=gpt-transcribe
 
 ## Notlar
 
-- Giriş metin veya sestir; ses OpenAI API ile konuşmacı ayrımlı metne çevrilir.
+- Giriş metin veya sestir; ses öncelikle Scribe v2, servis kullanılamazsa OpenAI API ile konuşmacı ayrımlı metne çevrilir.
 - KVKK: gerçek hasta verisinde kurum politikanıza göre ilerleyin; gerekirse `llm.py`'deki
   bağlantıyı kendi sunucunuzdaki bir modele çevirin.
 
@@ -110,6 +114,10 @@ OPENAI_STT_FALLBACK_MODEL=gpt-transcribe
 4. **Environment** sekmesinden değişkenleri gir:
    - `GEMINI_API_KEY` = (anahtarın)
    - `GEMINI_MODEL` = `gemini-2.5-flash`
+   - `APP_VERSION` = `v1.7.0`
+   - `ELEVENLABS_API_KEY` = (ElevenLabs API anahtarın)
+   - `ELEVENLABS_STT_MODEL` = `scribe_v2`
+   - `ELEVENLABS_STT_LANGUAGE` = `tr`
    - `OPENAI_API_KEY` = (OpenAI Platform anahtarın)
    - `OPENAI_STT_MODEL` = `gpt-4o-transcribe-diarize`
    - `OPENAI_STT_FALLBACK_MODEL` = `gpt-transcribe`
@@ -125,6 +133,7 @@ OPENAI_STT_FALLBACK_MODEL=gpt-transcribe
 3. Space'in dosyalarına bu projeyi yükle (yine `.env` hariç).
 4. Space **Settings  →  Secrets** kısmına ekle:
    - `GEMINI_API_KEY`, `GEMINI_MODEL=gemini-2.5-flash`
+   - `ELEVENLABS_API_KEY`, `ELEVENLABS_STT_MODEL=scribe_v2`, `ELEVENLABS_STT_LANGUAGE=tr`
    - `OPENAI_API_KEY`, `OPENAI_STT_MODEL=gpt-4o-transcribe-diarize`
 5. Space otomatik derlenir; `https://kullanici-adi-space-adi.hf.space` linkini paylaşırsın.
 
@@ -142,14 +151,32 @@ OPENAI_STT_FALLBACK_MODEL=gpt-transcribe
 Panelde metin kutusunun üstünde **Kaydet** ve **Ses dosyası yükle** var:
 1. Önce listeden mikrofonu seçip **Mikrofonu test et** düğmesine bas. Konuşurken canlı seviye çubuğu hareket etmeli.
 2. Görüşme sesini mikrofonla kaydet ya da hazır ses dosyası (mp3/wav/m4a/ogg...) yükle.
-3. Sistem sesi OpenAI `gpt-4o-transcribe-diarize` ile Türkçe metne döker ve konuşmacıları A/B diye ayırır.
-4. Konuşmacı segmentleri boş gelirse önce aynı yanıttaki birleşik metin kullanılır; o da boşsa yalnızca o kayıt için
-   OpenAI `gpt-transcribe` API modeliyle ikinci deneme yapılır. Bilgisayara veya Render'a model indirilmez.
+3. Sistem sesi öncelikle ElevenLabs `scribe_v2` ile Türkçe metne döker; görüşmenin iki konuşmacılı olduğunu bildirir
+   ve tıbbi anahtar terimlerle kelime tanımayı güçlendirir.
+4. Scribe kullanılamazsa OpenAI `gpt-4o-transcribe-diarize` otomatik yedektir. Onun segment ve birleşik metni de
+   boşsa son kez OpenAI `gpt-transcribe` denenir. Bilgisayara veya Render'a model indirilmez.
 5. Gemini yalnızca A/B konuşmacılarından hangisinin doktor, hangisinin hasta olduğunu cümlelerin anlamından seçer.
 6. Metin, düzenlenebilir kutuya düşer — kontrol edip düzeltirsin.
 7. "Analiz et" ile 3 rapor + epikriz üretilir.
 
-- Ses motoru ayrı bir dosyadadır: `stt.py`. Yerel model indirilmez; kayıt OpenAI Transcription API'ye gönderilir.
+### STT model seçimi ve ücret
+
+- OpenAI, `gpt-transcribe` modelini yüksek doğruluklu STT modeli; `gpt-4o-transcribe-diarize` modelini ise
+  konuşmacıyı belirleyen model olarak belgeliyor.
+- ElevenLabs, Scribe v2 için Türkçeyi kendi ölçümünde **Excellent (≤%5 WER)** sınıfında gösteriyor ve modelde
+  32 konuşmacıya kadar diarization ile anahtar terim desteği bulunuyor. Bu oran üreticinin kendi ölçümüdür;
+  bağımsız klinik doğrulama değildir.
+- Bu projenin Türkçe + iki konuşmacı + tıbbi terim ihtiyacı nedeniyle Scribe v2 birincil seçildi.
+- Scribe v2 liste fiyatı `$0.22/saat`; etkin tıbbi anahtar terimler `$0.05/saat` ekler. Toplam yaklaşık
+  `$0.27/saat` (`$0.0045/dakika`). OpenAI yedeği yalnızca gerektiğinde ayrıca ücretlenir.
+
+Kaynaklar: [Scribe v2 özellikleri](https://elevenlabs.io/docs/overview/capabilities/speech-to-text/),
+[Scribe API parametreleri](https://elevenlabs.io/docs/api-reference/speech-to-text/convert),
+[ElevenLabs API fiyatları](https://elevenlabs.io/pricing/api?price.section=speech_to_text),
+[OpenAI GPT-Transcribe](https://developers.openai.com/api/docs/models/gpt-transcribe),
+[OpenAI diarization modeli](https://developers.openai.com/api/docs/models/gpt-4o-transcribe-diarize).
+
+- Ses motoru ayrı bir dosyadadır: `stt.py`. Yerel model indirilmez; kayıt öncelikle Scribe API'ye gönderilir.
 - Tarayıcının ürettiği `.webm` dosyası dönüştürülmeden doğrudan API'ye gönderilir.
 - Kulaklık takılıp çıkarıldığında mikrofon listesi yenilenir. Sessiz/boş kayıt API'ye gönderilmez; böylece hem
   anlaşılır bir uyarı gösterilir hem de gereksiz STT isteği engellenir.
@@ -162,7 +189,8 @@ Panelde metin kutusunun üstünde **Kaydet** ve **Ses dosyası yükle** var:
 - Rol sınıflandırması başarısız olursa transkript kaybedilmez; çok sesli kayıtta konuşma sırası,
   tek sesli demoda cümle sırası kullanılır ve arayüz kontrol uyarısı gösterir.
 - Not: 20 MB üstü ses için daha kısa kayıt kullanın (uzun görüşmeler için ileride parçalama eklenebilir).
-- KVKK: ses metinden daha hassastır. Gerçek hasta kayıtlarında kendi sunucunuzda Whisper'a geçmeyi planlayın.
+- KVKK: ses metinden daha hassastır. Gerçek hasta kayıtlarında kurum politikasını, açık rızayı ve kullanılan
+  sağlayıcılarla gerekli veri işleme/saklama sözleşmelerini ayrıca değerlendirin.
 
 ---
 
@@ -177,9 +205,10 @@ Ses yüklendiğinde de o dökümün token/maliyeti "metne döküldü" satırınd
 Doktor/hasta rol sınıflandırmasının Gemini token ve maliyeti ayrı satırda gösterilir. Sesli akışta
 Gemini toplam dört kez çağrılır: bir rol tespiti ve "Analiz et" sonrasında üç rapor.
 
-Fiyatlar `pricing.py` içindedir. Üç rapor için Gemini 2.5 Flash; ses dökümü için OpenAI
-`gpt-4o-transcribe-diarize` standart token fiyatları kullanılır. API kullanım bilgisini token olarak
-döndürmezse arayüz ses maliyetini `—` gösterir; sıfır dolar gibi yanıltıcı bir değer yazmaz.
+Fiyatlar `pricing.py` içindedir. Üç rapor için Gemini 2.5 Flash; birincil ses dökümü için Scribe v2'nin
+ses süresine dayalı liste fiyatı kullanılır. OpenAI yedeği devreye girerse kendi token/süre fiyatı ayrıca
+hesaplanır. API yeterli süre veya kullanım bilgisi döndürmezse arayüz ses maliyetini `—` gösterir;
+sıfır dolar gibi yanıltıcı bir değer yazmaz.
 
 ---
 

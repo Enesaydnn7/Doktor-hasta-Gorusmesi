@@ -12,6 +12,14 @@ services:
         value: gemini-2.5-flash
       - key: GEMINI_API_KEY
         sync: false                 # anahtarı panelden gizli olarak sen gireceksin
+      - key: APP_VERSION
+        value: v1.7.0
+      - key: ELEVENLABS_STT_MODEL
+        value: scribe_v2
+      - key: ELEVENLABS_STT_LANGUAGE
+        value: tr
+      - key: ELEVENLABS_API_KEY
+        sync: false                 # ElevenLabs anahtarını Render panelinden gir
       - key: OPENAI_STT_MODEL
         value: gpt-4o-transcribe-diarize
       - key: OPENAI_STT_FALLBACK_MODEL
