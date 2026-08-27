@@ -14,5 +14,7 @@ services:
         sync: false                 # anahtarı panelden gizli olarak sen gireceksin
       - key: OPENAI_STT_MODEL
         value: gpt-4o-transcribe-diarize
+      - key: OPENAI_STT_FALLBACK_MODEL
+        value: gpt-transcribe
       - key: OPENAI_API_KEY
         sync: false                 # OpenAI Platform anahtarını Render panelinden gir

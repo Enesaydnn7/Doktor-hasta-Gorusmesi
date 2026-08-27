@@ -51,6 +51,10 @@ class ApiResilienceTests(unittest.TestCase):
         exc = ValueError("Ses dosyası okunamadı veya dönüştürülemedi.")
         self.assertEqual(public_error_message(exc), str(exc))
 
+    def test_empty_result_after_both_stt_models_is_shown(self):
+        exc = ValueError("İki farklı OpenAI ses modeli de konuşma bulamadı.")
+        self.assertEqual(public_error_message(exc), str(exc))
+
 
 if __name__ == "__main__":
     unittest.main()
