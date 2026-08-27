@@ -67,6 +67,136 @@ class DiarizedFormattingTests(unittest.TestCase):
         self.assertEqual(result, "Hasta: Midem ağrıyor.\nDoktor: Ne zamandır ağrıyor?")
 
 
+class ElevenLabsTranscriptionTests(unittest.TestCase):
+    def test_scribe_words_preserve_text_and_speaker_changes(self):
+        words = [
+            {"type": "word", "text": "Şikayetiniz", "speaker_id": "speaker_0"},
+            {"type": "spacing", "text": " ", "speaker_id": "speaker_0"},
+            {"type": "word", "text": "nedir", "speaker_id": "speaker_0"},
+            {"type": "punctuation", "text": "?", "speaker_id": "speaker_0"},
+            {"type": "spacing", "text": " ", "speaker_id": "speaker_0"},
+            {"type": "word", "text": "Midem", "speaker_id": "speaker_1"},
+            {"type": "spacing", "text": " ", "speaker_id": "speaker_1"},
+            {"type": "word", "text": "ağrıyor", "speaker_id": "speaker_1"},
+            {"type": "punctuation", "text": ".", "speaker_id": "speaker_1"},
+            {"type": "audio_event", "text": "(öksürük)", "speaker_id": "speaker_1"},
+        ]
+
+        self.assertEqual(
+            stt._elevenlabs_segments(words),
+            [
+                {"speaker": "speaker_0", "text": "Şikayetiniz nedir?"},
+                {"speaker": "speaker_1", "text": "Midem ağrıyor."},
+            ],
+        )
+
+    @patch.object(stt.httpx, "Client")
+    @patch.object(stt.httpx, "HTTPTransport")
+    def test_scribe_v2_uses_turkish_diarization_and_medical_keyterms(
+        self, transport_class, client_class
+    ):
+        words = [
+            {
+                "type": "word", "text": "Şikayetiniz", "speaker_id": "speaker_0",
+                "start": 0.0, "end": 1.0,
+            },
+            {
+                "type": "word", "text": "nedir?", "speaker_id": "speaker_0",
+                "start": 1.1, "end": 2.0,
+            },
+            {
+                "type": "word", "text": "Midem", "speaker_id": "speaker_1",
+                "start": 58.0, "end": 59.0,
+            },
+            {
+                "type": "word", "text": "ağrıyor.", "speaker_id": "speaker_1",
+                "start": 59.0, "end": 60.0,
+            },
+        ]
+        response = MagicMock()
+        response.json.return_value = {
+            "text": "Şikayetiniz nedir? Midem ağrıyor.",
+            "words": words,
+        }
+        client = MagicMock()
+        client.post.return_value = response
+        client_class.return_value.__enter__.return_value = client
+
+        with (
+            patch.object(config, "ELEVENLABS_API_KEY", "eleven-test"),
+            patch.object(config, "ELEVENLABS_STT_KEYTERMS", ("gastrit", "ülser")),
+            patch.object(
+                stt.role_classifier,
+                "classify_speakers",
+                return_value=(
+                    {"speaker_0": "Doktor", "speaker_1": "Hasta"}, None
+                ),
+            ),
+        ):
+            text, usage = stt._elevenlabs_transcribe(
+                b"webm-data", "audio/webm", "gorusme.webm"
+            )
+
+        self.assertEqual(text, "Doktor: Şikayetiniz nedir?\nHasta: Midem ağrıyor.")
+        self.assertEqual(usage["provider"], "ElevenLabs")
+        self.assertEqual(usage["model"], "scribe_v2")
+        self.assertEqual(usage["audio_seconds"], 60.0)
+        self.assertEqual(usage["cost_usd"], 0.0045)
+        self.assertEqual(usage["role_method"], "semantic_speakers")
+        response.raise_for_status.assert_called_once()
+        kwargs = client.post.call_args.kwargs
+        self.assertEqual(kwargs["headers"], {"xi-api-key": "eleven-test"})
+        form = kwargs["files"]
+        self.assertIn(("model_id", (None, "scribe_v2")), form)
+        self.assertIn(("language_code", (None, "tr")), form)
+        self.assertIn(("diarize", (None, "true")), form)
+        self.assertIn(("num_speakers", (None, "2")), form)
+        self.assertIn(("tag_audio_events", (None, "false")), form)
+        self.assertIn(("keyterms", (None, "gastrit")), form)
+        self.assertNotIn("prompt", {name for name, _ in form})
+        transport_class.assert_called_once_with(retries=2)
+
+    def test_transcribe_prefers_scribe_when_configured(self):
+        usage = {
+            "provider": "ElevenLabs", "model": "scribe_v2", "input": 0,
+            "output": 0, "total": 0, "cost_usd": 0.001,
+        }
+        with (
+            patch.object(config, "ELEVENLABS_API_KEY", "eleven-test"),
+            patch.object(stt, "_elevenlabs_transcribe", return_value=("Doktor: Merhaba", usage)) as scribe,
+            patch.object(stt, "_openai_transcribe") as openai,
+        ):
+            text, result_usage = stt.transcribe(b"audio", "audio/webm", "kayit.webm")
+
+        self.assertEqual(text, "Doktor: Merhaba")
+        self.assertEqual(result_usage["provider"], "ElevenLabs")
+        scribe.assert_called_once()
+        openai.assert_not_called()
+
+    def test_scribe_failure_automatically_uses_openai(self):
+        openai_usage = {
+            "provider": "OpenAI", "model": "gpt-4o-transcribe-diarize",
+            "input": 1, "output": 1, "total": 2, "cost_usd": 0.001,
+        }
+        with (
+            patch.object(config, "ELEVENLABS_API_KEY", "eleven-test"),
+            patch.object(config, "OPENAI_API_KEY", "openai-test"),
+            patch.object(
+                stt, "_elevenlabs_transcribe", side_effect=RuntimeError("temporary")
+            ),
+            patch.object(
+                stt, "_openai_transcribe", return_value=("Hasta: Karnım ağrıyor", openai_usage)
+            ) as openai,
+            patch.object(stt.logger, "exception"),
+        ):
+            text, usage = stt.transcribe(b"audio", "audio/webm", "kayit.webm")
+
+        self.assertEqual(text, "Hasta: Karnım ağrıyor")
+        self.assertTrue(usage["provider_fallback_used"])
+        self.assertIn("ElevenLabs", usage["provider_fallback_from"])
+        openai.assert_called_once()
+
+
 class OpenAiTranscriptionTests(unittest.TestCase):
     @patch("openai.OpenAI")
     def test_diarized_transcription_api_is_called_without_generation_prompt(self, client_class):
@@ -319,8 +449,11 @@ class OpenAiTranscriptionTests(unittest.TestCase):
 
     def test_empty_diarized_response_is_rejected(self):
         usage = {"input": 0, "output": 0, "total": 0, "cost_usd": None}
-        with patch.object(stt, "_openai_transcribe", return_value=("", usage)):
-            with self.assertRaisesRegex(ValueError, "İki farklı OpenAI"):
+        with (
+            patch.object(config, "ELEVENLABS_API_KEY", ""),
+            patch.object(stt, "_openai_transcribe", return_value=("", usage)),
+        ):
+            with self.assertRaisesRegex(ValueError, "Ses servisleri"):
                 stt.transcribe(b"audio", "audio/webm", "kayit.webm")
 
 

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""OpenAI Transcription API ile konuşmacı ayrımlı ses -> metin katmanı."""
+"""ElevenLabs birincil, OpenAI yedek konuşmacı ayrımlı ses -> metin katmanı."""
 from __future__ import annotations
 
 import os
@@ -8,6 +8,8 @@ import re
 import time
 from collections.abc import Iterable
 from typing import Any
+
+import httpx
 
 import config
 import pricing
@@ -173,6 +175,151 @@ def _format_semantic_turns(raw_text: str, usage: dict[str, Any]) -> str:
     return _format_turns(turns) if turns else _fallback_single_speaker(raw_text)
 
 
+def _label_transcript(
+    segments: Iterable[Any], combined_text: str, usage: dict[str, Any],
+) -> str:
+    """Sağlayıcı segmentlerini, metni değiştirmeden Doktor/Hasta etiketlerine dönüştür."""
+    segments = [
+        segment
+        for segment in list(segments or [])
+        if str(_field(segment, "text", "") or "").strip()
+    ]
+    if not segments:
+        return _format_semantic_turns(combined_text, usage) if combined_text else ""
+
+    speakers = {
+        str(_field(segment, "speaker", "") or "").strip()
+        for segment in segments
+        if str(_field(segment, "speaker", "") or "").strip()
+    }
+    if len(speakers) <= 1:
+        raw_text = combined_text or " ".join(
+            str(_field(segment, "text", "") or "").strip()
+            for segment in segments
+        )
+        return _format_semantic_turns(raw_text, usage)
+
+    role_labels: dict[str, str] = {}
+    role_usage = None
+    try:
+        role_labels, role_usage = role_classifier.classify_speakers(segments)
+    except Exception:  # Rol tespiti başarısız olsa da gerçek transkripti kaybetme.
+        logger.exception("Doktor/hasta rol tespiti başarısız; konuşma sırası kullanılacak")
+
+    usage["role_usage"] = role_usage
+    usage["role_method"] = "semantic_speakers" if role_labels else "speaker_order"
+    return _format_diarized_segments(segments, role_labels)
+
+
+def _elevenlabs_segments(words: Iterable[Any]) -> list[dict[str, str]]:
+    """Scribe sözcüklerini konuşmacı değişimlerinde birleştir; sözcük üretme/düzeltme yapma."""
+    segments: list[dict[str, str]] = []
+    current_speaker = ""
+    current_text = ""
+    previous_type = ""
+
+    for word in words or []:
+        word_type = str(_field(word, "type", "word") or "word").lower()
+        if word_type == "audio_event":
+            continue
+        token = str(_field(word, "text", "") or "")
+        if not token:
+            continue
+        supplied_speaker = str(_field(word, "speaker_id", "") or "").strip()
+        speaker = supplied_speaker or current_speaker or "unknown"
+
+        if current_speaker and speaker != current_speaker and current_text.strip():
+            segments.append({"speaker": current_speaker, "text": current_text.strip()})
+            current_text = ""
+            previous_type = ""
+        current_speaker = speaker
+
+        if (
+            current_text
+            and word_type == "word"
+            and previous_type not in {"spacing", ""}
+            and not current_text.endswith((" ", "\n", "\t"))
+            and not token.startswith((" ", "\n", "\t"))
+        ):
+            current_text += " "
+        current_text += token
+        previous_type = word_type
+
+    if current_text.strip():
+        segments.append({"speaker": current_speaker or "unknown", "text": current_text.strip()})
+    return segments
+
+
+def _elevenlabs_transcribe(
+    data: bytes, mime: str, filename: str,
+) -> tuple[str, dict[str, Any]]:
+    """Scribe v2 API ile Türkçe, iki konuşmacılı ve tıbbi anahtar terimli döküm al."""
+    if not config.ELEVENLABS_API_KEY:
+        raise RuntimeError("ELEVENLABS_API_KEY ayarlı değil.")
+
+    multipart: list[tuple[str, tuple[Any, ...]]] = [
+        ("file", (filename, data, mime)),
+        ("model_id", (None, config.ELEVENLABS_STT_MODEL)),
+        ("language_code", (None, config.ELEVENLABS_STT_LANGUAGE)),
+        ("diarize", (None, "true")),
+        ("num_speakers", (None, "2")),
+        ("tag_audio_events", (None, "false")),
+        ("timestamps_granularity", (None, "word")),
+    ]
+    multipart.extend(
+        ("keyterms", (None, term)) for term in config.ELEVENLABS_STT_KEYTERMS
+    )
+
+    transport = httpx.HTTPTransport(retries=2)
+    with httpx.Client(timeout=config.ELEVENLABS_STT_TIMEOUT, transport=transport) as client:
+        response = client.post(
+            "https://api.elevenlabs.io/v1/speech-to-text",
+            headers={"xi-api-key": config.ELEVENLABS_API_KEY},
+            files=multipart,
+        )
+        response.raise_for_status()
+        payload = response.json()
+
+    if not isinstance(payload, dict):
+        raise ValueError("Ses metne dökülemedi: Scribe beklenmeyen bir yanıt verdi.")
+
+    combined_text = str(payload.get("text") or "").strip()
+    words = list(payload.get("words") or [])
+    segments = _elevenlabs_segments(words)
+    ends = [
+        float(_field(word, "end"))
+        for word in words
+        if _field(word, "end") is not None
+    ]
+    audio_seconds = max(ends, default=0.0)
+    keyterms_enabled = bool(config.ELEVENLABS_STT_KEYTERMS)
+    usage: dict[str, Any] = {
+        "provider": "ElevenLabs",
+        "model": config.ELEVENLABS_STT_MODEL,
+        "input": 0,
+        "output": 0,
+        "total": 0,
+        "audio_seconds": round(audio_seconds, 1) if audio_seconds else None,
+        "cost_usd": (
+            round(
+                pricing.elevenlabs_scribe_cost(
+                    audio_seconds, keyterms_enabled=keyterms_enabled
+                ),
+                6,
+            )
+            if audio_seconds
+            else None
+        ),
+        "cost_estimated": True,
+        "keyterms_count": len(config.ELEVENLABS_STT_KEYTERMS),
+        "segment_count": len(segments),
+        "combined_text_chars": len(combined_text),
+        "fallback_used": False,
+        "transcript_source": "diarized_words" if segments else "combined_text",
+    }
+    return _label_transcript(segments, combined_text, usage), usage
+
+
 def _openai_transcribe(data: bytes, mime: str, filename: str) -> tuple[str, dict[str, Any]]:
     """OpenAI yanıtını kelimelere dokunmadan, boş yanıtta API fallback'iyle döndür."""
     if not config.OPENAI_API_KEY:
@@ -240,32 +387,7 @@ def _openai_transcribe(data: bytes, mime: str, filename: str) -> tuple[str, dict
             return "", usage
         return _format_semantic_turns(fallback_text, usage), usage
 
-    if not segments:
-        return _format_semantic_turns(combined_text, usage), usage
-
-    role_labels: dict[str, str] = {}
-    role_usage = None
-    speakers = {
-        str(_field(segment, "speaker", "") or "").strip()
-        for segment in segments
-        if str(_field(segment, "speaker", "") or "").strip()
-    }
-    if len(speakers) <= 1:
-        raw_text = " ".join(
-            str(_field(segment, "text", "") or "").strip()
-            for segment in segments
-            if str(_field(segment, "text", "") or "").strip()
-        )
-        return _format_semantic_turns(raw_text, usage), usage
-
-    try:
-        role_labels, role_usage = role_classifier.classify_speakers(segments)
-    except Exception:  # Rol tespiti başarısız olsa da gerçek transkripti kaybetme.
-        logger.exception("Doktor/hasta rol tespiti başarısız; konuşma sırası kullanılacak")
-
-    usage["role_usage"] = role_usage
-    usage["role_method"] = "semantic_speakers" if role_labels else "speaker_order"
-    return _format_diarized_segments(segments, role_labels), usage
+    return _label_transcript(segments, combined_text, usage), usage
 
 
 def transcribe(data: bytes, mime: str = "audio/mpeg", filename: str = ""):
@@ -278,17 +400,38 @@ def transcribe(data: bytes, mime: str = "audio/mpeg", filename: str = ""):
     source_mime = mime
     prepared_name, prepared_data, prepared_mime = _prepare_audio(data, mime, filename)
     started = time.monotonic()
-    text, usage = _openai_transcribe(prepared_data, prepared_mime, prepared_name)
+    if config.ELEVENLABS_API_KEY:
+        try:
+            text, usage = _elevenlabs_transcribe(
+                prepared_data, prepared_mime, prepared_name
+            )
+            if not text:
+                raise ValueError("Scribe kayıtta çevrilebilir konuşma bulamadı.")
+        except Exception as exc:
+            logger.exception("ElevenLabs STT başarısız; OpenAI yedeği denenecek")
+            if not config.OPENAI_API_KEY:
+                raise RuntimeError(
+                    "ElevenLabs ses dökümü başarısız oldu ve OPENAI_API_KEY yedeği ayarlı değil."
+                ) from exc
+            text, usage = _openai_transcribe(
+                prepared_data, prepared_mime, prepared_name
+            )
+            usage["provider_fallback_used"] = True
+            usage["provider_fallback_from"] = (
+                f"ElevenLabs · {config.ELEVENLABS_STT_MODEL}"
+            )
+    else:
+        text, usage = _openai_transcribe(prepared_data, prepared_mime, prepared_name)
     usage["seconds"] = round(time.monotonic() - started, 1)
 
     if not text:
         raise ValueError(
-            "İki farklı OpenAI ses modeli de kayıtta çevrilebilir konuşma bulamadı. "
+            "Ses servisleri kayıtta çevrilebilir konuşma bulamadı. "
             "Kaydın gerçekten ses içerdiğini kontrol edip yeniden deneyin."
         )
 
-    usage["provider"] = "OpenAI"
-    usage["model"] = config.OPENAI_STT_MODEL
+    usage.setdefault("provider", "OpenAI")
+    usage.setdefault("model", config.OPENAI_STT_MODEL)
     usage["source_mime"] = source_mime
     usage["processed_mime"] = prepared_mime
     usage["converted"] = False

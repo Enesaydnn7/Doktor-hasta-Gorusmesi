@@ -34,9 +34,11 @@ templates = Jinja2Templates(directory="templates")
 db.init()
 
 print(
-    f"[klinik-analiz] analiz={config.GEMINI_MODEL} "
+    f"[klinik-analiz] surum={config.APP_VERSION} analiz={config.GEMINI_MODEL} "
     f"({'anahtar var' if config.GEMINI_API_KEY else 'ANAHTAR YOK'}) | "
-    f"stt={config.OPENAI_STT_MODEL} fallback={config.OPENAI_STT_FALLBACK_MODEL} "
+    f"stt={config.stt_label()} "
+    f"({'anahtar var' if config.ELEVENLABS_API_KEY else 'ANAHTAR YOK'}) | "
+    f"openai-yedek={config.OPENAI_STT_MODEL}/{config.OPENAI_STT_FALLBACK_MODEL} "
     f"({'anahtar var' if config.OPENAI_API_KEY else 'ANAHTAR YOK'}) | admin=/admin/login"
 )
 
@@ -78,7 +80,11 @@ class PdfIn(BaseModel):
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
-    return templates.TemplateResponse(request, "index.html", {"provider": config.label()})
+    return templates.TemplateResponse(
+        request,
+        "index.html",
+        {"provider": config.label(), "version": config.APP_VERSION},
+    )
 
 
 @app.post("/analyze")
@@ -136,7 +142,8 @@ async def transcribe(file: UploadFile = File(...)):
         text, usage = await asyncio.to_thread(stt.transcribe, data, mime, ad)
         logger.info(
             "Ses işlendi: provider=%s model=%s transcript_source=%s segment_count=%s "
-            "combined_text_chars=%s fallback_used=%s fallback_text_chars=%s "
+            "combined_text_chars=%s fallback_used=%s provider_fallback_used=%s "
+            "fallback_text_chars=%s "
             "role_method=%s role_confidence=%s source_mime=%s processed_mime=%s bytes=%s",
             usage.get("provider"),
             usage.get("model"),
@@ -144,6 +151,7 @@ async def transcribe(file: UploadFile = File(...)):
             usage.get("segment_count"),
             usage.get("combined_text_chars"),
             usage.get("fallback_used"),
+            usage.get("provider_fallback_used"),
             (usage.get("fallback_usage") or {}).get("response_text_chars"),
             usage.get("role_method"),
             (usage.get("role_usage") or {}).get("confidence"),
@@ -244,12 +252,24 @@ async def admin_sil(kid: int, request: Request):
 
 @app.get("/health")
 async def health():
+    elevenlabs_configured = bool(config.ELEVENLABS_API_KEY)
+    openai_configured = bool(config.OPENAI_API_KEY)
     return {
         "status": "ok",
+        "version": config.APP_VERSION,
         "model": config.GEMINI_MODEL,
-        "stt_model": config.OPENAI_STT_MODEL,
+        "stt_provider": "ElevenLabs" if elevenlabs_configured else "OpenAI",
+        "stt_model": (
+            config.ELEVENLABS_STT_MODEL
+            if elevenlabs_configured
+            else config.OPENAI_STT_MODEL
+        ),
+        "stt_primary_model": config.ELEVENLABS_STT_MODEL,
+        "stt_provider_fallback_model": config.OPENAI_STT_MODEL,
         "stt_fallback_model": config.OPENAI_STT_FALLBACK_MODEL,
         "role_model": config.GEMINI_MODEL,
-        "stt_api_configured": bool(config.OPENAI_API_KEY),
+        "stt_api_configured": elevenlabs_configured or openai_configured,
+        "elevenlabs_stt_configured": elevenlabs_configured,
+        "openai_stt_configured": openai_configured,
         "audio_converter": False,
     }

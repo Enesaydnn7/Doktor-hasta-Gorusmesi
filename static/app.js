@@ -507,6 +507,7 @@ async function sendAudio(fileOrBlob,name){
       const yedekEk=yedek ? ` + yedek STT: ${fmtNum(yedek.audio_seconds)} sn, ${fmtUsd(yedek.cost_usd)}` : "";
       ek=` <span class="mon-sub">(${olcu}, ${fmtUsd(data.usage.cost_usd)}${yedekEk}${rolEk})</span>`;
       if(yedek) ek += ' <span class="mon-sub">İlk STT boş döndü; yedek OpenAI modeli kullanıldı.</span>';
+      if(data.usage.provider_fallback_used) ek += ' <span class="mon-sub">Scribe kullanılamadı; OpenAI yedeği kullanıldı.</span>';
       ek += String(data.usage.role_method||"").startsWith("semantic")
         ? ' <span class="mon-sub">Doktor/hasta anlamdan belirlendi.</span>'
         : ' <span class="mon-sub">Rol kesinleşmedi; etiketleri kontrol edin.</span>';
@@ -535,6 +536,7 @@ function renderMonitor(analiz, ses){
   const box=$("monitor");
   if(!analiz){ box.classList.add("hidden"); return; }
   const model=((document.querySelector(".pill-model")||{}).textContent||"Gemini").trim();
+  const sttModel=ses ? `${ses.provider||"STT"} · ${ses.model||""}` : "";
   const rows=[];
   if(ses){ rows.push(monRow("Ses → metin", ses)); }
   const yedek=ses&&ses.fallback_usage ? ses.fallback_usage : null;
@@ -552,7 +554,7 @@ function renderMonitor(analiz, ses){
       ${rows.join("")}
       <div class="mon-row mon-tot"><span>TOPLAM</span><span>${fmtNum(totTok)}</span><span>${fmtUsd(totCost)}</span><span>—</span></div>
     </div>
-    <div class="mon-foot">Ses dökümü OpenAI; rol tespiti ve üç rapor analizi Gemini API ile çalışır.
-      İlk ses modeli boş dönerse yedek OpenAI STT yalnızca o zaman çağrılır.</div>`;
+    <div class="mon-foot">Ses dökümü ${sttModel||"STT API"}; rol tespiti ve üç rapor analizi Gemini API ile çalışır.
+      Scribe kullanılamazsa mevcut OpenAI STT otomatik yedek olarak çağrılır.</div>`;
   box.classList.remove("hidden");
 }
