@@ -13,6 +13,7 @@ from datetime import date
 import config
 import prompts
 import pricing
+from api_resilience import call_with_retry
 
 
 def _extract_json(text: str) -> dict:
@@ -38,8 +39,11 @@ def _gemini(system: str, user: str):
                            "temperature": config.TEMPERATURE,
                            "top_p": 0.1, "top_k": 1},  # tutarlılık için
     )
-    resp = model.generate_content(user)
-    data = _extract_json(resp.text)
+    def generate_and_parse():
+        response = model.generate_content(user, request_options={"timeout": 90})
+        return response, _extract_json(response.text)
+
+    resp, data = call_with_retry(generate_and_parse, attempts=3)
     um = getattr(resp, "usage_metadata", None)
     usage = {
         "input": int(getattr(um, "prompt_token_count", 0) or 0),

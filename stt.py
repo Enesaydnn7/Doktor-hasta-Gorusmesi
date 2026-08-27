@@ -10,6 +10,7 @@ import subprocess
 import tempfile
 
 import config
+from api_resilience import call_with_retry
 
 MAX_BYTES = 20 * 1024 * 1024  # ~20 MB (satır içi ses sınırı)
 
@@ -60,9 +61,13 @@ def _gemini(data: bytes, mime: str):
     import google.generativeai as genai
     genai.configure(api_key=config.GEMINI_API_KEY)
     model = genai.GenerativeModel(config.GEMINI_MODEL)
-    resp = model.generate_content(
-        [{"mime_type": mime, "data": data}, STT_PROMPT],
-        generation_config={"temperature": 0},
+    resp = call_with_retry(
+        lambda: model.generate_content(
+            [{"mime_type": mime, "data": data}, STT_PROMPT],
+            generation_config={"temperature": 0},
+            request_options={"timeout": 120},
+        ),
+        attempts=3,
     )
     um = getattr(resp, "usage_metadata", None)
     usage = {
