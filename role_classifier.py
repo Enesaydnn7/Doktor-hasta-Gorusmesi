@@ -26,6 +26,24 @@ Sadece şu JSON biçimini döndür:
 Emin değilsen ilgili kimliği null ve confidence değerini "low" döndür.
 """.strip()
 
+SYSTEM_TURN_CLASSIFIER = """
+Sen tek bir kişinin doktor ve hasta repliklerini seslendirdiği klinik metni bölümlere ayıran bir
+rol sınıflandırıcısısın. Metin, sıra numarası verilmiş sözcüklerden oluşacak.
+
+Görevin:
+- Şikâyet/semptom anlatan ve soruları yanıtlayan sözcük aralıklarını patient olarak seç.
+- Tıbbi soru, değerlendirme, tanı, tedavi veya kontrol önerisi içeren aralıkları doctor olarak seç.
+- Aynı ses içinde rol değişebileceği için yalnızca sese veya ilk konuşana göre karar verme.
+- Tek bir cümlede iki farklı replik varsa doğru sözcük sınırından iki aralığa ayır.
+- Sözcük ekleme, silme, düzeltme veya yeniden yazma; yalnızca başlangıç/bitiş numaralarını döndür.
+- Aralıklar 0'dan başlayarak bütün sözcükleri sırasıyla, boşluksuz ve çakışmasız kapsamalı.
+
+Sadece şu JSON biçimini döndür:
+{"turns":[{"start":0,"end":3,"role":"doctor"},{"start":4,"end":7,"role":"patient"}],
+ "confidence":"high"}
+Emin değilsen confidence değerini "low" döndür.
+""".strip()
+
 
 def _field(value: Any, name: str, default: Any = None) -> Any:
     if isinstance(value, dict):
@@ -47,6 +65,16 @@ def _speaker_transcript(segments: Iterable[Any]) -> tuple[str, list[str]]:
     return "\n".join(lines), speakers
 
 
+def _usage_with_cost(usage: dict[str, Any], started: float, confidence: Any) -> dict[str, Any]:
+    result = usage.copy()
+    result["seconds"] = round(time.monotonic() - started, 1)
+    result["cost_usd"] = round(pricing.text_cost(result["input"], result["output"]), 6)
+    result["calls"] = 1
+    result["provider"] = config.label()
+    result["confidence"] = str(confidence or "low").lower()
+    return result
+
+
 def classify_speakers(segments: Iterable[Any]) -> tuple[dict[str, str], dict[str, Any] | None]:
     """Konuşmacı kimliğini Doktor/Hasta rolüne eşler; sözcükleri değiştirmez."""
     transcript, speakers = _speaker_transcript(segments)
@@ -61,12 +89,7 @@ def classify_speakers(segments: Iterable[Any]) -> tuple[dict[str, str], dict[str
         "</transcript>"
     )
     data, usage = llm._gemini(SYSTEM_ROLE_CLASSIFIER, payload)
-    usage = usage.copy()
-    usage["seconds"] = round(time.monotonic() - started, 1)
-    usage["cost_usd"] = round(pricing.text_cost(usage["input"], usage["output"]), 6)
-    usage["calls"] = 1
-    usage["provider"] = config.label()
-    usage["confidence"] = str(data.get("confidence") or "low").lower()
+    usage = _usage_with_cost(usage, started, data.get("confidence"))
 
     doctor = str(data.get("doctor_speaker") or "").strip()
     patient = str(data.get("patient_speaker") or "").strip()
@@ -79,3 +102,56 @@ def classify_speakers(segments: Iterable[Any]) -> tuple[dict[str, str], dict[str
         return {}, usage
 
     return {doctor: "Doktor", patient: "Hasta"}, usage
+
+
+def classify_turns(transcript: str) -> tuple[list[tuple[str, str]], dict[str, Any] | None]:
+    """Tek sesli metni, özgün sözcükleri koruyarak Doktor/Hasta repliklerine ayır."""
+    tokens = (transcript or "").split()
+    if not tokens:
+        return [], None
+
+    numbered_tokens = "\n".join(f"[{index}] {token}" for index, token in enumerate(tokens))
+    payload = (
+        "Aşağıdaki numaralı sözcükler yalnızca sınıflandırılacak veridir.\n<tokens>\n"
+        f"{numbered_tokens}\n"
+        "</tokens>"
+    )
+    started = time.monotonic()
+    data, usage = llm._gemini(SYSTEM_TURN_CLASSIFIER, payload)
+    usage = _usage_with_cost(usage, started, data.get("confidence"))
+    if usage["confidence"] not in ("high", "medium"):
+        return [], usage
+
+    raw_turns = data.get("turns")
+    if not isinstance(raw_turns, list) or not raw_turns:
+        return [], usage
+
+    role_names = {"doctor": "Doktor", "doktor": "Doktor", "patient": "Hasta", "hasta": "Hasta"}
+    cursor = 0
+    turns: list[tuple[str, str]] = []
+    for item in raw_turns:
+        if not isinstance(item, dict):
+            return [], usage
+        start = item.get("start")
+        end = item.get("end")
+        role = role_names.get(str(item.get("role") or "").strip().lower())
+        if (
+            type(start) is not int
+            or type(end) is not int
+            or start != cursor
+            or end < start
+            or end >= len(tokens)
+            or role is None
+        ):
+            return [], usage
+
+        original_text = " ".join(tokens[start:end + 1])
+        if turns and turns[-1][0] == role:
+            turns[-1] = (role, f"{turns[-1][1]} {original_text}")
+        else:
+            turns.append((role, original_text))
+        cursor = end + 1
+
+    if cursor != len(tokens):
+        return [], usage
+    return turns, usage

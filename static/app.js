@@ -324,7 +324,7 @@ async function sendAudio(fileOrBlob,name){
       const rol=data.usage.role_usage;
       const rolEk=rol ? ` + rol tespiti: ${fmtNum(rol.total)} token, ${fmtUsd(rol.cost_usd)}` : "";
       ek=` <span class="mon-sub">(${olcu}, ${fmtUsd(data.usage.cost_usd)}${rolEk})</span>`;
-      ek += data.usage.role_method==="semantic"
+      ek += String(data.usage.role_method||"").startsWith("semantic")
         ? ' <span class="mon-sub">Doktor/hasta anlamdan belirlendi.</span>'
         : ' <span class="mon-sub">Rol kesinleşmedi; etiketleri kontrol edin.</span>';
     }
