@@ -47,6 +47,10 @@ class ApiResilienceTests(unittest.TestCase):
         self.assertEqual(result["rapor"], "tamam")
         self.assertEqual(len(calls), 2)
 
+    def test_safe_audio_validation_error_is_shown(self):
+        exc = ValueError("Ses dosyası okunamadı veya dönüştürülemedi.")
+        self.assertEqual(public_error_message(exc), str(exc))
+
 
 if __name__ == "__main__":
     unittest.main()

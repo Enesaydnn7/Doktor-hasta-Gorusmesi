@@ -30,20 +30,32 @@ def _extract_json(text: str) -> dict:
 
 def _gemini(system: str, user: str):
     """(json, kullanım) döndürür. kullanım = {input, output, total} token."""
-    import google.generativeai as genai
-    genai.configure(api_key=config.GEMINI_API_KEY)
-    model = genai.GenerativeModel(
-        config.GEMINI_MODEL,
-        system_instruction=system,
-        generation_config={"response_mime_type": "application/json",
-                           "temperature": config.TEMPERATURE,
-                           "top_p": 0.1, "top_k": 1},  # tutarlılık için
+    from google import genai
+    from google.genai import types
+
+    client = genai.Client(
+        api_key=config.GEMINI_API_KEY,
+        http_options=types.HttpOptions(timeout=45_000),
     )
+
     def generate_and_parse():
-        response = model.generate_content(user, request_options={"timeout": 45})
+        response = client.models.generate_content(
+            model=config.GEMINI_MODEL,
+            contents=user,
+            config=types.GenerateContentConfig(
+                system_instruction=system,
+                response_mime_type="application/json",
+                temperature=config.TEMPERATURE,
+                top_p=0.1,
+                top_k=1,
+            ),
+        )
         return response, _extract_json(response.text)
 
-    resp, data = call_with_retry(generate_and_parse, attempts=3)
+    try:
+        resp, data = call_with_retry(generate_and_parse, attempts=3)
+    finally:
+        client.close()
     um = getattr(resp, "usage_metadata", None)
     usage = {
         "input": int(getattr(um, "prompt_token_count", 0) or 0),
