@@ -1,5 +1,14 @@
 # Sürüm Geçmişi
 
+## v1.6.0 — 27 Ağustos 2026
+
+- `v1.5.2` çalışan hâli ayrıca `mvp-v1.5.2` etiketiyle korumaya alındı.
+- Panelde kullanılacak mikrofonu seçme ve aktif mikrofonun adını görme özelliği eklendi.
+- API çağrısı yapmadan çalışan canlı mikrofon testi ve ses seviye çubuğu eklendi.
+- Kulaklık çıkarılınca aygıt listesi yenileniyor; kaybolan giriş yerine varsayılan/laptop mikrofonuna geçiliyor.
+- Sessiz veya çok kısa kayıtlar OpenAI API'ye gönderilmeden kullanıcı uyarılıyor.
+- Mikrofon izni, aygıt bulunamaması ve başka uygulamanın mikrofonu kullanması için ayrı hata mesajları eklendi.
+
 ## v1.5.2 — 27 Ağustos 2026
 
 - Diarization yanıtında konuşmacı segmentleri boşken mevcut birleşik metnin atılması düzeltildi.
