@@ -47,12 +47,12 @@ class DiarizedFormattingTests(unittest.TestCase):
             "Doktor: Açken mi artıyor?",
         )
 
-    def test_single_speaker_is_not_guessed_as_doctor(self):
+    def test_single_speaker_low_level_fallback_uses_clinical_label(self):
         result = stt._format_diarized_segments(
             [{"speaker": "A", "text": "Tek kişi konuşuyor."}]
         )
 
-        self.assertEqual(result, "Konuşmacı: Tek kişi konuşuyor.")
+        self.assertEqual(result, "Doktor: Tek kişi konuşuyor.")
 
     def test_semantic_roles_work_when_patient_speaks_first(self):
         segments = [
@@ -104,7 +104,7 @@ class OpenAiTranscriptionTests(unittest.TestCase):
         self.assertEqual(usage["total"], 110)
         self.assertEqual(usage["cost_usd"], 0.00035)
         self.assertEqual(usage["role_usage"], role_usage)
-        self.assertEqual(usage["role_method"], "semantic")
+        self.assertEqual(usage["role_method"], "semantic_speakers")
         kwargs = client.audio.transcriptions.create.call_args.kwargs
         self.assertEqual(kwargs["model"], config.OPENAI_STT_MODEL)
         self.assertEqual(kwargs["response_format"], "diarized_json")
@@ -113,6 +113,80 @@ class OpenAiTranscriptionTests(unittest.TestCase):
         self.assertNotIn("prompt", kwargs)
         self.assertEqual(kwargs["file"], ("gorusme.webm", b"webm-data", "audio/webm"))
         client.close.assert_called_once()
+
+    @patch("openai.OpenAI")
+    def test_one_voice_reading_both_roles_is_split_semantically(self, client_class):
+        raw_text = "Merhaba hoş geldiniz. Hoş bulduk isminiz ne? Benim adım Enes."
+        response = SimpleNamespace(
+            duration=7.0,
+            segments=[SimpleNamespace(speaker="A", text=raw_text)],
+            usage=SimpleNamespace(type="duration", seconds=7.0),
+        )
+        role_usage = {
+            "input": 30, "output": 12, "total": 42, "cost_usd": 0.000039,
+            "confidence": "high",
+        }
+        turns = [
+            ("Doktor", "Merhaba hoş geldiniz."),
+            ("Hasta", "Hoş bulduk"),
+            ("Doktor", "isminiz ne?"),
+            ("Hasta", "Benim adım Enes."),
+        ]
+        client = MagicMock()
+        client.audio.transcriptions.create.return_value = response
+        client_class.return_value = client
+
+        with (
+            patch.object(config, "OPENAI_API_KEY", "test-key"),
+            patch.object(
+                stt.role_classifier, "classify_turns", return_value=(turns, role_usage)
+            ) as classify,
+            patch.object(stt.role_classifier, "classify_speakers") as speaker_classify,
+        ):
+            text, usage = stt._openai_transcribe(b"audio", "audio/mp3", "gorusme.mp3")
+
+        self.assertEqual(
+            text,
+            "Doktor: Merhaba hoş geldiniz.\n"
+            "Hasta: Hoş bulduk\n"
+            "Doktor: isminiz ne?\n"
+            "Hasta: Benim adım Enes.",
+        )
+        self.assertNotIn("Konuşmacı:", text)
+        self.assertEqual(usage["role_method"], "semantic_turns")
+        self.assertEqual(usage["role_usage"], role_usage)
+        classify.assert_called_once_with(raw_text)
+        speaker_classify.assert_not_called()
+
+    @patch("openai.OpenAI")
+    def test_one_voice_role_failure_still_uses_doctor_patient_labels(self, client_class):
+        response = SimpleNamespace(
+            duration=4.0,
+            segments=[
+                SimpleNamespace(
+                    speaker="A", text="Merhaba hoş geldiniz. Hoş bulduk. Şikayetiniz nedir?"
+                )
+            ],
+            usage=SimpleNamespace(type="duration", seconds=4.0),
+        )
+        client = MagicMock()
+        client.audio.transcriptions.create.return_value = response
+        client_class.return_value = client
+
+        with (
+            patch.object(config, "OPENAI_API_KEY", "test-key"),
+            patch.object(stt.role_classifier, "classify_turns", return_value=([], None)),
+        ):
+            text, usage = stt._openai_transcribe(b"audio", "audio/mp3", "gorusme.mp3")
+
+        self.assertEqual(
+            text,
+            "Doktor: Merhaba hoş geldiniz.\n"
+            "Hasta: Hoş bulduk.\n"
+            "Doktor: Şikayetiniz nedir?",
+        )
+        self.assertNotIn("Konuşmacı:", text)
+        self.assertEqual(usage["role_method"], "alternating_turns")
 
     @patch("openai.OpenAI")
     def test_role_service_failure_falls_back_without_losing_transcript(self, client_class):

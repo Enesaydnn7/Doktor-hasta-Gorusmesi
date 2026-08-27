@@ -148,7 +148,10 @@ Panelde metin kutusunun üstünde **Kaydet** ve **Ses dosyası yükle** var:
 - Tarayıcının ürettiği `.webm` dosyası dönüştürülmeden doğrudan API'ye gönderilir.
 - OpenAI segmentlerindeki sözcükler yeniden yazılmaz. Rol sınıflandırıcısı yalnızca A/B eşlemesi döndürür;
   hasta ilk konuşsa bile cümlelerin anlamına göre `Doktor:` / `Hasta:` etiketi eklenir.
-- Rol sınıflandırması başarısız olursa transkript kaybedilmez; ilk konuşan doktor varsayılır ve arayüz kontrol uyarısı gösterir.
+- Demo sırasında tek kişi iki rolü aynı sesle okursa sözcükler numaralandırılır; Gemini yalnızca hangi
+  sözcük aralığının doktor/hasta olduğunu seçer. Böylece aynı ses içinde de rol değişimi bulunabilir.
+- Rol sınıflandırması başarısız olursa transkript kaybedilmez; çok sesli kayıtta konuşma sırası,
+  tek sesli demoda cümle sırası kullanılır ve arayüz kontrol uyarısı gösterir.
 - Not: 20 MB üstü ses için daha kısa kayıt kullanın (uzun görüşmeler için ileride parçalama eklenebilir).
 - KVKK: ses metinden daha hassastır. Gerçek hasta kayıtlarında kendi sunucunuzda Whisper'a geçmeyi planlayın.
 

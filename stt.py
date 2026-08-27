@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import logging
+import re
 import time
 from collections.abc import Iterable
 from typing import Any
@@ -94,7 +95,7 @@ def _format_diarized_segments(
 
     role_labels = role_labels or {}
     if len(speaker_order) == 1:
-        labels = {speaker_order[0]: "Konuşmacı"}
+        labels = {speaker_order[0]: "Doktor"}
     elif (
         "Doktor" in role_labels.values()
         and "Hasta" in role_labels.values()
@@ -113,6 +114,19 @@ def _format_diarized_segments(
             labels[speaker] = f"Konuşmacı {index}"
 
     return "\n".join(f"{labels[speaker]}: {text}" for speaker, text in cleaned)
+
+
+def _format_turns(turns: Iterable[tuple[str, str]]) -> str:
+    return "\n".join(f"{role}: {text}" for role, text in turns if text)
+
+
+def _fallback_single_speaker(transcript: str) -> str:
+    """Rol API'si çalışmazsa bile yalnızca Doktor/Hasta etiketli düzenlenebilir metin üret."""
+    parts = [part.strip() for part in re.split(r"(?<=[.!?])\s+", transcript) if part.strip()]
+    if not parts:
+        return ""
+    turns = [("Doktor" if index % 2 == 0 else "Hasta", part) for index, part in enumerate(parts)]
+    return _format_turns(turns)
 
 
 def _read_usage(response: Any) -> dict[str, Any]:
@@ -171,13 +185,33 @@ def _openai_transcribe(data: bytes, mime: str, filename: str) -> tuple[str, dict
     usage = _read_usage(response)
     role_labels: dict[str, str] = {}
     role_usage = None
+    speakers = {
+        str(_field(segment, "speaker", "") or "").strip()
+        for segment in segments
+        if str(_field(segment, "speaker", "") or "").strip()
+    }
+    if len(speakers) == 1:
+        raw_text = " ".join(
+            str(_field(segment, "text", "") or "").strip()
+            for segment in segments
+            if str(_field(segment, "text", "") or "").strip()
+        )
+        turns: list[tuple[str, str]] = []
+        try:
+            turns, role_usage = role_classifier.classify_turns(raw_text)
+        except Exception:
+            logger.exception("Tek sesli doktor/hasta replik ayrımı başarısız; sıralı fallback kullanılacak")
+        usage["role_usage"] = role_usage
+        usage["role_method"] = "semantic_turns" if turns else "alternating_turns"
+        return _format_turns(turns) if turns else _fallback_single_speaker(raw_text), usage
+
     try:
         role_labels, role_usage = role_classifier.classify_speakers(segments)
     except Exception:  # Rol tespiti başarısız olsa da gerçek transkripti kaybetme.
         logger.exception("Doktor/hasta rol tespiti başarısız; konuşma sırası kullanılacak")
 
     usage["role_usage"] = role_usage
-    usage["role_method"] = "semantic" if role_labels else "speaker_order"
+    usage["role_method"] = "semantic_speakers" if role_labels else "speaker_order"
     return _format_diarized_segments(segments, role_labels), usage
 
 
