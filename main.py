@@ -33,8 +33,12 @@ templates = Jinja2Templates(directory="templates")
 
 db.init()
 
-print(f"[klinik-analiz] model={config.GEMINI_MODEL} | "
-      f"anahtar={'var' if config.GEMINI_API_KEY else 'YOK'} | admin=/admin/login")
+print(
+    f"[klinik-analiz] analiz={config.GEMINI_MODEL} "
+    f"({'anahtar var' if config.GEMINI_API_KEY else 'ANAHTAR YOK'}) | "
+    f"stt={config.OPENAI_STT_MODEL} "
+    f"({'anahtar var' if config.OPENAI_API_KEY else 'ANAHTAR YOK'}) | admin=/admin/login"
+)
 
 # ---- Admin oturumu (çerez tabanlı; giriş sayfası /admin/login) ----
 def oturum_var(request: Request) -> bool:
@@ -131,10 +135,11 @@ async def transcribe(file: UploadFile = File(...)):
     try:
         text, usage = await asyncio.to_thread(stt.transcribe, data, mime, ad)
         logger.info(
-            "Ses işlendi: source_mime=%s processed_mime=%s converted=%s bytes=%s",
+            "Ses işlendi: provider=%s model=%s source_mime=%s processed_mime=%s bytes=%s",
+            usage.get("provider"),
+            usage.get("model"),
             usage.get("source_mime"),
             usage.get("processed_mime"),
-            usage.get("converted"),
             len(data),
         )
         return {"transcript": text, "usage": usage,
@@ -233,5 +238,7 @@ async def health():
     return {
         "status": "ok",
         "model": config.GEMINI_MODEL,
-        "audio_converter": bool(stt._ffmpeg_executable()),
+        "stt_model": config.OPENAI_STT_MODEL,
+        "stt_api_configured": bool(config.OPENAI_API_KEY),
+        "audio_converter": False,
     }

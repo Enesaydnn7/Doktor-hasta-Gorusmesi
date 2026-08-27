@@ -1,50 +1,113 @@
-import subprocess
 import unittest
-from unittest.mock import patch
+from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
 
+import config
 import stt
 
 
-class AudioConversionTests(unittest.TestCase):
-    def test_supported_mime_is_normalized_without_conversion(self):
-        data = b"wav-data"
-        converted, mime = stt._maybe_convert(data, "audio/wav; charset=binary", "ses.wav")
-        self.assertIs(converted, data)
-        self.assertEqual(mime, "audio/wav")
+class AudioPreparationTests(unittest.TestCase):
+    def test_browser_webm_is_sent_directly_without_conversion(self):
+        data = b"webm-data"
 
-    def test_unsupported_audio_never_passes_through_without_ffmpeg(self):
-        with patch.object(stt, "_ffmpeg_executable", return_value=None):
-            with self.assertRaisesRegex(ValueError, "FFmpeg bulunamadı"):
-                stt._maybe_convert(b"webm-data", "audio/webm;codecs=opus", "kayit.webm")
-
-    def test_browser_webm_is_really_converted_to_mp3(self):
-        ffmpeg = stt._ffmpeg_executable()
-        if not ffmpeg:
-            self.skipTest("FFmpeg test ortamında yok")
-
-        generated = subprocess.run(
-            [
-                ffmpeg, "-hide_banner", "-loglevel", "error",
-                "-f", "lavfi", "-i", "sine=frequency=440:duration=1",
-                "-c:a", "libopus", "-f", "webm", "pipe:1",
-            ],
-            check=True,
-            capture_output=True,
-        ).stdout
-        converted, mime = stt._maybe_convert(
-            generated, "audio/webm;codecs=opus", "kayit.webm"
+        name, prepared, mime = stt._prepare_audio(
+            data, "audio/webm;codecs=opus", "kayit.webm"
         )
 
-        self.assertEqual(mime, "audio/mp3")
-        self.assertGreater(len(converted), 100)
-        self.assertNotEqual(converted[:4], generated[:4])
+        self.assertEqual(name, "gorusme.webm")
+        self.assertIs(prepared, data)
+        self.assertEqual(mime, "audio/webm")
 
-    def test_no_transcription_marker_is_rejected(self):
-        usage = {"input": 1, "output": 1, "total": 2}
-        with (
-            patch.object(stt, "_maybe_convert", return_value=(b"audio", "audio/mp3")),
-            patch.object(stt, "_gemini", return_value=("TRANSKRIPSIYON_YOK", usage)),
-        ):
+    def test_supported_mime_supplies_extension_when_filename_has_none(self):
+        name, _, mime = stt._prepare_audio(b"wav-data", "audio/wav", "kayit")
+
+        self.assertEqual(name, "gorusme.wav")
+        self.assertEqual(mime, "audio/wav")
+
+    def test_unsupported_format_is_rejected(self):
+        with self.assertRaisesRegex(ValueError, "Desteklenmeyen ses biçimi"):
+            stt._prepare_audio(b"audio", "audio/aac", "kayit.aac")
+
+
+class DiarizedFormattingTests(unittest.TestCase):
+    def test_segment_words_are_preserved_and_speakers_are_labeled(self):
+        segments = [
+            SimpleNamespace(speaker="A", text="Merhaba, hoş geldiniz."),
+            SimpleNamespace(speaker="A", text="Şikayetiniz nedir?"),
+            SimpleNamespace(speaker="B", text="On gündür midem ağrıyor."),
+            SimpleNamespace(speaker="A", text="Açken mi artıyor?"),
+        ]
+
+        result = stt._format_diarized_segments(segments)
+
+        self.assertEqual(
+            result,
+            "Doktor: Merhaba, hoş geldiniz. Şikayetiniz nedir?\n"
+            "Hasta: On gündür midem ağrıyor.\n"
+            "Doktor: Açken mi artıyor?",
+        )
+
+    def test_single_speaker_is_not_guessed_as_doctor(self):
+        result = stt._format_diarized_segments(
+            [{"speaker": "A", "text": "Tek kişi konuşuyor."}]
+        )
+
+        self.assertEqual(result, "Konuşmacı: Tek kişi konuşuyor.")
+
+
+class OpenAiTranscriptionTests(unittest.TestCase):
+    @patch("openai.OpenAI")
+    def test_diarized_transcription_api_is_called_without_generation_prompt(self, client_class):
+        response = SimpleNamespace(
+            duration=12.4,
+            segments=[
+                SimpleNamespace(speaker="A", text="Merhaba."),
+                SimpleNamespace(speaker="B", text="Midem ağrıyor."),
+            ],
+            usage=SimpleNamespace(
+                type="tokens", input_tokens=100, output_tokens=10, total_tokens=110
+            ),
+        )
+        client = MagicMock()
+        client.audio.transcriptions.create.return_value = response
+        client_class.return_value = client
+
+        with patch.object(config, "OPENAI_API_KEY", "test-key"):
+            text, usage = stt._openai_transcribe(
+                b"webm-data", "audio/webm", "gorusme.webm"
+            )
+
+        self.assertEqual(text, "Doktor: Merhaba.\nHasta: Midem ağrıyor.")
+        self.assertEqual(usage["total"], 110)
+        self.assertEqual(usage["cost_usd"], 0.00035)
+        kwargs = client.audio.transcriptions.create.call_args.kwargs
+        self.assertEqual(kwargs["model"], config.OPENAI_STT_MODEL)
+        self.assertEqual(kwargs["response_format"], "diarized_json")
+        self.assertEqual(kwargs["chunking_strategy"], "auto")
+        self.assertEqual(kwargs["language"], "tr")
+        self.assertNotIn("prompt", kwargs)
+        self.assertEqual(kwargs["file"], ("gorusme.webm", b"webm-data", "audio/webm"))
+        client.close.assert_called_once()
+
+    def test_missing_api_key_fails_before_request(self):
+        with patch.object(config, "OPENAI_API_KEY", ""):
+            with self.assertRaisesRegex(RuntimeError, "OPENAI_API_KEY"):
+                stt._openai_transcribe(b"audio", "audio/mp3", "gorusme.mp3")
+
+    def test_duration_usage_does_not_claim_a_zero_cost(self):
+        response = SimpleNamespace(
+            duration=8.5,
+            usage=SimpleNamespace(type="duration", seconds=8.5),
+        )
+
+        usage = stt._read_usage(response)
+
+        self.assertEqual(usage["audio_seconds"], 8.5)
+        self.assertIsNone(usage["cost_usd"])
+
+    def test_empty_diarized_response_is_rejected(self):
+        usage = {"input": 0, "output": 0, "total": 0, "cost_usd": None}
+        with patch.object(stt, "_openai_transcribe", return_value=("", usage)):
             with self.assertRaisesRegex(ValueError, "Ses metne dökülemedi"):
                 stt.transcribe(b"audio", "audio/webm", "kayit.webm")
 

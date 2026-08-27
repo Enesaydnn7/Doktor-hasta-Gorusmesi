@@ -3,7 +3,6 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import llm
-import stt
 
 
 def _response(text):
@@ -30,22 +29,6 @@ class GoogleGenAiSdkTests(unittest.TestCase):
         self.assertEqual(kwargs["model"], llm.config.GEMINI_MODEL)
         self.assertEqual(kwargs["config"].response_mime_type, "application/json")
         client.close.assert_called_once()
-
-    @patch("google.genai.Client")
-    def test_transcription_uses_audio_part_with_current_sdk(self, client_class):
-        client = MagicMock()
-        client.models.generate_content.return_value = _response("Doktor: Merhaba")
-        client_class.return_value = client
-
-        text, usage = stt._gemini(b"mp3-data", "audio/mp3")
-
-        self.assertEqual(text, "Doktor: Merhaba")
-        self.assertEqual(usage["total"], 5)
-        contents = client.models.generate_content.call_args.kwargs["contents"]
-        self.assertEqual(contents[0].inline_data.mime_type, "audio/mp3")
-        self.assertEqual(contents[0].inline_data.data, b"mp3-data")
-        client.close.assert_called_once()
-
 
 if __name__ == "__main__":
     unittest.main()
