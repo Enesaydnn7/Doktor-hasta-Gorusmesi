@@ -13,7 +13,7 @@ services:
       - key: GEMINI_API_KEY
         sync: false                 # anahtarı panelden gizli olarak sen gireceksin
       - key: APP_VERSION
-        value: v1.7.0
+        value: v1.7.1
       - key: ELEVENLABS_STT_MODEL
         value: scribe_v2
       - key: ELEVENLABS_STT_LANGUAGE
