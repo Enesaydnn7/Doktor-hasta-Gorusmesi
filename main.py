@@ -135,9 +135,12 @@ async def transcribe(file: UploadFile = File(...)):
     try:
         text, usage = await asyncio.to_thread(stt.transcribe, data, mime, ad)
         logger.info(
-            "Ses işlendi: provider=%s model=%s source_mime=%s processed_mime=%s bytes=%s",
+            "Ses işlendi: provider=%s model=%s role_method=%s role_confidence=%s "
+            "source_mime=%s processed_mime=%s bytes=%s",
             usage.get("provider"),
             usage.get("model"),
+            usage.get("role_method"),
+            (usage.get("role_usage") or {}).get("confidence"),
             usage.get("source_mime"),
             usage.get("processed_mime"),
             len(data),
@@ -239,6 +242,7 @@ async def health():
         "status": "ok",
         "model": config.GEMINI_MODEL,
         "stt_model": config.OPENAI_STT_MODEL,
+        "role_model": config.GEMINI_MODEL,
         "stt_api_configured": bool(config.OPENAI_API_KEY),
         "audio_converter": False,
     }

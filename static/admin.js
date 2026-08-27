@@ -70,9 +70,9 @@ function drawDetail(id, sekme) {
   const k = cache[id];
   const det = document.getElementById("det-" + id);
   const u = k.usage || {};
-  const ua = u.analiz || {}, us = u.ses || {};
-  const totTok = (ua.total || 0) + (us.total || 0);
-  const totCost = (ua.cost_usd || 0) + (us.cost_usd || 0);
+  const ua = u.analiz || {}, us = u.ses || {}, ur = us.role_usage || {};
+  const totTok = (ua.total || 0) + (us.total || 0) + (ur.total || 0);
+  const totCost = (ua.cost_usd || 0) + (us.cost_usd || 0) + (ur.cost_usd || 0);
 
   const meta = `<div class="det-meta">
     <span>Kayıt <b>#${k.id}</b></span>

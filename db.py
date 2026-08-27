@@ -139,4 +139,8 @@ def istatistik():
             p = u.get(part) or {}
             tok += int(p.get("total") or 0)
             cost += float(p.get("cost_usd") or 0)
+            if part == "ses":
+                role = p.get("role_usage") or {}
+                tok += int(role.get("total") or 0)
+                cost += float(role.get("cost_usd") or 0)
     return {"kayit": len(rows), "token": tok, "cost_usd": round(cost, 6)}

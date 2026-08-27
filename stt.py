@@ -3,12 +3,16 @@
 from __future__ import annotations
 
 import os
+import logging
 import time
 from collections.abc import Iterable
 from typing import Any
 
 import config
 import pricing
+import role_classifier
+
+logger = logging.getLogger(__name__)
 
 MAX_BYTES = 20 * 1024 * 1024
 
@@ -64,7 +68,9 @@ def _prepare_audio(data: bytes, mime: str, filename: str) -> tuple[str, bytes, s
     return f"gorusme{extension}", data, prepared_mime
 
 
-def _format_diarized_segments(segments: Iterable[Any]) -> str:
+def _format_diarized_segments(
+    segments: Iterable[Any], role_labels: dict[str, str] | None = None,
+) -> str:
     """API segmentlerindeki metni değiştirmeden konuşmacı etiketlerini ekle."""
     cleaned: list[tuple[str, str]] = []
     speaker_order: list[str] = []
@@ -86,10 +92,22 @@ def _format_diarized_segments(segments: Iterable[Any]) -> str:
     if not cleaned:
         return ""
 
+    role_labels = role_labels or {}
     if len(speaker_order) == 1:
         labels = {speaker_order[0]: "Konuşmacı"}
+    elif (
+        "Doktor" in role_labels.values()
+        and "Hasta" in role_labels.values()
+        and set(role_labels).issubset(set(speaker_order))
+    ):
+        labels = role_labels.copy()
+        extra_index = 3
+        for speaker in speaker_order:
+            if speaker not in labels:
+                labels[speaker] = f"Konuşmacı {extra_index}"
+                extra_index += 1
     else:
-        # Klinik kayıtların akışı doktorun görüşmeyi açmasıyla başlıyor.
+        # Rol servisi kullanılamazsa görüşmeyi kaybetmemek için eski güvenli varsayım.
         labels = {speaker_order[0]: "Doktor", speaker_order[1]: "Hasta"}
         for index, speaker in enumerate(speaker_order[2:], start=3):
             labels[speaker] = f"Konuşmacı {index}"
@@ -149,7 +167,18 @@ def _openai_transcribe(data: bytes, mime: str, filename: str) -> tuple[str, dict
     finally:
         client.close()
 
-    return _format_diarized_segments(_field(response, "segments", [])), _read_usage(response)
+    segments = list(_field(response, "segments", []) or [])
+    usage = _read_usage(response)
+    role_labels: dict[str, str] = {}
+    role_usage = None
+    try:
+        role_labels, role_usage = role_classifier.classify_speakers(segments)
+    except Exception:  # Rol tespiti başarısız olsa da gerçek transkripti kaybetme.
+        logger.exception("Doktor/hasta rol tespiti başarısız; konuşma sırası kullanılacak")
+
+    usage["role_usage"] = role_usage
+    usage["role_method"] = "semantic" if role_labels else "speaker_order"
+    return _format_diarized_segments(segments, role_labels), usage
 
 
 def transcribe(data: bytes, mime: str = "audio/mpeg", filename: str = ""):

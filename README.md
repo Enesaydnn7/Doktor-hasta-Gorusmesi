@@ -61,6 +61,7 @@ OPENAI_STT_MODEL=gpt-4o-transcribe-diarize
 | `main.py` | FastAPI; `/analyze` |
 | `llm.py` | Gemini çağrısı; görüşme tarihini ekler; 3 raporu sırayla üretir |
 | `stt.py` | OpenAI Transcription API çağrısı ve konuşmacı etiketleme |
+| `role_classifier.py` | Konuşmacı metinlerinden Gemini ile yalnızca doktor/hasta rol eşlemesi |
 | `prompts.py` | 3 system prompt (detaylı epikriz şeması burada) |
 | `pdf_report.py` | Rapor PDF üretimi (epikriz formatı) |
 | `config.py` | `.env` ayarları |
@@ -138,13 +139,16 @@ OPENAI_STT_MODEL=gpt-4o-transcribe-diarize
 
 Panelde metin kutusunun üstünde **Kaydet** ve **Ses dosyası yükle** var:
 1. Görüşme sesini mikrofonla kaydet ya da hazır ses dosyası (mp3/wav/m4a/ogg...) yükle.
-2. Sistem sesi OpenAI `gpt-4o-transcribe-diarize` ile Türkçe metne döker ve konuşmacıları ayırır.
-3. Metin, düzenlenebilir kutuya düşer — kontrol edip düzeltirsin.
-4. "Analiz et" ile 3 rapor + epikriz üretilir.
+2. Sistem sesi OpenAI `gpt-4o-transcribe-diarize` ile Türkçe metne döker ve konuşmacıları A/B diye ayırır.
+3. Gemini yalnızca A/B konuşmacılarından hangisinin doktor, hangisinin hasta olduğunu cümlelerin anlamından seçer.
+4. Metin, düzenlenebilir kutuya düşer — kontrol edip düzeltirsin.
+5. "Analiz et" ile 3 rapor + epikriz üretilir.
 
 - Ses motoru ayrı bir dosyadadır: `stt.py`. Yerel model indirilmez; kayıt OpenAI Transcription API'ye gönderilir.
 - Tarayıcının ürettiği `.webm` dosyası dönüştürülmeden doğrudan API'ye gönderilir.
-- API'nin konuşmacı segmentlerindeki sözcükler yeniden yazılmaz; yalnızca `Doktor:` / `Hasta:` etiketi eklenir.
+- OpenAI segmentlerindeki sözcükler yeniden yazılmaz. Rol sınıflandırıcısı yalnızca A/B eşlemesi döndürür;
+  hasta ilk konuşsa bile cümlelerin anlamına göre `Doktor:` / `Hasta:` etiketi eklenir.
+- Rol sınıflandırması başarısız olursa transkript kaybedilmez; ilk konuşan doktor varsayılır ve arayüz kontrol uyarısı gösterir.
 - Not: 20 MB üstü ses için daha kısa kayıt kullanın (uzun görüşmeler için ileride parçalama eklenebilir).
 - KVKK: ses metinden daha hassastır. Gerçek hasta kayıtlarında kendi sunucunuzda Whisper'a geçmeyi planlayın.
 
@@ -158,6 +162,8 @@ Her analizden sonra sonuçların üstünde küçük bir çubuk çıkar:
 - **Tahmini maliyet** (USD) + "≈ .../1000 analiz" projeksiyonu
 
 Ses yüklendiğinde de o dökümün token/maliyeti "metne döküldü" satırında gösterilir.
+Doktor/hasta rol sınıflandırmasının Gemini token ve maliyeti ayrı satırda gösterilir. Sesli akışta
+Gemini toplam dört kez çağrılır: bir rol tespiti ve "Analiz et" sonrasında üç rapor.
 
 Fiyatlar `pricing.py` içindedir. Üç rapor için Gemini 2.5 Flash; ses dökümü için OpenAI
 `gpt-4o-transcribe-diarize` standart token fiyatları kullanılır. API kullanım bilgisini token olarak
