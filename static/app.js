@@ -54,8 +54,8 @@ async function analyze() {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ transcript, audio_id: lastAudioId, stt_usage: lastTranscribeUsage })
     });
-    const data = await res.json();
-    if (!res.ok || data.error) throw new Error(data.error || "Bilinmeyen hata");
+    const data = await readApiResponse(res);
+    if (!res.ok || data.error) throw new Error(formatApiError(data));
     window.__son = data;
     renderHasta(data.hasta);
     renderDoktor(data.doktor);
@@ -76,6 +76,23 @@ function showError(msg) {
   const el = $("error");
   el.innerHTML = `<i class="bi bi-exclamation-triangle"></i> ${esc(msg)}`;
   el.classList.remove("hidden");
+}
+
+async function readApiResponse(res) {
+  const raw = await res.text();
+  if (!raw) return {};
+  try { return JSON.parse(raw); }
+  catch (_) {
+    if ([502, 503, 504].includes(res.status)) {
+      return {error: "Sunucu geçici olarak yanıt veremedi. Lütfen biraz sonra tekrar deneyin."};
+    }
+    return {error: "Sunucudan beklenmeyen bir yanıt geldi. Lütfen tekrar deneyin."};
+  }
+}
+
+function formatApiError(data) {
+  const id = data && data.error_id ? ` (Hata kodu: ${data.error_id})` : "";
+  return ((data && data.error) || "Bilinmeyen hata") + id;
 }
 
 // ---------------- HASTA ----------------
@@ -296,8 +313,8 @@ async function sendAudio(fileOrBlob,name){
   audStatus().innerHTML='<span class="mini-spin"></span> Ses metne dökülüyor…';
   try{
     const res=await fetch("/transcribe",{method:"POST",body:fd});
-    const data=await res.json();
-    if(!res.ok||data.error)throw new Error(data.error||"hata");
+    const data=await readApiResponse(res);
+    if(!res.ok||data.error)throw new Error(formatApiError(data));
     $("transcript").value=data.transcript;
     lastTranscribeUsage = data.usage || null;
     lastAudioId = data.audio_id || null;

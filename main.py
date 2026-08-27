@@ -8,6 +8,7 @@ Kullanıcı paneli : http://127.0.0.1:8000
 Admin paneli     : http://127.0.0.1:8000/admin   (kullanıcı: admin / şifre: admin)
 """
 import asyncio
+import logging
 import uuid
 
 from fastapi import FastAPI, Request, UploadFile, File, Depends, HTTPException, status, Form
@@ -22,6 +23,9 @@ import stt
 import pdf_report
 import db
 import auth
+from api_resilience import public_error_message
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Klinik Görüşme Analiz Paneli")
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -81,7 +85,12 @@ async def analyze(body: AnalyzeIn):
     try:
         result = await llm.analyze_all(text)
     except Exception as e:  # noqa: BLE001
-        return JSONResponse({"error": f"Analiz sırasında hata: {e}"}, status_code=500)
+        error_id = uuid.uuid4().hex[:8]
+        logger.exception("Analiz hatası [%s]", error_id)
+        return JSONResponse(
+            {"error": public_error_message(e), "error_id": error_id},
+            status_code=503,
+        )
 
     # kaydet (veritabanı hatası analizi bozmasın)
     ses = mime = ad = None
@@ -124,7 +133,12 @@ async def transcribe(file: UploadFile = File(...)):
         return {"transcript": text, "usage": usage,
                 "audio_id": _pending_put(data, mime, ad)}
     except Exception as e:  # noqa: BLE001
-        return JSONResponse({"error": f"Ses metne dökülemedi: {e}"}, status_code=500)
+        error_id = uuid.uuid4().hex[:8]
+        logger.exception("Ses döküm hatası [%s]", error_id)
+        return JSONResponse(
+            {"error": public_error_message(e), "error_id": error_id},
+            status_code=503,
+        )
 
 
 # ============================== ADMIN ==============================
