@@ -7,7 +7,7 @@ load_dotenv(override=True)  # .env her zaman kazanır
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
-APP_VERSION = os.getenv("APP_VERSION", "v1.7.0")
+APP_VERSION = os.getenv("APP_VERSION", "v1.7.1")
 
 ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY", "")
 ELEVENLABS_STT_MODEL = os.getenv("ELEVENLABS_STT_MODEL", "scribe_v2")

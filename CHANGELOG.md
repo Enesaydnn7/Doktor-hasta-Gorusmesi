@@ -1,5 +1,11 @@
 # Sürüm Geçmişi
 
+## v1.7.1 — 27 Ağustos 2026
+
+- Yönetici sunumu için kullanılan gastrit demo sesinin orijinal WebM kopyası private repoda korumaya alındı.
+- Dosyanın kayıt bilgileri ve SHA-256 doğrulama özeti `demo_records/README.md` içine eklendi.
+- Panel sürüm rozeti `v1.7.1` olarak güncellendi.
+
 ## v1.7.0 — 27 Ağustos 2026
 
 - `v1.6.0` çalışan MVP hâli `mvp-v1.6.0` etiketiyle ayrıca korumaya alındı.
