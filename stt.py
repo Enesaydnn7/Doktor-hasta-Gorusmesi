@@ -65,7 +65,7 @@ def _gemini(data: bytes, mime: str):
         lambda: model.generate_content(
             [{"mime_type": mime, "data": data}, STT_PROMPT],
             generation_config={"temperature": 0},
-            request_options={"timeout": 120},
+            request_options={"timeout": 60},
         ),
         attempts=3,
     )

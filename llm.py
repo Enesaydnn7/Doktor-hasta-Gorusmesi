@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 LLM katmanı — tek motor: Gemini.
-- Üç rapor (hasta / doktor / yönetim) paralel üretilir.
+- Üç rapor (hasta / doktor / yönetim) sırayla üretilir.
 - Görüşme tarihini kullanıcı mesajına ekleriz ki model "3 haftadır" gibi göreli
   süreleri KESİN TARİHE çevirebilsin (sigorta için kritik).
 """
@@ -40,7 +40,7 @@ def _gemini(system: str, user: str):
                            "top_p": 0.1, "top_k": 1},  # tutarlılık için
     )
     def generate_and_parse():
-        response = model.generate_content(user, request_options={"timeout": 90})
+        response = model.generate_content(user, request_options={"timeout": 45})
         return response, _extract_json(response.text)
 
     resp, data = call_with_retry(generate_and_parse, attempts=3)
@@ -63,11 +63,11 @@ def _user_message(transcript: str) -> str:
 async def analyze_all(transcript: str) -> dict:
     user = _user_message(transcript)
     t0 = time.time()
-    (hasta, uh), (doktor, ud), (yonetim, uy) = await asyncio.gather(
-        asyncio.to_thread(_gemini, prompts.SYSTEM_HASTA, user),
-        asyncio.to_thread(_gemini, prompts.SYSTEM_DOKTOR, user),
-        asyncio.to_thread(_gemini, prompts.SYSTEM_YONETIM, user),
-    )
+    hasta, uh = await asyncio.to_thread(_gemini, prompts.SYSTEM_HASTA, user)
+    await asyncio.sleep(1)
+    doktor, ud = await asyncio.to_thread(_gemini, prompts.SYSTEM_DOKTOR, user)
+    await asyncio.sleep(1)
+    yonetim, uy = await asyncio.to_thread(_gemini, prompts.SYSTEM_YONETIM, user)
     secs = round(time.time() - t0, 1)
     inp = uh["input"] + ud["input"] + uy["input"]
     out = uh["output"] + ud["output"] + uy["output"]
