@@ -26,6 +26,7 @@ class AnalyzeEndpointTests(unittest.IsolatedAsyncioTestCase):
             payload = await main.health()
 
         self.assertEqual(payload["stt_model"], main.config.OPENAI_STT_MODEL)
+        self.assertEqual(payload["role_model"], main.config.GEMINI_MODEL)
         self.assertTrue(payload["stt_api_configured"])
         self.assertFalse(payload["audio_converter"])
 

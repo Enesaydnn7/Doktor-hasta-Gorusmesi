@@ -321,7 +321,12 @@ async function sendAudio(fileOrBlob,name){
     let ek="";
     if(data.usage){
       const olcu=data.usage.total ? `${fmtNum(data.usage.total)} token` : `${fmtNum(data.usage.audio_seconds)} sn ses`;
-      ek=` <span class="mon-sub">(${olcu}, ${fmtUsd(data.usage.cost_usd)})</span>`;
+      const rol=data.usage.role_usage;
+      const rolEk=rol ? ` + rol tespiti: ${fmtNum(rol.total)} token, ${fmtUsd(rol.cost_usd)}` : "";
+      ek=` <span class="mon-sub">(${olcu}, ${fmtUsd(data.usage.cost_usd)}${rolEk})</span>`;
+      ek += data.usage.role_method==="semantic"
+        ? ' <span class="mon-sub">Doktor/hasta anlamdan belirlendi.</span>'
+        : ' <span class="mon-sub">Rol kesinleşmedi; etiketleri kontrol edin.</span>';
     }
     audStatus().innerHTML='<i class="bi bi-check-circle" style="color:var(--ok)"></i> Metne döküldü — kontrol edip “Analiz et”e basın.'+ek;
   }catch(e){audStatus().textContent="Ses metne dökülemedi: "+e.message;}
@@ -349,9 +354,12 @@ function renderMonitor(analiz, ses){
   const model=((document.querySelector(".pill-model")||{}).textContent||"Gemini").trim();
   const rows=[];
   if(ses){ rows.push(monRow("Ses → metin", ses)); }
+  const rol=ses&&ses.role_usage ? ses.role_usage : null;
+  if(rol){ rows.push(monRow("Doktor/hasta rol tespiti", rol)); }
   rows.push(monRow("Analiz (3 rapor)", analiz));
-  const totTok=(ses?ses.total:0)+analiz.total;
-  const totCost=(ses&&ses.cost_usd!=null?Number(ses.cost_usd):0)+Number(analiz.cost_usd||0);
+  const totTok=(ses?ses.total:0)+(rol?rol.total:0)+analiz.total;
+  const totCost=(ses&&ses.cost_usd!=null?Number(ses.cost_usd):0)
+    +(rol?Number(rol.cost_usd||0):0)+Number(analiz.cost_usd||0);
   box.innerHTML=`
     <div class="mon-title"><i class="bi bi-graph-up-arrow"></i> İzleme · maliyet <span class="mon-model">${model}</span></div>
     <div class="mon-table">
@@ -359,7 +367,7 @@ function renderMonitor(analiz, ses){
       ${rows.join("")}
       <div class="mon-row mon-tot"><span>TOPLAM</span><span>${fmtNum(totTok)}</span><span>${fmtUsd(totCost)}</span><span>—</span></div>
     </div>
-    <div class="mon-foot">Ses dökümü OpenAI, üç rapor analizi Gemini API ile çalışır.
+    <div class="mon-foot">Ses dökümü OpenAI; rol tespiti ve üç rapor analizi Gemini API ile çalışır.
       Maliyet yalnızca API token kullanımı döndüğünde hesaplanır.</div>`;
   box.classList.remove("hidden");
 }
