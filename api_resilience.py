@@ -51,6 +51,12 @@ def call_with_retry(
 def public_error_message(exc: BaseException) -> str:
     """İç servis ayrıntılarını sızdırmadan kullanıcıya işe yarar Türkçe mesaj ver."""
     message = str(exc).lower()
+    safe_audio_errors = (
+        "ses verisi boş", "ses dosyası çok büyük", "ses dosyası okunamadı",
+        "ses dönüşümü", "ses biçimini", "ses metne dökülemedi",
+    )
+    if isinstance(exc, ValueError) and any(marker in message for marker in safe_audio_errors):
+        return str(exc)
     if "api key" in message or "api_key" in message or "permission denied" in message:
         return "API erişim ayarı geçersiz. Lütfen yöneticiye bildirin."
     if "quota" in message or "resource exhausted" in message or "429" in message:

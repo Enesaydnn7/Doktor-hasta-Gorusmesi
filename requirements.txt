@@ -2,6 +2,7 @@ fastapi
 uvicorn[standard]
 jinja2
 python-dotenv
-google-generativeai==0.8.6
+google-genai==2.19.0
+imageio-ffmpeg==0.6.0
 reportlab
 python-multipart

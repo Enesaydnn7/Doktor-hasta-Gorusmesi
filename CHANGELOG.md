@@ -1,5 +1,13 @@
 # Sürüm Geçmişi
 
+## v1.3.0 — 27 Ağustos 2026
+
+- Tarayıcıdaki WebM ses kayıtları Gemini'ye gönderilmeden önce kesin olarak MP3'e dönüştürülüyor.
+- Render Python ortamına taşınabilir FFmpeg paketi eklendi.
+- Dönüşüm başarısızsa desteklenmeyen sesi Gemini'ye gönderme davranışı kaldırıldı.
+- Sessiz veya anlaşılmayan kayıtlarda modelin konuşma uydurmaması için güvenlik talimatı eklendi.
+- Kullanımdan kaldırılan `google-generativeai` yerine güncel `google-genai` SDK'sına geçildi.
+
 ## v1.2.0 — 27 Ağustos 2026
 
 - Hasta, doktor ve yönetim analizleri aynı anda değil sırayla çalıştırılıyor.

@@ -130,6 +130,13 @@ async def transcribe(file: UploadFile = File(...)):
     ad = file.filename or "kayit"
     try:
         text, usage = await asyncio.to_thread(stt.transcribe, data, mime, ad)
+        logger.info(
+            "Ses işlendi: source_mime=%s processed_mime=%s converted=%s bytes=%s",
+            usage.get("source_mime"),
+            usage.get("processed_mime"),
+            usage.get("converted"),
+            len(data),
+        )
         return {"transcript": text, "usage": usage,
                 "audio_id": _pending_put(data, mime, ad)}
     except Exception as e:  # noqa: BLE001
@@ -223,4 +230,8 @@ async def admin_sil(kid: int, request: Request):
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "model": config.GEMINI_MODEL}
+    return {
+        "status": "ok",
+        "model": config.GEMINI_MODEL,
+        "audio_converter": bool(stt._ffmpeg_executable()),
+    }
