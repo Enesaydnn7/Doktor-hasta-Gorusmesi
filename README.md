@@ -232,3 +232,6 @@ veritabanına yazılır. `DB_PATH` ile konum değiştirilebilir.
 > **Önemli:** Render ücretsiz planda disk kalıcı değildir — servis yeniden başlarsa kayıtlar
 > sıfırlanabilir. Kalıcı saklama için Render'ın ücretsiz **Postgres**'ine geçilmelidir;
 > o durumda yalnızca `db.py` değişir.
+
+Private repodaki yönetici demo kaydı istisnadır: `SEED_MANAGER_DEMO=true` olduğunda uygulama açılışında
+`demo_records/` arşivinden SQLite'a yeniden eklenir. Yeni canlı hasta kayıtları için kalıcı veritabanı hâlâ gerekir.

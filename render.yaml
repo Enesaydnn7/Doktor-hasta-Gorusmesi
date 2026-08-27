@@ -13,7 +13,9 @@ services:
       - key: GEMINI_API_KEY
         sync: false                 # anahtarı panelden gizli olarak sen gireceksin
       - key: APP_VERSION
-        value: v1.7.1
+        value: v1.7.2
+      - key: SEED_MANAGER_DEMO
+        value: true
       - key: ELEVENLABS_STT_MODEL
         value: scribe_v2
       - key: ELEVENLABS_STT_LANGUAGE

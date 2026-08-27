@@ -1,0 +1,104 @@
+{
+  "olusturma": "2026-08-27T12:53:10",
+  "ozet": "Yönetici demosu · Gastrit (mide iltihabı)",
+  "transkript": "Doktor: Merhaba hoşgeldiniz. Buyurun oturun. Sizi bugün buraya getiren şikayet nedir?\nHasta: Merhaba doktor hanım. Yaklaşık 10 gündür midemin üst kısmında bir yanma, ağrı var.\nDoktor: Anladım. Tam olarak ne zaman başladı hatırlıyor musunuz? Ağrı\nHasta: Sanırım geçen hafta pazartesi. Yani 10 gün kadar oldu. Önce hafifti şimdi arttı.\nDoktor: daha çok ne zaman oluyor aç karnına yoksa yemekten sonra?\nHasta: Genelde aç karnına. Sabahları ve gece. Bir şeyler yiyince biraz geçiyor.\nDoktor: Şiddetini 10 üzerinden falan kaç dersiniz böyle?\nHasta: Ağrılı zamanlarda 6 civarı ama gece uykum bölecek kadar oluyor bazen.\nDoktor: Bulantı, kusma, kilo kaybı ya da yutma güçlüğü gibi şeyler var mı?\nHasta: Hafif bulantı var kusma yok kilo kaybı fark etmedim yutmada da sorun yok.\nDoktor: Peki dışkınızda siyah renk ya da kanamasın olabilir mi? Bunu özellikle soruyorum.\nHasta: Yok öyle bir şey görmedim dikkat ettim aslında.\nDoktor: Güzel bilinen bir hastalığını düzenli kullanmamız bir ilaç var mı?\nHasta: Şeker ya da tansiyon yok sadece ara ara baş ağrısı için ağrı kesici oluyorum son zamanlarda sık aldım.\nDoktor: Bu önemli olabilir çünkü sık ağrı kesici mideyi yorar. Ameliyat ilerli durumunuz bekliyor.\nHasta: Alerjim yok 2019'da safra kesici ameliyatı oldum başka yok.\nDoktor: Sigara ve alkol kotası.\nHasta: Sigarayı bıraktım iki yıl önce alkol nadiren.\nDoktor: Sizin yeniden hastalığı uyuşlar ya da kan şevre uçlu var mı?\nHasta: Babamda ürsel vardı onun dışında bilmiyorum.\nDoktor: Teşekkürler çok net anlattınız. Şimdi karnınıza bakayım. Batın ve hat üst orta bölgede hafif hassasiyet var. Başka bir vurgu yok.\nHasta: Ciddi bir şey mi doktor hanım? Açıkçası biraz endişelendim.\nDoktor: Anlattıklarınız... Yarın bugün kullanırken gastrit yani mide itabına uyuyor. Sık ağrı kesici ve stres tetiklemiş olabilir. Endişelenecek bir yolu yok şu an.\nHasta: Çok rahatladım. Ne yapmam gerekiyor peki?\nDoktor: Mide koruyucu bir ilaç başlıyorum. Az kalmaya edeceksiniz. Ağrı kesicileri şimdilik keselim. Baş ağrısı için ayrıca konuşuruz. Asitli baharatlı çok yağlı yiyeceklerden uzak durun. Öğünleri düzenli yapın.\nHasta: Tamam not aldım.\nDoktor: 3 hafta sonra kontrole gelin. Eğer düşme beklendi kısmı siyah dışta şiddetli ağrı ya da kilo kaybı olursa beklemeden ben sana geçmezse mide endoskopisi planlayacağız.\nHasta: Anladım, çok teşekkür ederim ilgiliz için.\nDoktor: Rica ederim, geçmiş olsun, kontrole görüşürüz.",
+  "hasta": {
+    "ozet": "Yaklaşık 10 gündür mide üst kısmında açken artan yanma ve ağrı tarif ettiniz. Görüşmede gastrit ön tanısı değerlendirildi.",
+    "tani": "Gastrit (mide iltihabı) ön tanısı",
+    "yapilacaklar": [
+      "Ağrı kesicileri doktor önerisi olmadan kullanmayın.",
+      "Asitli, baharatlı ve çok yağlı yiyeceklerden uzak durun.",
+      "Öğünlerinizi düzenli yapın.",
+      "Kanlı kusma, siyah dışkı, şiddetli ağrı veya kilo kaybında beklemeden başvurun."
+    ],
+    "ilaclar": ["Doktor tarafından mide koruyucu ilaç başlandı."],
+    "kontrol": "Üç hafta sonra kontrol; şikâyetler geçmezse endoskopi değerlendirmesi.",
+    "kapanis": "Geçmiş olsun. Belirtiler kötüleşirse kontrol tarihini beklemeyin."
+  },
+  "doktor": {
+    "epikriz": {
+      "gorusmeTarihi": "27.08.2026",
+      "doktor": "Doktor hanım",
+      "baslangic": "Yaklaşık 10 gündür (yaklaşık 17.08.2026)",
+      "agriSkoru": "6/10",
+      "sikayet": "Mide üst kısmında yanma, ağrı ve hafif bulantı",
+      "oyku": "Şikâyetler yaklaşık 10 gün önce hafif başlamış ve zamanla artmıştır. Ağrı genellikle aç karnına, sabahları ve gece olmakta; yemekle hafiflemektedir. Hafif bulantı eşlik etmektedir. Kusma, kilo kaybı ve yutma güçlüğü belirtilmemiştir. Son dönemde sık ağrı kesici kullanımı vardır.",
+      "fizikMuayene": "Batın rahat; üst orta bölgede hafif hassasiyet, başka belirgin bulgu yok.",
+      "ozgecmis": {
+        "kronik": [],
+        "ameliyatlar": ["Safra kesesi ameliyatı (2019)"],
+        "ilaclar": ["Ara ara baş ağrısı için ağrı kesici; son dönemde sık kullanım"],
+        "alerji": ["Alerji yok"],
+        "aliskanlik": ["Sigarayı iki yıl önce bıraktı", "Alkol nadiren"]
+      },
+      "soygecmis": ["Babada ülser öyküsü"],
+      "lab": [],
+      "onTani": "Gastrit (mide iltihabı)",
+      "kesinTani": "Belirtilmedi",
+      "icd": [{"kod": "K29.7"}, {"kod": "R10.13"}],
+      "tedavi": [
+        "Mide koruyucu ilaç başlandı.",
+        "Ağrı kesicilerin şimdilik kesilmesi önerildi.",
+        "Asitli, baharatlı ve çok yağlı yiyeceklerden kaçınması önerildi.",
+        "Öğünlerin düzenli yapılması önerildi."
+      ],
+      "plan": "Baş ağrısı ayrıca değerlendirilecek. Şikâyetler geçmezse mide endoskopisi planlanacak.",
+      "kontrol": {
+        "onerildi": true,
+        "zaman": "3 hafta sonra (yaklaşık 17.09.2026)",
+        "not": "Kanlı kusma, siyah dışkı, şiddetli ağrı veya kilo kaybında beklemeden başvurmalı."
+      }
+    },
+    "koclugu": {
+      "guclu": [
+        "Kırmızı bayrak semptomlarının sorgulanması",
+        "Ağrı şiddetinin sayısal olarak değerlendirilmesi",
+        "Hastanın endişesini azaltan açıklayıcı yaklaşım"
+      ],
+      "oneriler": [
+        {
+          "an": "Aile öyküsü sorusunun ses dökümü anlaşılmaz oluşmuştur.",
+          "oneri": "Ailede mide hastalığı, ülser veya kanser öyküsü var mı? şeklinde daha net sorulabilir."
+        },
+        {
+          "an": "Mide koruyucu bir ilaç başlıyorum.",
+          "oneri": "İlacın adı, dozu, kullanım zamanı ve süresi açıkça belirtilmelidir."
+        }
+      ]
+    }
+  },
+  "yonetim": {
+    "guvenlik": {
+      "durum": "temiz",
+      "hasta": "Uygun ve saygılı iletişim",
+      "doktor": "Uygun, açıklayıcı ve güven verici iletişim",
+      "tespitler": []
+    },
+    "skor": {
+      "genel": 88,
+      "empati": 91,
+      "netlik": 84,
+      "dinleme": 90,
+      "verimlilik": 87
+    },
+    "verimlilikNotu": "Temel anamnez, kırmızı bayraklar ve tedavi planı görüşmede ele alınmıştır.",
+    "degerlendirme": "Görüşme genel olarak sistematik, güvenli ve hasta odaklıdır. İlaç ayrıntıları daha açık belirtilmelidir.",
+    "risk": "yok"
+  },
+  "usage": {
+    "analiz": {
+      "input": 0,
+      "output": 0,
+      "total": 15248,
+      "cost_usd": 0.0546,
+      "seconds": 50.3,
+      "archived_demo": true
+    },
+    "ses": {
+      "provider": "OpenAI",
+      "model": "gpt-4o-transcribe-diarize",
+      "provider_fallback_used": true,
+      "archived_demo": true
+    }
+  }
+}

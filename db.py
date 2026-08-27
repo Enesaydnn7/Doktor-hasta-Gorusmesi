@@ -16,16 +16,30 @@ import os
 import json
 import sqlite3
 import threading
+from contextlib import contextmanager
 from datetime import datetime
+from pathlib import Path
 
 DB_PATH = os.getenv("DB_PATH", os.path.join(os.path.dirname(os.path.abspath(__file__)), "kayitlar.db"))
+DEMO_RECORD_KEY = "manager-gastrit-demo-2026-08-27"
+DEMO_DIR = Path(__file__).resolve().parent / "demo_records"
+DEMO_JSON_PATH = DEMO_DIR / "gastrit_demo_kayit_2_2026-08-27.json"
+DEMO_AUDIO_PATH = DEMO_DIR / "gastrit_demo_kayit_2_2026-08-27.webm"
 _lock = threading.Lock()
 
 
+@contextmanager
 def _conn():
     c = sqlite3.connect(DB_PATH, timeout=15)
     c.row_factory = sqlite3.Row
-    return c
+    try:
+        yield c
+        c.commit()
+    except Exception:
+        c.rollback()
+        raise
+    finally:
+        c.close()
 
 
 def init():
@@ -38,10 +52,48 @@ def init():
                 hasta TEXT, doktor TEXT, yonetim TEXT,
                 usage TEXT,
                 ses BLOB, ses_mime TEXT, ses_ad TEXT,
-                ozet TEXT
+                ozet TEXT, demo_key TEXT
             )
         """)
+        columns = {row[1] for row in c.execute("PRAGMA table_info(kayitlar)")}
+        if "demo_key" not in columns:
+            c.execute("ALTER TABLE kayitlar ADD COLUMN demo_key TEXT")
         c.execute("CREATE INDEX IF NOT EXISTS ix_olusturma ON kayitlar(olusturma DESC)")
+        c.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS ux_demo_key ON kayitlar(demo_key) "
+            "WHERE demo_key IS NOT NULL"
+        )
+        _ensure_demo_record(c)
+
+
+def _ensure_demo_record(c):
+    """Repo içindeki yönetici demosunu her yeni/geçici veritabanına bir kez ekle."""
+    enabled = os.getenv("SEED_MANAGER_DEMO", "true").strip().lower()
+    if enabled not in {"1", "true", "yes", "on"}:
+        return
+    if c.execute(
+        "SELECT 1 FROM kayitlar WHERE demo_key=?", (DEMO_RECORD_KEY,)
+    ).fetchone():
+        return
+    if not DEMO_JSON_PATH.is_file() or not DEMO_AUDIO_PATH.is_file():
+        return
+
+    record = json.loads(DEMO_JSON_PATH.read_text(encoding="utf-8"))
+    audio = DEMO_AUDIO_PATH.read_bytes()
+    encode = lambda value: json.dumps(value or {}, ensure_ascii=False)
+    c.execute(
+        """INSERT INTO kayitlar
+           (olusturma, transkript, hasta, doktor, yonetim, usage,
+            ses, ses_mime, ses_ad, ozet, demo_key)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+        (
+            record["olusturma"], record["transkript"],
+            encode(record.get("hasta")), encode(record.get("doktor")),
+            encode(record.get("yonetim")), encode(record.get("usage")),
+            audio, "audio/webm", DEMO_AUDIO_PATH.name,
+            record.get("ozet") or "Yönetici demosu · Gastrit", DEMO_RECORD_KEY,
+        ),
+    )
 
 
 def _kisa_ozet(doktor: dict, transkript: str) -> str:
