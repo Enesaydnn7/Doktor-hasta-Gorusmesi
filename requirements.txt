@@ -3,6 +3,6 @@ uvicorn[standard]
 jinja2
 python-dotenv
 google-genai==2.19.0
-imageio-ffmpeg==0.6.0
+openai==3.5.0
 reportlab
 python-multipart

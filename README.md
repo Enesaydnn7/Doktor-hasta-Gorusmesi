@@ -1,4 +1,4 @@
-# Klinik Görüşme Analiz Paneli — Detaylı Epikriz (Gemini)
+# Klinik Görüşme Analiz Paneli — OpenAI ses dökümü + Gemini analiz
 
 Doktor–hasta görüşmesinin metnini alır, **Gemini** ile aynı görüşmeden **üç rapor** üretir.
 Epikriz şeması, gerçek hastane epikrizlerinin yapısına göre kurulmuştur (sigorta/kayıt uyumlu).
@@ -50,6 +50,8 @@ Tarayıcı: **http://127.0.0.1:8000** → "Örnek yükle" → "Analiz et".
 
 GEMINI_API_KEY=...
 GEMINI_MODEL=gemini-2.5-flash
+OPENAI_API_KEY=...
+OPENAI_STT_MODEL=gpt-4o-transcribe-diarize
 ```
 
 ## Dosyalar
@@ -57,7 +59,8 @@ GEMINI_MODEL=gemini-2.5-flash
 | Dosya | İş |
 |---|---|
 | `main.py` | FastAPI; `/analyze` |
-| `llm.py` | Gemini çağrısı; görüşme tarihini ekler; 3 rapor paralel |
+| `llm.py` | Gemini çağrısı; görüşme tarihini ekler; 3 raporu sırayla üretir |
+| `stt.py` | OpenAI Transcription API çağrısı ve konuşmacı etiketleme |
 | `prompts.py` | 3 system prompt (detaylı epikriz şeması burada) |
 | `pdf_report.py` | Rapor PDF üretimi (epikriz formatı) |
 | `config.py` | `.env` ayarları |
@@ -65,7 +68,7 @@ GEMINI_MODEL=gemini-2.5-flash
 
 ## Notlar
 
-- Giriş şu an metindir; ses aşamasında araya Whisper + konuşmacı ayrımı eklenir, gerisi aynı kalır.
+- Giriş metin veya sestir; ses OpenAI API ile konuşmacı ayrımlı metne çevrilir.
 - KVKK: gerçek hasta verisinde kurum politikanıza göre ilerleyin; gerekirse `llm.py`'deki
   bağlantıyı kendi sunucunuzdaki bir modele çevirin.
 
@@ -105,6 +108,8 @@ GEMINI_MODEL=gemini-2.5-flash
 4. **Environment** sekmesinden değişkenleri gir:
    - `GEMINI_API_KEY` = (anahtarın)
    - `GEMINI_MODEL` = `gemini-2.5-flash`
+   - `OPENAI_API_KEY` = (OpenAI Platform anahtarın)
+   - `OPENAI_STT_MODEL` = `gpt-4o-transcribe-diarize`
 5. Deploy bitince sana `https://klinik-analiz-xxxx.onrender.com` gibi bir link verir.
    İşte paylaşacağın link bu.
 
@@ -117,12 +122,13 @@ GEMINI_MODEL=gemini-2.5-flash
 3. Space'in dosyalarına bu projeyi yükle (yine `.env` hariç).
 4. Space **Settings  →  Secrets** kısmına ekle:
    - `GEMINI_API_KEY`, `GEMINI_MODEL=gemini-2.5-flash`
+   - `OPENAI_API_KEY`, `OPENAI_STT_MODEL=gpt-4o-transcribe-diarize`
 5. Space otomatik derlenir; `https://kullanici-adi-space-adi.hf.space` linkini paylaşırsın.
 
 ### ÖNEMLİ — anahtar ve maliyet
 - API anahtarını **asla** GitHub'a koyma; her zaman platformun "Environment/Secrets"
   bölümüne gir (`.env` yüklenmez).
-- Linki paylaştığın herkes senin Gemini kotanı kullanır (masraf sana yazar). Yöneticine/güvendiğin
+- Linki paylaştığın herkes senin OpenAI ve Gemini API kotanı kullanır (masraf sana yazar). Yöneticine/güvendiğin
   birkaç kişiye göstermek için uygundur; herkese açık yayacaksan kota/masrafı göz önünde bulundur.
 - KVKK: canlı demoda gerçek hasta verisi girme; örnek/senaryo metinleriyle göster.
 
@@ -132,13 +138,13 @@ GEMINI_MODEL=gemini-2.5-flash
 
 Panelde metin kutusunun üstünde **Kaydet** ve **Ses dosyası yükle** var:
 1. Görüşme sesini mikrofonla kaydet ya da hazır ses dosyası (mp3/wav/m4a/ogg...) yükle.
-2. Sistem sesi **Gemini** ile Türkçe metne döker (konuşmacıları "Doktor:" / "Hasta:" diye ayırır).
+2. Sistem sesi OpenAI `gpt-4o-transcribe-diarize` ile Türkçe metne döker ve konuşmacıları ayırır.
 3. Metin, düzenlenebilir kutuya düşer — kontrol edip düzeltirsin.
 4. "Analiz et" ile 3 rapor + epikriz üretilir.
 
-- Ses motoru ayrı bir dosyadadır: `stt.py`. Kalite yetmezse (gürültü/aksan) sadece burayı
-  Whisper/Deepgram/Azure'a çevirirsin; gerisi aynı kalır.
-- Tarayıcı kaydı `.webm` üretir; Docker imajına `ffmpeg` eklendi, gerekirse otomatik mp3'e çevrilir.
+- Ses motoru ayrı bir dosyadadır: `stt.py`. Yerel model indirilmez; kayıt OpenAI Transcription API'ye gönderilir.
+- Tarayıcının ürettiği `.webm` dosyası dönüştürülmeden doğrudan API'ye gönderilir.
+- API'nin konuşmacı segmentlerindeki sözcükler yeniden yazılmaz; yalnızca `Doktor:` / `Hasta:` etiketi eklenir.
 - Not: 20 MB üstü ses için daha kısa kayıt kullanın (uzun görüşmeler için ileride parçalama eklenebilir).
 - KVKK: ses metinden daha hassastır. Gerçek hasta kayıtlarında kendi sunucunuzda Whisper'a geçmeyi planlayın.
 
@@ -153,10 +159,9 @@ Her analizden sonra sonuçların üstünde küçük bir çubuk çıkar:
 
 Ses yüklendiğinde de o dökümün token/maliyeti "metne döküldü" satırında gösterilir.
 
-Fiyatlar `pricing.py` içindedir — **Gemini 2.5 Flash standart (ücretli) katman**:
-giriş metin $0.30, giriş ses $1.00, çıkış $2.50 (1M token başına). Canlı API kullanıldığı için
-standart fiyat geçerlidir (Batch/toplu yarı-fiyat bu akışta geçmez). Token sayıları Gemini'nin
-kendi cevabından (`usage_metadata`) okunur — tahmin değildir. Fiyat değişirse sadece `pricing.py`'yi güncelleyin.
+Fiyatlar `pricing.py` içindedir. Üç rapor için Gemini 2.5 Flash; ses dökümü için OpenAI
+`gpt-4o-transcribe-diarize` standart token fiyatları kullanılır. API kullanım bilgisini token olarak
+döndürmezse arayüz ses maliyetini `—` gösterir; sıfır dolar gibi yanıltıcı bir değer yazmaz.
 
 ---
 

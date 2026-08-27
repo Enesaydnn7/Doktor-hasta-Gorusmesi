@@ -1,138 +1,176 @@
 # -*- coding: utf-8 -*-
-"""
-Ses -> metin (konuşmacı ayrımlı) katmanı.
-Motor: Gemini (aynı model, aynı anahtar) — ayrı bir STT servisi gerekmez.
-Kalite yetmezse SADECE bu dosya değiştirilir (Whisper / Deepgram / Azure vb.).
-"""
+"""OpenAI Transcription API ile konuşmacı ayrımlı ses -> metin katmanı."""
+from __future__ import annotations
+
 import os
-import shutil
-import subprocess
-import tempfile
+import time
+from collections.abc import Iterable
+from typing import Any
 
 import config
-from api_resilience import call_with_retry
+import pricing
 
-MAX_BYTES = 20 * 1024 * 1024  # ~20 MB (satır içi ses sınırı)
+MAX_BYTES = 20 * 1024 * 1024
 
-# Gemini'nin doğrudan kabul ettiği ses türleri
-_SUPPORTED = {
-    "audio/wav", "audio/x-wav", "audio/mp3", "audio/mpeg",
-    "audio/aiff", "audio/aac", "audio/ogg", "audio/flac", "audio/x-flac",
+# OpenAI Transcription API'nin desteklediği dosya uzantıları.
+_MIME_BY_EXTENSION = {
+    ".flac": "audio/flac",
+    ".mp3": "audio/mpeg",
+    ".mp4": "audio/mp4",
+    ".mpeg": "audio/mpeg",
+    ".mpga": "audio/mpeg",
+    ".m4a": "audio/mp4",
+    ".ogg": "audio/ogg",
+    ".wav": "audio/wav",
+    ".webm": "audio/webm",
+}
+_EXTENSION_BY_MIME = {
+    "audio/flac": ".flac",
+    "audio/mp3": ".mp3",
+    "audio/mpeg": ".mp3",
+    "audio/mp4": ".m4a",
+    "video/mp4": ".mp4",
+    "audio/ogg": ".ogg",
+    "application/ogg": ".ogg",
+    "audio/wav": ".wav",
+    "audio/x-wav": ".wav",
+    "audio/webm": ".webm",
+    "video/webm": ".webm",
 }
 
-STT_PROMPT = (
-    "Bu, bir doktor ile hasta arasındaki görüşmenin ses kaydıdır. "
-    "Kaydı Türkçe olarak, KONUŞMACILARI AYIRARAK yazıya dök. "
-    "Her satır 'Doktor:' veya 'Hasta:' ile başlasın. "
-    "Duyduğun konuşmayı olduğu gibi aktar; yorum, başlık, tarih veya açıklama EKLEME. "
-    "Kaydı duyamıyorsan, kayıt sessizse, bozuksa veya konuşma anlaşılmıyorsa ASLA konuşma "
-    "uydurma; yalnızca TRANSKRIPSIYON_YOK yaz. "
-    "Bunun dışında yalnızca konuşma dökümünü ver."
-)
+
+def _field(value: Any, name: str, default: Any = None) -> Any:
+    """SDK nesnesi ve sözlük yanıtlarını aynı şekilde oku."""
+    if isinstance(value, dict):
+        return value.get(name, default)
+    return getattr(value, name, default)
 
 
-def _ffmpeg_executable() -> str | None:
-    """Sistem FFmpeg'ini, yoksa pip ile gelen taşınabilir FFmpeg'i bul."""
-    system_ffmpeg = shutil.which("ffmpeg")
-    if system_ffmpeg:
-        return system_ffmpeg
-    try:
-        import imageio_ffmpeg
-        return imageio_ffmpeg.get_ffmpeg_exe()
-    except Exception:
-        return None
-
-
-def _maybe_convert(data: bytes, mime: str, filename: str):
-    """Desteklenmeyen formatı (ör. tarayıcı kaydı .webm) MP3'e çevir."""
+def _prepare_audio(data: bytes, mime: str, filename: str) -> tuple[str, bytes, str]:
+    """Sesi dönüştürmeden API'nin kabul ettiği güvenli bir dosya adıyla hazırla."""
     normalized_mime = (mime or "").split(";", 1)[0].strip().lower()
-    is_ogg_opus = normalized_mime == "audio/ogg" and "opus" in (mime or "").lower()
-    if normalized_mime in _SUPPORTED and not is_ogg_opus:
-        return data, normalized_mime
+    extension = os.path.splitext(filename or "")[1].lower()
 
-    ffmpeg = _ffmpeg_executable()
-    if not ffmpeg:
+    if extension in _MIME_BY_EXTENSION:
+        prepared_mime = _MIME_BY_EXTENSION[extension]
+    elif normalized_mime in _EXTENSION_BY_MIME:
+        extension = _EXTENSION_BY_MIME[normalized_mime]
+        prepared_mime = normalized_mime
+    else:
         raise ValueError(
-            "Bu ses biçimini dönüştürmek için FFmpeg bulunamadı. "
-            "Lütfen MP3 veya WAV dosyası yükleyin."
+            "Desteklenmeyen ses biçimi. Lütfen WebM, MP3, WAV, M4A, OGG veya FLAC kullanın."
         )
-    ext = os.path.splitext(filename or "")[1] or ".bin"
-    src = dst = None
-    try:
-        with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as f:
-            f.write(data)
-            src = f.name
-        dst = src + ".mp3"
-        subprocess.run(
-            [ffmpeg, "-y", "-i", src, "-vn", "-codec:a", "libmp3lame", dst],
-            check=True,
-            capture_output=True,
+
+    return f"gorusme{extension}", data, prepared_mime
+
+
+def _format_diarized_segments(segments: Iterable[Any]) -> str:
+    """API segmentlerindeki metni değiştirmeden konuşmacı etiketlerini ekle."""
+    cleaned: list[tuple[str, str]] = []
+    speaker_order: list[str] = []
+
+    for segment in segments or []:
+        text = str(_field(segment, "text", "") or "").strip()
+        speaker = str(_field(segment, "speaker", "") or "").strip()
+        if not text:
+            continue
+        if not speaker:
+            speaker = "unknown"
+        if speaker not in speaker_order:
+            speaker_order.append(speaker)
+        if cleaned and cleaned[-1][0] == speaker:
+            cleaned[-1] = (speaker, f"{cleaned[-1][1]} {text}")
+        else:
+            cleaned.append((speaker, text))
+
+    if not cleaned:
+        return ""
+
+    if len(speaker_order) == 1:
+        labels = {speaker_order[0]: "Konuşmacı"}
+    else:
+        # Klinik kayıtların akışı doktorun görüşmeyi açmasıyla başlıyor.
+        labels = {speaker_order[0]: "Doktor", speaker_order[1]: "Hasta"}
+        for index, speaker in enumerate(speaker_order[2:], start=3):
+            labels[speaker] = f"Konuşmacı {index}"
+
+    return "\n".join(f"{labels[speaker]}: {text}" for speaker, text in cleaned)
+
+
+def _read_usage(response: Any) -> dict[str, Any]:
+    api_usage = _field(response, "usage")
+    usage_type = str(_field(api_usage, "type", "") or "")
+
+    if usage_type == "tokens":
+        input_tokens = int(_field(api_usage, "input_tokens", 0) or 0)
+        output_tokens = int(_field(api_usage, "output_tokens", 0) or 0)
+        total_tokens = int(
+            _field(api_usage, "total_tokens", input_tokens + output_tokens)
+            or input_tokens + output_tokens
         )
-        with open(dst, "rb") as g:
-            converted = g.read()
-        if not converted:
-            raise ValueError("Ses dönüşümü boş çıktı üretti.")
-        return converted, "audio/mp3"
-    except (subprocess.CalledProcessError, OSError) as exc:
-        raise ValueError(
-            "Ses dosyası okunamadı veya desteklenen biçime dönüştürülemedi. "
-            "Lütfen kaydı yeniden alın ya da MP3/WAV yükleyin."
-        ) from exc
-    finally:
-        for p in (src, dst):
-            if p and os.path.exists(p):
-                try:
-                    os.remove(p)
-                except OSError:
-                    pass
+        cost_usd = round(pricing.openai_stt_cost(input_tokens, output_tokens), 6)
+    else:
+        input_tokens = output_tokens = total_tokens = 0
+        cost_usd = None
+
+    duration = _field(response, "duration", None)
+    if duration is None and usage_type == "duration":
+        duration = _field(api_usage, "seconds", None)
+
+    return {
+        "input": input_tokens,
+        "output": output_tokens,
+        "total": total_tokens,
+        "audio_seconds": round(float(duration), 1) if duration is not None else None,
+        "cost_usd": cost_usd,
+    }
 
 
-def _gemini(data: bytes, mime: str):
-    """(metin, kullanım) döndürür. kullanım = {input, output, total} token."""
-    from google import genai
-    from google.genai import types
+def _openai_transcribe(data: bytes, mime: str, filename: str) -> tuple[str, dict[str, Any]]:
+    """OpenAI diarization yanıtını kelimelere dokunmadan döndür."""
+    if not config.OPENAI_API_KEY:
+        raise RuntimeError("OPENAI_API_KEY ayarlı değil.")
 
-    client = genai.Client(
-        api_key=config.GEMINI_API_KEY,
-        http_options=types.HttpOptions(timeout=60_000),
+    from openai import OpenAI
+
+    client = OpenAI(
+        api_key=config.OPENAI_API_KEY,
+        timeout=config.OPENAI_STT_TIMEOUT,
+        max_retries=2,
     )
     try:
-        resp = call_with_retry(
-            lambda: client.models.generate_content(
-                model=config.GEMINI_MODEL,
-                contents=[types.Part.from_bytes(data=data, mime_type=mime), STT_PROMPT],
-                config=types.GenerateContentConfig(temperature=0),
-            ),
-            attempts=3,
+        response = client.audio.transcriptions.create(
+            model=config.OPENAI_STT_MODEL,
+            file=(filename, data, mime),
+            language=config.OPENAI_STT_LANGUAGE,
+            response_format="diarized_json",
+            chunking_strategy="auto",
         )
     finally:
         client.close()
-    um = getattr(resp, "usage_metadata", None)
-    usage = {
-        "input": int(getattr(um, "prompt_token_count", 0) or 0),
-        "output": int(getattr(um, "candidates_token_count", 0) or 0),
-        "total": int(getattr(um, "total_token_count", 0) or 0),
-    }
-    return (resp.text or "").strip(), usage
+
+    return _format_diarized_segments(_field(response, "segments", [])), _read_usage(response)
 
 
 def transcribe(data: bytes, mime: str = "audio/mpeg", filename: str = ""):
-    """Ses baytlarını (metin, kullanım) olarak döndürür."""
-    import time
-    import pricing
+    """Ses baytlarını (konuşmacı ayrımlı metin, kullanım) olarak döndür."""
     if not data:
         raise ValueError("Ses verisi boş.")
     if len(data) > MAX_BYTES:
         raise ValueError("Ses dosyası çok büyük (20 MB üstü). Lütfen daha kısa bir kayıt yükleyin.")
+
     source_mime = mime
-    data, mime = _maybe_convert(data, mime, filename)
-    t0 = time.time()
-    text, u = _gemini(data, mime)
-    u["seconds"] = round(time.time() - t0, 1)
-    if not text or text.strip().upper() == "TRANSKRIPSIYON_YOK":
+    prepared_name, prepared_data, prepared_mime = _prepare_audio(data, mime, filename)
+    started = time.monotonic()
+    text, usage = _openai_transcribe(prepared_data, prepared_mime, prepared_name)
+    usage["seconds"] = round(time.monotonic() - started, 1)
+
+    if not text:
         raise ValueError("Ses metne dökülemedi (boş yanıt). Kaydı ve konuşma dilini kontrol edin.")
-    u["source_mime"] = source_mime
-    u["processed_mime"] = mime
-    u["converted"] = source_mime.split(";", 1)[0].lower() != mime
-    u["cost_usd"] = round(pricing.audio_cost(u["input"], u["output"]), 6)
-    return text, u
+
+    usage["provider"] = "OpenAI"
+    usage["model"] = config.OPENAI_STT_MODEL
+    usage["source_mime"] = source_mime
+    usage["processed_mime"] = prepared_mime
+    usage["converted"] = False
+    return text, usage

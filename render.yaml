@@ -12,3 +12,7 @@ services:
         value: gemini-2.5-flash
       - key: GEMINI_API_KEY
         sync: false                 # anahtarı panelden gizli olarak sen gireceksin
+      - key: OPENAI_STT_MODEL
+        value: gpt-4o-transcribe-diarize
+      - key: OPENAI_API_KEY
+        sync: false                 # OpenAI Platform anahtarını Render panelinden gir

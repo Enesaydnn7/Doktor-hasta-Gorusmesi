@@ -319,7 +319,10 @@ async function sendAudio(fileOrBlob,name){
     lastTranscribeUsage = data.usage || null;
     lastAudioId = data.audio_id || null;
     let ek="";
-    if(data.usage){ek=` <span class="mon-sub">(ses: ${fmtNum(data.usage.total)} token, ${fmtUsd(data.usage.cost_usd)})</span>`;}
+    if(data.usage){
+      const olcu=data.usage.total ? `${fmtNum(data.usage.total)} token` : `${fmtNum(data.usage.audio_seconds)} sn ses`;
+      ek=` <span class="mon-sub">(${olcu}, ${fmtUsd(data.usage.cost_usd)})</span>`;
+    }
     audStatus().innerHTML='<i class="bi bi-check-circle" style="color:var(--ok)"></i> Metne döküldü — kontrol edip “Analiz et”e basın.'+ek;
   }catch(e){audStatus().textContent="Ses metne dökülemedi: "+e.message;}
 }
@@ -328,12 +331,15 @@ async function sendAudio(fileOrBlob,name){
 /* ---------------- İzleme (token / maliyet / süre) ---------------- */
 function fmtNum(n){return Number(n||0).toLocaleString("tr-TR");}
 function fmtUsd(c){
-  c=Number(c||0);
+  if(c==null||c==="")return "—";
+  c=Number(c);
   const d = c>0 && c<0.01 ? 6 : 4;
   return "$"+c.toLocaleString("en-US",{minimumFractionDigits:d,maximumFractionDigits:d});
 }
 function monRow(label, u){
-  const sub = `<span class="mon-sub">(${fmtNum(u.input)}+${fmtNum(u.output)})</span>`;
+  const sub = u.total
+    ? `<span class="mon-sub">(${fmtNum(u.input)}+${fmtNum(u.output)})</span>`
+    : (u.audio_seconds!=null ? `<span class="mon-sub">(${fmtNum(u.audio_seconds)} sn ses)</span>` : "");
   const sure = (u.seconds!=null) ? (u.seconds + " sn") : "—";
   return `<div class="mon-row"><span>${label}</span><span>${fmtNum(u.total)} ${sub}</span><span>${fmtUsd(u.cost_usd)}</span><span>${sure}</span></div>`;
 }
@@ -345,7 +351,7 @@ function renderMonitor(analiz, ses){
   if(ses){ rows.push(monRow("Ses → metin", ses)); }
   rows.push(monRow("Analiz (3 rapor)", analiz));
   const totTok=(ses?ses.total:0)+analiz.total;
-  const totCost=(ses?ses.cost_usd:0)+analiz.cost_usd;
+  const totCost=(ses&&ses.cost_usd!=null?Number(ses.cost_usd):0)+Number(analiz.cost_usd||0);
   box.innerHTML=`
     <div class="mon-title"><i class="bi bi-graph-up-arrow"></i> İzleme · maliyet <span class="mon-model">${model}</span></div>
     <div class="mon-table">
@@ -353,7 +359,7 @@ function renderMonitor(analiz, ses){
       ${rows.join("")}
       <div class="mon-row mon-tot"><span>TOPLAM</span><span>${fmtNum(totTok)}</span><span>${fmtUsd(totCost)}</span><span>—</span></div>
     </div>
-    <div class="mon-foot">Gemini 2.5 Flash standart fiyat: giriş metin $0.30, giriş ses $1.00, çıkış $2.50 / 1M token.
-      Token'lar Gemini'nin kendi cevabından okunur. ≈ ${fmtUsd(totCost*1000)} / 1000 işlem.</div>`;
+    <div class="mon-foot">Ses dökümü OpenAI, üç rapor analizi Gemini API ile çalışır.
+      Maliyet yalnızca API token kullanımı döndüğünde hesaplanır.</div>`;
   box.classList.remove("hidden");
 }
