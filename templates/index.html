@@ -36,11 +36,30 @@
       </div>
       <div class="audio-bar">
         <button id="btn-rec" type="button" class="aud-btn"><i class="bi bi-mic"></i> Kaydet</button>
+        <button id="btn-mic-test" type="button" class="aud-btn"><i class="bi bi-soundwave"></i> Mikrofonu test et</button>
         <button id="btn-upload" type="button" class="aud-btn"><i class="bi bi-upload"></i> Ses dosyası yükle</button>
         <input id="audio-file" type="file" accept="audio/*" hidden>
         <span id="audio-status" class="audio-status"></span>
       </div>
-      <div class="audio-hint"><i class="bi bi-info-circle"></i> Görüşme sesini kaydedin ya da yükleyin; sistem metne döksün. Metni kontrol edip düzeltin, sonra “Analiz et”e basın.</div>
+      <div class="mic-check">
+        <label class="mic-select-wrap" for="mic-select">
+          <i class="bi bi-mic-fill"></i>
+          <span>Mikrofon</span>
+          <select id="mic-select" aria-label="Kayıtta kullanılacak mikrofon">
+            <option value="default">Varsayılan mikrofon</option>
+          </select>
+        </label>
+        <div id="mic-meter-box" class="mic-meter-box" aria-live="polite">
+          <div class="mic-meter-head">
+            <span id="mic-device">Henüz test edilmedi</span>
+            <span id="mic-level">Ses seviyesi: —</span>
+          </div>
+          <div id="mic-meter" class="mic-meter" role="progressbar" aria-label="Mikrofon ses seviyesi" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+            <span id="mic-meter-fill"></span>
+          </div>
+        </div>
+      </div>
+      <div class="audio-hint"><i class="bi bi-info-circle"></i> Önce mikrofonu seçip test edin; konuşurken çubuk hareket ediyorsa görüşmeyi kaydedin. Metni kontrol edip düzeltin, sonra “Analiz et”e basın.</div>
       <textarea id="transcript" rows="9" placeholder="Doktor: Merhaba, hoş geldiniz...&#10;Hasta: Merhaba doktor bey...&#10;&#10;(Buraya doğrudan yazabilir veya yukarıdan ses ekleyebilirsiniz.)"></textarea>
       <div class="input-actions">
         <button id="btn-example" class="btn-ghost"><i class="bi bi-clipboard-plus"></i> Örnek yükle</button>

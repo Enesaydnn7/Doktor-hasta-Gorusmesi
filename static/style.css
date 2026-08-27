@@ -205,10 +205,27 @@ textarea:focus{outline:none; border-color:var(--teal); box-shadow:0 0 0 3px var(
 .aud-btn{border-radius:10px;padding:9px 15px;font-size:13.5px;font-weight:500;font-family:inherit;cursor:pointer;display:inline-flex;align-items:center;gap:7px;background:#fff;color:var(--slate);border:1px solid var(--line);transition:.15s}
 .aud-btn:hover{background:var(--slate-soft)}
 .aud-btn.rec-on{background:#fbe9e9;color:#b5322d;border-color:#f0c6c6}
+.aud-btn.test-on{background:var(--teal-soft);color:var(--teal-2);border-color:#abd9d4}
+.aud-btn:disabled{opacity:.55;cursor:not-allowed}
 .audio-status{font-size:13px;color:var(--muted);display:inline-flex;align-items:center;gap:7px}
 .audio-hint{font-size:12.5px;color:var(--muted);margin-bottom:10px;display:flex;gap:7px;align-items:flex-start}
 .audio-hint .bi{color:var(--teal);margin-top:2px}
 .mini-spin{width:14px;height:14px;border-radius:50%;border:2px solid var(--teal-soft);border-top-color:var(--teal);display:inline-block;animation:spin .8s linear infinite}
+.mic-check{display:grid;grid-template-columns:minmax(230px,310px) 1fr;gap:12px;align-items:center;margin:0 0 10px;padding:11px 12px;border:1px solid var(--line);border-radius:11px;background:#fbfcfd}
+.mic-select-wrap{display:grid;grid-template-columns:auto auto 1fr;gap:7px;align-items:center;font-size:12px;font-weight:600;color:var(--slate);min-width:0}
+.mic-select-wrap .bi{color:var(--teal)}
+.mic-select-wrap select{min-width:0;width:100%;border:1px solid var(--line);border-radius:8px;padding:7px 9px;background:#fff;color:var(--text);font-family:inherit;font-size:12.5px;font-weight:500;line-height:1.2}
+.mic-select-wrap select:focus{outline:none;border-color:var(--teal);box-shadow:0 0 0 2px var(--teal-soft)}
+.mic-meter-box{min-width:0}
+.mic-meter-head{display:flex;justify-content:space-between;gap:10px;margin-bottom:5px;font-size:11.5px;color:var(--muted)}
+#mic-device{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#mic-level{white-space:nowrap;font-variant-numeric:tabular-nums}
+.mic-meter{height:9px;overflow:hidden;border-radius:8px;background:#e5eaed}
+.mic-meter span{display:block;width:0;height:100%;border-radius:inherit;background:var(--muted);transition:width .08s linear,background .15s}
+.mic-meter.is-live span{background:var(--teal)}
+.mic-meter.is-loud span{background:var(--ok)}
+.mic-meter.is-silent span{background:var(--warn)}
+@media (max-width:680px){.mic-check{grid-template-columns:1fr}.mic-meter-head{align-items:flex-start;flex-direction:column;gap:2px}}
 
 /* ---- izleme / maliyet tablosu ---- */
 .monitor{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-top:20px}

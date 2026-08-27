@@ -140,16 +140,19 @@ OPENAI_STT_FALLBACK_MODEL=gpt-transcribe
 ## Yenilik: Sesten analiz (ses → metin → rapor)
 
 Panelde metin kutusunun üstünde **Kaydet** ve **Ses dosyası yükle** var:
-1. Görüşme sesini mikrofonla kaydet ya da hazır ses dosyası (mp3/wav/m4a/ogg...) yükle.
-2. Sistem sesi OpenAI `gpt-4o-transcribe-diarize` ile Türkçe metne döker ve konuşmacıları A/B diye ayırır.
-3. Konuşmacı segmentleri boş gelirse önce aynı yanıttaki birleşik metin kullanılır; o da boşsa yalnızca o kayıt için
+1. Önce listeden mikrofonu seçip **Mikrofonu test et** düğmesine bas. Konuşurken canlı seviye çubuğu hareket etmeli.
+2. Görüşme sesini mikrofonla kaydet ya da hazır ses dosyası (mp3/wav/m4a/ogg...) yükle.
+3. Sistem sesi OpenAI `gpt-4o-transcribe-diarize` ile Türkçe metne döker ve konuşmacıları A/B diye ayırır.
+4. Konuşmacı segmentleri boş gelirse önce aynı yanıttaki birleşik metin kullanılır; o da boşsa yalnızca o kayıt için
    OpenAI `gpt-transcribe` API modeliyle ikinci deneme yapılır. Bilgisayara veya Render'a model indirilmez.
-4. Gemini yalnızca A/B konuşmacılarından hangisinin doktor, hangisinin hasta olduğunu cümlelerin anlamından seçer.
-5. Metin, düzenlenebilir kutuya düşer — kontrol edip düzeltirsin.
-6. "Analiz et" ile 3 rapor + epikriz üretilir.
+5. Gemini yalnızca A/B konuşmacılarından hangisinin doktor, hangisinin hasta olduğunu cümlelerin anlamından seçer.
+6. Metin, düzenlenebilir kutuya düşer — kontrol edip düzeltirsin.
+7. "Analiz et" ile 3 rapor + epikriz üretilir.
 
 - Ses motoru ayrı bir dosyadadır: `stt.py`. Yerel model indirilmez; kayıt OpenAI Transcription API'ye gönderilir.
 - Tarayıcının ürettiği `.webm` dosyası dönüştürülmeden doğrudan API'ye gönderilir.
+- Kulaklık takılıp çıkarıldığında mikrofon listesi yenilenir. Sessiz/boş kayıt API'ye gönderilmez; böylece hem
+  anlaşılır bir uyarı gösterilir hem de gereksiz STT isteği engellenir.
 - Yedek `gpt-transcribe` yalnızca ana model hem segment hem metin döndürmezse çağrılır; güncel liste fiyatı
   yaklaşık `$0.0045/dakika`dır ve bu ek maliyet arayüzde ayrı gösterilir.
 - OpenAI segmentlerindeki sözcükler yeniden yazılmaz. Rol sınıflandırıcısı yalnızca A/B eşlemesi döndürür;

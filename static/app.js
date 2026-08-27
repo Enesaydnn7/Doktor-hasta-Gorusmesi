@@ -282,29 +282,209 @@ async function downloadPdf(btn) {
 }
 
 /* ---------------- Ses -> metin ---------------- */
-let mediaRec=null, recChunks=[], recStream=null;
+let mediaRec=null, recChunks=[], recStream=null, micTestStream=null;
+let micAudioContext=null, micAnalyser=null, micSource=null, micMeterFrame=null, micSilenceTimer=null;
+let recordPeak=null, recordingDeviceLost=false, micTestActive=false;
+const MIC_SIGNAL_THRESHOLD=0.006;
 const audStatus=()=>$("audio-status");
 $("btn-upload").addEventListener("click",()=>$("audio-file").click());
 $("audio-file").addEventListener("change",e=>{const f=e.target.files[0];if(f)sendAudio(f,f.name);e.target.value="";});
 $("btn-rec").addEventListener("click",toggleRec);
+$("btn-mic-test").addEventListener("click",toggleMicTest);
+$("mic-select").addEventListener("change",async()=>{
+  if(micTestActive){stopMicTest(false);await startMicTest();}
+});
+
+function micErrorMessage(e){
+  if(!window.isSecureContext)return "Mikrofon yalnızca HTTPS bağlantısında kullanılabilir.";
+  if(e&&e.name==="NotAllowedError")return "Mikrofon izni kapalı. Tarayıcıdaki kilit simgesinden mikrofon iznini açın.";
+  if(e&&e.name==="NotFoundError")return "Kullanılabilir mikrofon bulunamadı. Windows ses girişini kontrol edin.";
+  if(e&&e.name==="NotReadableError")return "Mikrofon başka bir uygulama tarafından kullanılıyor veya Windows erişimi engelliyor.";
+  return "Mikrofon açılamadı. Mikrofon seçimini ve Windows ses ayarını kontrol edin.";
+}
+
+function micConstraints(useSelected=true){
+  const selected=$("mic-select").value;
+  const audio={channelCount:1,echoCancellation:true,noiseSuppression:true,autoGainControl:true};
+  if(useSelected&&selected&&selected!=="default")audio.deviceId={exact:selected};
+  return {audio};
+}
+
+async function refreshMicDevices(preferredId=""){
+  if(!navigator.mediaDevices||!navigator.mediaDevices.enumerateDevices)return [];
+  const select=$("mic-select");
+  const previous=preferredId||select.value||"default";
+  const inputs=(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==="audioinput");
+  select.innerHTML="";
+  const defaultOption=document.createElement("option");
+  defaultOption.value="default";defaultOption.textContent="Varsayılan mikrofon";select.appendChild(defaultOption);
+  inputs.filter(d=>d.deviceId&&d.deviceId!=="default").forEach((device,index)=>{
+    const option=document.createElement("option");
+    option.value=device.deviceId;
+    option.textContent=device.label||`Mikrofon ${index+1}`;
+    select.appendChild(option);
+  });
+  select.value=[...select.options].some(o=>o.value===previous)?previous:"default";
+  return inputs;
+}
+
+async function openMicStream(){
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia||!window.MediaRecorder){
+    throw new Error("Bu tarayıcı mikrofon kaydını desteklemiyor.");
+  }
+  let stream;
+  try{
+    stream=await navigator.mediaDevices.getUserMedia(micConstraints(true));
+  }catch(e){
+    const selected=$("mic-select").value;
+    if(selected!=="default"&&(e.name==="OverconstrainedError"||e.name==="NotFoundError")){
+      $("mic-select").value="default";
+      stream=await navigator.mediaDevices.getUserMedia(micConstraints(false));
+    }else{throw e;}
+  }
+  const track=stream.getAudioTracks()[0];
+  if(!track||track.readyState!=="live"){
+    stream.getTracks().forEach(t=>t.stop());
+    throw new Error("Seçilen mikrofon aktif değil.");
+  }
+  const actualId=(track.getSettings&&track.getSettings().deviceId)||"";
+  await refreshMicDevices(actualId);
+  $("mic-device").textContent=`Aktif: ${track.label||$("mic-select").selectedOptions[0]?.textContent||"Mikrofon"}`;
+  return stream;
+}
+
+function stopMeter(){
+  if(micMeterFrame)cancelAnimationFrame(micMeterFrame);
+  if(micSilenceTimer)clearTimeout(micSilenceTimer);
+  micMeterFrame=micSilenceTimer=null;micAnalyser=micSource=null;
+  if(micAudioContext){Promise.resolve(micAudioContext.close()).catch(()=>{});micAudioContext=null;}
+  $("mic-meter-fill").style.width="0%";
+  $("mic-meter").className="mic-meter";
+  $("mic-meter").setAttribute("aria-valuenow","0");
+  $("mic-level").textContent="Ses seviyesi: —";
+}
+
+async function startMeter(stream){
+  stopMeter();recordPeak=0;
+  const AudioContextClass=window.AudioContext||window.webkitAudioContext;
+  if(!AudioContextClass){recordPeak=null;$("mic-level").textContent="Ses ölçümü desteklenmiyor";return;}
+  try{
+    micAudioContext=new AudioContextClass();
+    if(micAudioContext.state==="suspended")await micAudioContext.resume();
+    micAnalyser=micAudioContext.createAnalyser();micAnalyser.fftSize=2048;
+    micSource=micAudioContext.createMediaStreamSource(stream);micSource.connect(micAnalyser);
+  }catch(_){stopMeter();recordPeak=null;$("mic-level").textContent="Ses ölçümü desteklenmiyor";return;}
+  const samples=new Uint8Array(micAnalyser.fftSize);
+  const meter=$("mic-meter"),fill=$("mic-meter-fill");
+  const draw=()=>{
+    if(!micAnalyser)return;
+    micAnalyser.getByteTimeDomainData(samples);
+    let sum=0;
+    for(const sample of samples){const normalized=(sample-128)/128;sum+=normalized*normalized;}
+    const rms=Math.sqrt(sum/samples.length);
+    recordPeak=Math.max(recordPeak||0,rms);
+    const db=rms>0?20*Math.log10(rms):-60;
+    const percent=Math.max(0,Math.min(100,Math.round((db+60)*2)));
+    fill.style.width=`${percent}%`;meter.setAttribute("aria-valuenow",String(percent));
+    meter.className=`mic-meter ${rms>=0.012?"is-loud":rms>=MIC_SIGNAL_THRESHOLD?"is-live":"is-silent"}`;
+    $("mic-level").textContent=rms>=MIC_SIGNAL_THRESHOLD?`Ses geliyor: ${Math.round(db)} dB`:"Ses yok / çok düşük";
+    micMeterFrame=requestAnimationFrame(draw);
+  };
+  draw();
+  micSilenceTimer=setTimeout(()=>{
+    if(recordPeak!==null&&recordPeak<MIC_SIGNAL_THRESHOLD){
+      audStatus().innerHTML='<i class="bi bi-exclamation-triangle" style="color:var(--warn)"></i> Mikrofondan ses gelmiyor. Listeden laptop mikrofonunu seçin veya Windows giriş ayarını kontrol edin.';
+    }
+  },2500);
+}
+
+function stopStream(stream){if(stream)stream.getTracks().forEach(t=>t.stop());}
+
+async function toggleMicTest(){
+  if(micTestActive){stopMicTest(true);return;}
+  await startMicTest();
+}
+
+async function startMicTest(){
+  if(mediaRec&&mediaRec.state==="recording")return;
+  const btn=$("btn-mic-test");btn.disabled=true;
+  try{
+    micTestStream=await openMicStream();micTestActive=true;
+    micTestStream.getAudioTracks()[0].addEventListener("ended",()=>{
+      if(micTestActive){stopMicTest(false);audStatus().textContent="Mikrofon bağlantısı kesildi. Listeden laptop mikrofonunu seçip yeniden test edin.";}
+    });
+    await startMeter(micTestStream);
+    btn.innerHTML='<i class="bi bi-stop-circle"></i> Testi bitir';btn.classList.add("test-on");
+    audStatus().textContent="Mikrofon testi açık — konuşunca seviye çubuğu hareket etmeli.";
+  }catch(e){audStatus().textContent=e.message&&e.message.startsWith("Bu tarayıcı")?e.message:micErrorMessage(e);}
+  finally{btn.disabled=false;}
+}
+
+function stopMicTest(showMessage){
+  micTestActive=false;stopMeter();stopStream(micTestStream);micTestStream=null;
+  const btn=$("btn-mic-test");btn.innerHTML='<i class="bi bi-soundwave"></i> Mikrofonu test et';btn.classList.remove("test-on");
+  if(showMessage)audStatus().textContent="Mikrofon testi kapatıldı.";
+}
+
+function recordingFilename(mime){
+  if((mime||"").includes("mp4"))return "kayit.m4a";
+  if((mime||"").includes("ogg"))return "kayit.ogg";
+  return "kayit.webm";
+}
 
 async function toggleRec(){
   const btn=$("btn-rec");
   if(mediaRec&&mediaRec.state==="recording"){mediaRec.stop();return;}
-  try{recStream=await navigator.mediaDevices.getUserMedia({audio:true});}
-  catch(e){audStatus().textContent="Mikrofon izni gerekli.";return;}
-  recChunks=[];
+  if(micTestActive)stopMicTest(false);
+  btn.disabled=true;$("btn-mic-test").disabled=true;$("mic-select").disabled=true;
+  try{recStream=await openMicStream();}
+  catch(e){
+    audStatus().textContent=e.message&&e.message.startsWith("Bu tarayıcı")?e.message:micErrorMessage(e);
+    btn.disabled=false;$("btn-mic-test").disabled=false;$("mic-select").disabled=false;return;
+  }
+  recChunks=[];recordingDeviceLost=false;
+  await startMeter(recStream);
   mediaRec=new MediaRecorder(recStream);
   mediaRec.ondataavailable=ev=>{if(ev.data.size>0)recChunks.push(ev.data);};
+  recStream.getAudioTracks()[0].addEventListener("ended",()=>{
+    if(mediaRec&&mediaRec.state==="recording"){recordingDeviceLost=true;mediaRec.stop();}
+  });
   mediaRec.onstop=()=>{
-    const blob=new Blob(recChunks,{type:mediaRec.mimeType||"audio/webm"});
-    recStream.getTracks().forEach(t=>t.stop());
+    const mime=mediaRec.mimeType||"audio/webm";
+    const blob=new Blob(recChunks,{type:mime});
+    const peak=recordPeak;
+    stopMeter();stopStream(recStream);recStream=null;
     btn.innerHTML='<i class="bi bi-mic"></i> Kaydet';btn.classList.remove("rec-on");
-    sendAudio(blob,"kayit.webm");
+    btn.disabled=false;$("btn-mic-test").disabled=false;$("mic-select").disabled=false;
+    mediaRec=null;
+    if(recordingDeviceLost){audStatus().textContent="Mikrofon bağlantısı kayıt sırasında kesildi. Mikrofonu yeniden seçip tekrar deneyin.";return;}
+    if(peak!==null&&peak<MIC_SIGNAL_THRESHOLD){audStatus().textContent="Kayıtta ses algılanmadı; boş kayıt API'ye gönderilmedi. Listeden doğru mikrofonu seçip test edin.";return;}
+    if(blob.size<1000){audStatus().textContent="Kayıt çok kısa veya boş; API'ye gönderilmedi.";return;}
+    sendAudio(blob,recordingFilename(mime));
   };
-  mediaRec.start();
+  mediaRec.onerror=()=>{audStatus().textContent="Tarayıcı ses kaydını tamamlayamadı. Tekrar deneyin.";};
+  mediaRec.start(1000);
   btn.innerHTML='<i class="bi bi-stop-circle"></i> Durdur';btn.classList.add("rec-on");
-  audStatus().textContent="Kaydediliyor… bitince Durdur'a basın.";
+  btn.disabled=false;
+  audStatus().textContent="Kaydediliyor… konuşurken seviye çubuğunun hareket ettiğini kontrol edin.";
+}
+
+async function handleDeviceChange(){
+  try{
+    const selected=$("mic-select").value;
+    const inputs=await refreshMicDevices();
+    if(selected!=="default"&&!inputs.some(d=>d.deviceId===selected)){
+      audStatus().textContent="Seçili mikrofon çıkarıldı. Varsayılan/laptop mikrofonuna geçildi; kayıttan önce test edin.";
+    }
+  }catch(_){audStatus().textContent="Mikrofon listesi yenilenemedi; sayfayı yenileyip tekrar test edin.";}
+}
+
+if(navigator.mediaDevices){
+  refreshMicDevices().catch(()=>{});
+  if(navigator.mediaDevices.addEventListener)navigator.mediaDevices.addEventListener("devicechange",handleDeviceChange);
+}else{
+  $("btn-rec").disabled=true;$("btn-mic-test").disabled=true;$("mic-select").disabled=true;
+  audStatus().textContent="Bu tarayıcı mikrofon erişimini desteklemiyor.";
 }
 
 async function sendAudio(fileOrBlob,name){
