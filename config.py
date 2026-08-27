@@ -10,6 +10,7 @@ GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 OPENAI_STT_MODEL = os.getenv("OPENAI_STT_MODEL", "gpt-4o-transcribe-diarize")
+OPENAI_STT_FALLBACK_MODEL = os.getenv("OPENAI_STT_FALLBACK_MODEL", "gpt-transcribe")
 OPENAI_STT_LANGUAGE = os.getenv("OPENAI_STT_LANGUAGE", "tr")
 OPENAI_STT_TIMEOUT = float(os.getenv("OPENAI_STT_TIMEOUT", "60"))
 

@@ -36,7 +36,7 @@ db.init()
 print(
     f"[klinik-analiz] analiz={config.GEMINI_MODEL} "
     f"({'anahtar var' if config.GEMINI_API_KEY else 'ANAHTAR YOK'}) | "
-    f"stt={config.OPENAI_STT_MODEL} "
+    f"stt={config.OPENAI_STT_MODEL} fallback={config.OPENAI_STT_FALLBACK_MODEL} "
     f"({'anahtar var' if config.OPENAI_API_KEY else 'ANAHTAR YOK'}) | admin=/admin/login"
 )
 
@@ -135,10 +135,16 @@ async def transcribe(file: UploadFile = File(...)):
     try:
         text, usage = await asyncio.to_thread(stt.transcribe, data, mime, ad)
         logger.info(
-            "Ses işlendi: provider=%s model=%s role_method=%s role_confidence=%s "
-            "source_mime=%s processed_mime=%s bytes=%s",
+            "Ses işlendi: provider=%s model=%s transcript_source=%s segment_count=%s "
+            "combined_text_chars=%s fallback_used=%s fallback_text_chars=%s "
+            "role_method=%s role_confidence=%s source_mime=%s processed_mime=%s bytes=%s",
             usage.get("provider"),
             usage.get("model"),
+            usage.get("transcript_source"),
+            usage.get("segment_count"),
+            usage.get("combined_text_chars"),
+            usage.get("fallback_used"),
+            (usage.get("fallback_usage") or {}).get("response_text_chars"),
             usage.get("role_method"),
             (usage.get("role_usage") or {}).get("confidence"),
             usage.get("source_mime"),
@@ -242,6 +248,7 @@ async def health():
         "status": "ok",
         "model": config.GEMINI_MODEL,
         "stt_model": config.OPENAI_STT_MODEL,
+        "stt_fallback_model": config.OPENAI_STT_FALLBACK_MODEL,
         "role_model": config.GEMINI_MODEL,
         "stt_api_configured": bool(config.OPENAI_API_KEY),
         "audio_converter": False,

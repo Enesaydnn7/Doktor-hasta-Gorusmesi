@@ -4,6 +4,7 @@ IN_TEXT = 0.30    # metin/görsel/video giriş
 OUT = 2.50        # çıkış (düşünme jetonları dahil)
 OPENAI_STT_IN_AUDIO = 2.50
 OPENAI_STT_OUT = 10.00
+OPENAI_GPT_TRANSCRIBE_PER_MINUTE = 0.0045
 
 _M = 1_000_000
 
@@ -14,3 +15,7 @@ def text_cost(inp: int, out: int) -> float:
 
 def openai_stt_cost(inp: int, out: int) -> float:
     return (inp / _M) * OPENAI_STT_IN_AUDIO + (out / _M) * OPENAI_STT_OUT
+
+
+def openai_gpt_transcribe_cost(seconds: float) -> float:
+    return (seconds / 60) * OPENAI_GPT_TRANSCRIBE_PER_MINUTE

@@ -54,6 +54,7 @@ def public_error_message(exc: BaseException) -> str:
     safe_audio_errors = (
         "ses verisi boş", "ses dosyası çok büyük", "ses dosyası okunamadı",
         "ses dönüşümü", "ses biçimini", "desteklenmeyen ses biçimi", "ses metne dökülemedi",
+        "farklı openai ses modeli",
     )
     if isinstance(exc, ValueError) and any(marker in message for marker in safe_audio_errors):
         return str(exc)

@@ -143,4 +143,7 @@ def istatistik():
                 role = p.get("role_usage") or {}
                 tok += int(role.get("total") or 0)
                 cost += float(role.get("cost_usd") or 0)
+                fallback = p.get("fallback_usage") or {}
+                tok += int(fallback.get("total") or 0)
+                cost += float(fallback.get("cost_usd") or 0)
     return {"kayit": len(rows), "token": tok, "cost_usd": round(cost, 6)}

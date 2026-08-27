@@ -159,6 +159,89 @@ class OpenAiTranscriptionTests(unittest.TestCase):
         speaker_classify.assert_not_called()
 
     @patch("openai.OpenAI")
+    def test_combined_text_is_used_when_diarized_segments_are_empty(self, client_class):
+        raw_text = "Doktor merhaba dedi. Hasta karnım ağrıyor dedi."
+        response = SimpleNamespace(
+            duration=6.0,
+            text=raw_text,
+            segments=[],
+            usage=SimpleNamespace(type="duration", seconds=6.0),
+        )
+        turns = [
+            ("Doktor", "Doktor merhaba dedi."),
+            ("Hasta", "Hasta karnım ağrıyor dedi."),
+        ]
+        client = MagicMock()
+        client.audio.transcriptions.create.return_value = response
+        client_class.return_value = client
+
+        with (
+            patch.object(config, "OPENAI_API_KEY", "test-key"),
+            patch.object(
+                stt.role_classifier, "classify_turns", return_value=(turns, None)
+            ) as classify,
+        ):
+            text, usage = stt._openai_transcribe(b"audio", "audio/webm", "gorusme.webm")
+
+        self.assertEqual(
+            text, "Doktor: Doktor merhaba dedi.\nHasta: Hasta karnım ağrıyor dedi."
+        )
+        self.assertEqual(usage["transcript_source"], "combined_text")
+        self.assertFalse(usage["fallback_used"])
+        self.assertEqual(client.audio.transcriptions.create.call_count, 1)
+        classify.assert_called_once_with(raw_text)
+
+    @patch("openai.OpenAI")
+    def test_empty_primary_response_uses_api_fallback_model(self, client_class):
+        primary = SimpleNamespace(
+            duration=9.0,
+            text="",
+            segments=[],
+            usage=SimpleNamespace(type="duration", seconds=9.0),
+        )
+        fallback_text = "Merhaba. Hoş bulduk. Şikayetiniz nedir? Karnım ağrıyor."
+        fallback = SimpleNamespace(
+            duration=9.0,
+            text=fallback_text,
+            usage=SimpleNamespace(type="duration", seconds=9.0),
+        )
+        turns = [
+            ("Doktor", "Merhaba."),
+            ("Hasta", "Hoş bulduk."),
+            ("Doktor", "Şikayetiniz nedir?"),
+            ("Hasta", "Karnım ağrıyor."),
+        ]
+        client = MagicMock()
+        client.audio.transcriptions.create.side_effect = [primary, fallback]
+        client_class.return_value = client
+
+        with (
+            patch.object(config, "OPENAI_API_KEY", "test-key"),
+            patch.object(config, "OPENAI_STT_FALLBACK_MODEL", "gpt-transcribe"),
+            patch.object(
+                stt.role_classifier, "classify_turns", return_value=(turns, None)
+            ) as classify,
+        ):
+            text, usage = stt._openai_transcribe(b"audio", "audio/webm", "gorusme.webm")
+
+        self.assertEqual(
+            text,
+            "Doktor: Merhaba.\nHasta: Hoş bulduk.\n"
+            "Doktor: Şikayetiniz nedir?\nHasta: Karnım ağrıyor.",
+        )
+        self.assertTrue(usage["fallback_used"])
+        self.assertEqual(usage["transcript_source"], "fallback_text")
+        self.assertEqual(usage["fallback_usage"]["model"], "gpt-transcribe")
+        self.assertEqual(usage["fallback_usage"]["cost_usd"], 0.000675)
+        calls = client.audio.transcriptions.create.call_args_list
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(calls[0].kwargs["response_format"], "diarized_json")
+        self.assertEqual(calls[1].kwargs["model"], "gpt-transcribe")
+        self.assertEqual(calls[1].kwargs["response_format"], "json")
+        self.assertNotIn("prompt", calls[1].kwargs)
+        classify.assert_called_once_with(fallback_text)
+
+    @patch("openai.OpenAI")
     def test_one_voice_role_failure_still_uses_doctor_patient_labels(self, client_class):
         response = SimpleNamespace(
             duration=4.0,
@@ -237,7 +320,7 @@ class OpenAiTranscriptionTests(unittest.TestCase):
     def test_empty_diarized_response_is_rejected(self):
         usage = {"input": 0, "output": 0, "total": 0, "cost_usd": None}
         with patch.object(stt, "_openai_transcribe", return_value=("", usage)):
-            with self.assertRaisesRegex(ValueError, "Ses metne dökülemedi"):
+            with self.assertRaisesRegex(ValueError, "İki farklı OpenAI"):
                 stt.transcribe(b"audio", "audio/webm", "kayit.webm")
 
 

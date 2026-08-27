@@ -129,7 +129,7 @@ def _fallback_single_speaker(transcript: str) -> str:
     return _format_turns(turns)
 
 
-def _read_usage(response: Any) -> dict[str, Any]:
+def _read_usage(response: Any, *, duration_priced: bool = False) -> dict[str, Any]:
     api_usage = _field(response, "usage")
     usage_type = str(_field(api_usage, "type", "") or "")
 
@@ -148,6 +148,8 @@ def _read_usage(response: Any) -> dict[str, Any]:
     duration = _field(response, "duration", None)
     if duration is None and usage_type == "duration":
         duration = _field(api_usage, "seconds", None)
+    if duration_priced and duration is not None:
+        cost_usd = round(pricing.openai_gpt_transcribe_cost(float(duration)), 6)
 
     return {
         "input": input_tokens,
@@ -158,8 +160,21 @@ def _read_usage(response: Any) -> dict[str, Any]:
     }
 
 
+def _format_semantic_turns(raw_text: str, usage: dict[str, Any]) -> str:
+    """Birleşik transkripti sözcükleri değiştirmeden Doktor/Hasta repliklerine ayır."""
+    turns: list[tuple[str, str]] = []
+    role_usage = None
+    try:
+        turns, role_usage = role_classifier.classify_turns(raw_text)
+    except Exception:
+        logger.exception("Doktor/hasta replik ayrımı başarısız; sıralı fallback kullanılacak")
+    usage["role_usage"] = role_usage
+    usage["role_method"] = "semantic_turns" if turns else "alternating_turns"
+    return _format_turns(turns) if turns else _fallback_single_speaker(raw_text)
+
+
 def _openai_transcribe(data: bytes, mime: str, filename: str) -> tuple[str, dict[str, Any]]:
-    """OpenAI diarization yanıtını kelimelere dokunmadan döndür."""
+    """OpenAI yanıtını kelimelere dokunmadan, boş yanıtta API fallback'iyle döndür."""
     if not config.OPENAI_API_KEY:
         raise RuntimeError("OPENAI_API_KEY ayarlı değil.")
 
@@ -170,6 +185,8 @@ def _openai_transcribe(data: bytes, mime: str, filename: str) -> tuple[str, dict
         timeout=config.OPENAI_STT_TIMEOUT,
         max_retries=2,
     )
+    fallback_response = None
+    fallback_seconds = None
     try:
         response = client.audio.transcriptions.create(
             model=config.OPENAI_STT_MODEL,
@@ -178,11 +195,54 @@ def _openai_transcribe(data: bytes, mime: str, filename: str) -> tuple[str, dict
             response_format="diarized_json",
             chunking_strategy="auto",
         )
+
+        segments = [
+            segment
+            for segment in list(_field(response, "segments", []) or [])
+            if str(_field(segment, "text", "") or "").strip()
+        ]
+        combined_text = str(_field(response, "text", "") or "").strip()
+
+        # Diarization başarılı ama hem segment hem birleşik metin boşsa daha güçlü,
+        # konuşmacı ayrımı yapmayan STT modelini yalnızca bir kez yedek olarak çağır.
+        if not segments and not combined_text:
+            fallback_started = time.monotonic()
+            fallback_response = client.audio.transcriptions.create(
+                model=config.OPENAI_STT_FALLBACK_MODEL,
+                file=(filename, data, mime),
+                language=config.OPENAI_STT_LANGUAGE,
+                response_format="json",
+            )
+            fallback_seconds = round(time.monotonic() - fallback_started, 1)
     finally:
         client.close()
 
-    segments = list(_field(response, "segments", []) or [])
     usage = _read_usage(response)
+    usage["segment_count"] = len(segments)
+    usage["combined_text_chars"] = len(combined_text)
+    usage["fallback_used"] = fallback_response is not None
+    usage["transcript_source"] = "diarized_segments" if segments else "combined_text"
+
+    if fallback_response is not None:
+        fallback_text = str(_field(fallback_response, "text", "") or "").strip()
+        fallback_usage = _read_usage(fallback_response, duration_priced=True)
+        fallback_usage.update({
+            "provider": "OpenAI",
+            "model": config.OPENAI_STT_FALLBACK_MODEL,
+            "seconds": fallback_seconds,
+            "response_text_chars": len(fallback_text),
+        })
+        usage["fallback_usage"] = fallback_usage
+        usage["transcript_source"] = "fallback_text"
+        if not fallback_text:
+            usage["role_usage"] = None
+            usage["role_method"] = "not_available"
+            return "", usage
+        return _format_semantic_turns(fallback_text, usage), usage
+
+    if not segments:
+        return _format_semantic_turns(combined_text, usage), usage
+
     role_labels: dict[str, str] = {}
     role_usage = None
     speakers = {
@@ -190,20 +250,13 @@ def _openai_transcribe(data: bytes, mime: str, filename: str) -> tuple[str, dict
         for segment in segments
         if str(_field(segment, "speaker", "") or "").strip()
     }
-    if len(speakers) == 1:
+    if len(speakers) <= 1:
         raw_text = " ".join(
             str(_field(segment, "text", "") or "").strip()
             for segment in segments
             if str(_field(segment, "text", "") or "").strip()
         )
-        turns: list[tuple[str, str]] = []
-        try:
-            turns, role_usage = role_classifier.classify_turns(raw_text)
-        except Exception:
-            logger.exception("Tek sesli doktor/hasta replik ayrımı başarısız; sıralı fallback kullanılacak")
-        usage["role_usage"] = role_usage
-        usage["role_method"] = "semantic_turns" if turns else "alternating_turns"
-        return _format_turns(turns) if turns else _fallback_single_speaker(raw_text), usage
+        return _format_semantic_turns(raw_text, usage), usage
 
     try:
         role_labels, role_usage = role_classifier.classify_speakers(segments)
@@ -229,7 +282,10 @@ def transcribe(data: bytes, mime: str = "audio/mpeg", filename: str = ""):
     usage["seconds"] = round(time.monotonic() - started, 1)
 
     if not text:
-        raise ValueError("Ses metne dökülemedi (boş yanıt). Kaydı ve konuşma dilini kontrol edin.")
+        raise ValueError(
+            "İki farklı OpenAI ses modeli de kayıtta çevrilebilir konuşma bulamadı. "
+            "Kaydın gerçekten ses içerdiğini kontrol edip yeniden deneyin."
+        )
 
     usage["provider"] = "OpenAI"
     usage["model"] = config.OPENAI_STT_MODEL
