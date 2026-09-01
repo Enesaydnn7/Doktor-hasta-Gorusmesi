@@ -10,6 +10,7 @@ Admin paneli     : http://127.0.0.1:8000/admin   (kullanıcı: admin / şifre: a
 import asyncio
 import logging
 import uuid
+from urllib.parse import quote
 
 from fastapi import FastAPI, Request, UploadFile, File, Depends, HTTPException, status, Form
 from fastapi.responses import HTMLResponse, JSONResponse, Response, RedirectResponse
@@ -204,7 +205,7 @@ async def admin(request: Request):
     return templates.TemplateResponse(
         request, "admin.html",
         {"kayitlar": db.liste(), "stat": db.istatistik(), "user": auth.ADMIN_USER,
-         "provider": config.label()},
+         "provider": config.label(), "version": config.APP_VERSION},
     )
 
 
@@ -217,15 +218,62 @@ async def admin_kayit(kid: int, request: Request):
     return k
 
 
-@app.get("/admin/ses/{kid}")
+def _byte_range(value: str | None, size: int) -> tuple[int, int] | None:
+    """Validate a single HTTP byte range and return inclusive bounds."""
+    if not value:
+        return None
+    if size <= 0 or not value.startswith("bytes=") or "," in value:
+        raise ValueError("invalid range")
+    spec = value[6:].strip()
+    if "-" not in spec:
+        raise ValueError("invalid range")
+    start_text, end_text = spec.split("-", 1)
+    if not start_text:
+        suffix = int(end_text)
+        if suffix <= 0:
+            raise ValueError("invalid range")
+        return max(size - suffix, 0), size - 1
+    start = int(start_text)
+    end = int(end_text) if end_text else size - 1
+    if start < 0 or start >= size or end < start:
+        raise ValueError("invalid range")
+    return start, min(end, size - 1)
+
+
+@app.api_route("/admin/ses/{kid}", methods=["GET", "HEAD"])
 async def admin_ses(kid: int, request: Request):
     admin_auth(request)
     got = db.ses_getir(kid)
     if not got:
         return JSONResponse({"error": "Bu kayıtta ses yok."}, status_code=404)
     data, mime, ad = got
-    return Response(content=data, media_type=mime,
-                    headers={"Content-Disposition": f'inline; filename="{ad}"'})
+    size = len(data)
+    suffix = ad.rsplit(".", 1)[-1] if "." in ad else ""
+    extension = "." + suffix if suffix.isascii() and suffix.isalnum() else ""
+    headers = {
+        "Accept-Ranges": "bytes",
+        "Content-Disposition": (
+            f'inline; filename="kayit{extension}"; filename*=UTF-8\'\'{quote(ad)}'
+        ),
+    }
+    if request.method == "HEAD":
+        headers["Content-Length"] = str(size)
+        return Response(status_code=200, media_type=mime, headers=headers)
+    try:
+        bounds = _byte_range(request.headers.get("range"), size)
+    except (TypeError, ValueError):
+        headers["Content-Range"] = f"bytes */{size}"
+        return Response(status_code=416, headers=headers)
+    if bounds is None:
+        headers["Content-Length"] = str(size)
+        return Response(content=data, media_type=mime, headers=headers)
+    start, end = bounds
+    chunk = data[start:end + 1]
+    headers.update({
+        "Content-Range": f"bytes {start}-{end}/{size}",
+        "Content-Length": str(len(chunk)),
+    })
+    return Response(content=chunk, status_code=206, media_type=mime, headers=headers)
 
 
 @app.post("/admin/pdf/{kid}/{rec}")

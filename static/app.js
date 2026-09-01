@@ -31,6 +31,8 @@ const esc = (s) => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<":
 const MISS = "belirtilmedi";
 const isMiss = (v) => !v || String(v).trim().toLowerCase() === MISS;
 const val = (v) => isMiss(v) ? `<span class="val-missing">belirtilmedi</span>` : esc(v);
+let lastTranscribeUsage = null;
+let lastAudioId = null;
 
 $("btn-example").addEventListener("click", () => { $("transcript").value = EXAMPLE; lastTranscribeUsage = null; lastAudioId = null; });
 $("btn-analyze").addEventListener("click", analyze);
@@ -265,14 +267,19 @@ async function downloadPdf(btn) {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ rec, data })
     });
-    if (!res.ok) throw new Error("PDF hatası");
+    if (!res.ok) {
+      let message = "PDF hatası";
+      try { message = (await res.json()).error || message; } catch (_) {}
+      throw new Error(message);
+    }
     const blob = await res.blob();
+    if (!blob.size || !String(blob.type).startsWith("application/pdf")) throw new Error("Sunucu geçerli bir PDF döndürmedi.");
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
     a.download = ({ hasta: "hasta_ozeti", doktor: "epikriz", yonetim: "yonetim_raporu" }[rec]) + ".pdf";
     document.body.appendChild(a); a.click(); a.remove();
-    URL.revokeObjectURL(url);
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   } catch (e) {
     alert("PDF indirilemedi: " + e.message);
   } finally {

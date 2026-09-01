@@ -17,8 +17,12 @@ MAX_AGE = int(os.getenv("SESSION_HOURS", "12")) * 3600
 ADMIN_USER = os.getenv("ADMIN_USER", "admin")
 ADMIN_PASS = os.getenv("ADMIN_PASS", "admin")
 
-# Sunucu her yeniden başladığında değişir (o zaman herkes yeniden giriş yapar).
-SECRET = os.getenv("SESSION_SECRET", secrets.token_hex(32)).encode()
+# Render yeniden başlasa da aynı yönetici bilgileri aynı imza anahtarını üretir.
+_configured_secret = os.getenv("SESSION_SECRET", "").strip()
+_fallback_secret = hashlib.sha256(
+    f"klinik-admin-session\0{ADMIN_USER}\0{ADMIN_PASS}".encode()
+).hexdigest()
+SECRET = (_configured_secret or _fallback_secret).encode()
 
 
 def _sign(msg: str) -> str:

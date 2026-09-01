@@ -9,6 +9,7 @@ Türkçe karakterler için DejaVu Sans gömülür.
 """
 import io
 from datetime import datetime
+from html import escape
 
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
@@ -73,7 +74,7 @@ MISS = "belirtilmedi"
 
 def _p(v):
     v = "" if v is None else str(v).strip()
-    return Paragraph(v if v else MISS, S_TXT)
+    return Paragraph(escape(v, quote=False) if v else MISS, S_TXT)
 
 
 def _kv_table(rows):
@@ -94,7 +95,10 @@ def _bullets(items, empty):
     items = [i for i in (items or []) if str(i).strip()]
     if not items:
         return _p(empty)
-    return Paragraph("<br/>".join("•&nbsp; " + str(i) for i in items), S_TXT)
+    return Paragraph(
+        "<br/>".join("•&nbsp; " + escape(str(i), quote=False) for i in items),
+        S_TXT,
+    )
 
 
 def _header(story, title, tarih=None):
@@ -102,7 +106,7 @@ def _header(story, title, tarih=None):
     story.append(Paragraph("Klinik Görüşme Analiz Paneli · otomatik oluşturulmuş rapor", S_SUB))
     story.append(HRFlowable(width="100%", thickness=1.1, color=INK, spaceAfter=8))
     if tarih:
-        story.append(Paragraph(f"Rapor tarihi: {tarih}", ParagraphStyle(
+        story.append(Paragraph(f"Rapor tarihi: {escape(str(tarih), quote=False)}", ParagraphStyle(
             "d", parent=S_TXT, textColor=MUTED, fontSize=8.5, spaceAfter=6)))
 
 
@@ -237,13 +241,17 @@ def _yonetim(story, d):
     story.append(t)
     if d.get("verimlilikNotu"):
         story.append(Spacer(1, 4))
-        story.append(Paragraph(f"<b>Verimlilik notu:</b> {d['verimlilikNotu']}", S_TXT))
+        story.append(Paragraph(
+            f"<b>Verimlilik notu:</b> {escape(str(d['verimlilikNotu']), quote=False)}",
+            S_TXT,
+        ))
 
     story.append(Paragraph("GENEL DEĞERLENDİRME", S_H))
     story.append(_p(d.get("degerlendirme")))
 
     story.append(Paragraph("RİSK BAYRAĞI", S_H))
-    story.append(Paragraph(f"<b>{(d.get('risk') or 'yok').upper()}</b>", S_TXT))
+    risk = escape(str(d.get("risk") or "yok").upper(), quote=False)
+    story.append(Paragraph(f"<b>{risk}</b>", S_TXT))
 
 
 _BUILDERS = {"doktor": _doktor, "hasta": _hasta, "yonetim": _yonetim}

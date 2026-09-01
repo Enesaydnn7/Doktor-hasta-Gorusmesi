@@ -1,5 +1,14 @@
 # Sürüm Geçmişi
 
+## v1.7.3 — 1 Eylül 2026
+
+- Ses analizinden sonra kullanılan geçici ses kimliği ve STT kullanım durumu tarayıcıda açıkça tanımlandı; `lastAudioId is not defined` hatası giderildi.
+- Admin oturumu Render yeniden başlatmaları arasında kararlı hale getirildi; PDF isteğinin yeniden başlatma sonrasında yetkisiz kalması önlendi.
+- Hasta, doktor ve yönetim PDF'leri özel karakterli rapor metinleriyle güvenli üretiliyor; indirme hataları artık gerçek sunucu mesajını gösteriyor.
+- Admin ses kaydına HTTP Range/206 desteği eklendi; tarayıcı süreyi ve oynatma imlecini doğru hesaplayıp ileri-geri sarabiliyor.
+- Statik JavaScript dosyaları sürüm parametresiyle çağrılarak eski tarayıcı önbelleğinin hatalı kodu çalıştırması engellendi.
+- Korunan gastrit demo kaydı ve analiz promptları değiştirilmedi.
+
 ## v1.7.2 — 27 Ağustos 2026
 
 - Private repoda korunan yönetici demo kaydı yeni/geçici SQLite veritabanına uygulama açılışında otomatik ekleniyor.

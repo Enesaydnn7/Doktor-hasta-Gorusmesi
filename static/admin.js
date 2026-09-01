@@ -84,7 +84,7 @@ function drawDetail(id, sekme) {
 
   const audio = k.ses_var ? `<div class="det-audio">
       <span class="da-lbl"><i class="bi bi-volume-up"></i> Görüşme ses kaydı</span>
-      <audio controls preload="none" src="/admin/ses/${k.id}"></audio>
+      <audio controls preload="metadata" src="/admin/ses/${k.id}"></audio>
     </div>` : "";
 
   const tabs = [["doktor", "Doktor epikrizi", "file-medical"], ["hasta", "Hasta özeti", "person-heart"],
@@ -100,9 +100,25 @@ function drawDetail(id, sekme) {
      </div>` : ""}
     <div class="det-body">${bodyHTML(k, sekme)}</div>`;
 
+  const audioEl = det.querySelector("audio");
+  if (audioEl) prepareAudioTimeline(audioEl);
   det.querySelectorAll(".det-tab").forEach(b => b.onclick = () => drawDetail(b.dataset.rid, b.dataset.tab));
   const pdfBtn = det.querySelector("[data-pdf]");
   if (pdfBtn) pdfBtn.onclick = () => indirPdf(pdfBtn);
+}
+
+function prepareAudioTimeline(audio) {
+  const repairDuration = () => {
+    if (audio.duration !== Infinity) return;
+    const resetToStart = () => {
+      audio.currentTime = 0;
+    };
+    audio.addEventListener("timeupdate", resetToStart, { once: true });
+    audio.currentTime = Number.MAX_SAFE_INTEGER;
+  };
+  if (audio.readyState >= 1) repairDuration();
+  else audio.addEventListener("loadedmetadata", repairDuration, { once: true });
+  audio.load();
 }
 
 function bodyHTML(k, sekme) {
@@ -118,14 +134,20 @@ async function indirPdf(btn) {
   btn.disabled = true; btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Hazırlanıyor…';
   try {
     const res = await fetch(`/admin/pdf/${id}/${rec}`, { method: "POST" });
-    if (!res.ok) throw new Error("PDF hatası");
+    if (res.status === 401) throw new Error("Yönetici oturumu sona erdi. Tekrar giriş yapın.");
+    if (!res.ok) {
+      let message = "PDF hatası";
+      try { message = (await res.json()).error || message; } catch (_) {}
+      throw new Error(message);
+    }
     const blob = await res.blob();
+    if (!blob.size || !String(blob.type).startsWith("application/pdf")) throw new Error("Sunucu geçerli bir PDF döndürmedi.");
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
     a.download = ({ hasta: "hasta_ozeti", doktor: "epikriz", yonetim: "yonetim_raporu" }[rec]) + `_${id}.pdf`;
     document.body.appendChild(a); a.click(); a.remove();
-    URL.revokeObjectURL(url);
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   } catch (e) { alert("PDF indirilemedi: " + e.message); }
   finally { btn.disabled = false; btn.innerHTML = orig; }
 }
