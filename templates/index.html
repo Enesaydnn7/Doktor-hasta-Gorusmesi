@@ -69,12 +69,18 @@
     </section>
 
     <section id="loading" class="loading hidden">
-      <div class="spinner"></div>
-      <div class="loading-text">Üç rapor hazırlanıyor…</div>
+      <div class="loading-progress-head">
+        <div id="analysis-progress-text" class="loading-text">Analiz başlatılıyor…</div>
+        <strong id="analysis-progress-percent">0%</strong>
+      </div>
+      <div id="analysis-progress" class="analysis-progress" role="progressbar"
+           aria-label="Analiz ilerlemesi" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+        <span id="analysis-progress-fill"></span>
+      </div>
       <div class="loading-steps">
-        <span><i class="bi bi-person"></i> Hasta özeti</span>
-        <span><i class="bi bi-file-medical"></i> Detaylı epikriz</span>
-        <span><i class="bi bi-shield-check"></i> Yönetim raporu</span>
+        <span data-analysis-step="hasta"><i class="bi bi-person"></i> Hasta özeti</span>
+        <span data-analysis-step="doktor"><i class="bi bi-file-medical"></i> Detaylı epikriz</span>
+        <span data-analysis-step="yonetim"><i class="bi bi-shield-check"></i> Yönetim raporu</span>
       </div>
     </section>
 

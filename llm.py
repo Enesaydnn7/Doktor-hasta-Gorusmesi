@@ -72,14 +72,31 @@ def _user_message(transcript: str) -> str:
             f"GÖRÜŞME METNİ:\n{transcript}")
 
 
-async def analyze_all(transcript: str) -> dict:
+async def _progress(callback, step: str, status: str, completed: int):
+    if callback:
+        await callback({
+            "step": step,
+            "status": status,
+            "completed": completed,
+            "total": 3,
+            "percent": round(completed * 100 / 3),
+        })
+
+
+async def analyze_all(transcript: str, progress=None) -> dict:
     user = _user_message(transcript)
     t0 = time.time()
+    await _progress(progress, "hasta", "running", 0)
     hasta, uh = await asyncio.to_thread(_gemini, prompts.SYSTEM_HASTA, user)
+    await _progress(progress, "hasta", "completed", 1)
     await asyncio.sleep(1)
+    await _progress(progress, "doktor", "running", 1)
     doktor, ud = await asyncio.to_thread(_gemini, prompts.SYSTEM_DOKTOR, user)
+    await _progress(progress, "doktor", "completed", 2)
     await asyncio.sleep(1)
+    await _progress(progress, "yonetim", "running", 2)
     yonetim, uy = await asyncio.to_thread(_gemini, prompts.SYSTEM_YONETIM, user)
+    await _progress(progress, "yonetim", "completed", 3)
     secs = round(time.time() - t0, 1)
     inp = uh["input"] + ud["input"] + uy["input"]
     out = uh["output"] + ud["output"] + uy["output"]

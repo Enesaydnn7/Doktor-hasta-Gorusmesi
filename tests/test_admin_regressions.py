@@ -34,6 +34,11 @@ class BrowserStateRegressionTests(unittest.TestCase):
         self.assertIn("audio.duration !== Infinity", js)
         self.assertIn("audio.currentTime = Number.MAX_SAFE_INTEGER", js)
 
+    def test_legacy_pdf_names_are_normalized_in_browser(self):
+        js = (ROOT / "static" / "admin.js").read_text(encoding="utf-8")
+        self.assertIn('epikriz: "doktor"', js)
+        self.assertIn('aliases[rawRec] || "doktor"', js)
+
     def test_session_fallback_secret_is_stable(self):
         expected = hashlib.sha256(
             f"klinik-admin-session\0{auth.ADMIN_USER}\0{auth.ADMIN_PASS}".encode()
@@ -131,6 +136,20 @@ class AdminMediaEndpointTests(unittest.TestCase):
                 self.assertTrue(
                     response.headers["content-type"].startswith("application/pdf")
                 )
+
+    def test_saved_demo_forces_legacy_or_unknown_epikriz_name_to_doctor_pdf(self):
+        demo = next(
+            record
+            for record in main.db.liste()
+            if record["ses_ad"] == "gastrit_demo_kayit_2_2026-08-27.webm"
+        )
+        for legacy_name in ("epikriz", "doktor_epikrizi", "undefined"):
+            with self.subTest(legacy_name=legacy_name):
+                response = self.client.post(
+                    f"/admin/pdf/{demo['id']}/{legacy_name}"
+                )
+                self.assertEqual(response.status_code, 200)
+                self.assertTrue(response.content.startswith(b"%PDF-"))
 
 
 if __name__ == "__main__":
