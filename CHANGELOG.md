@@ -1,5 +1,12 @@
 # Sürüm Geçmişi
 
+## v1.8.0 — 2 Eylül 2026
+
+- Eski veya tarayıcı önbelleğinde kalmış epikriz rapor adı güvenli biçimde `doktor` raporuna çevriliyor; eski kayıt PDF isteği artık “Geçersiz rapor tipi” hatasıyla durmuyor.
+- Analiz ekranına yüzde ve aşama göstergeli ilerleme çubuğu eklendi.
+- İlerleme yüzdesi zaman tahminiyle değil; hasta özeti, detaylı epikriz ve yönetim raporu Gemini çağrılarının gerçekten başlaması/tamamlanmasıyla `0 → 33 → 67 → 100` olarak güncelleniyor.
+- Eski `/analyze` API davranışı, mevcut kayıtlar, ses kaydı ve analiz promptları değiştirilmedi.
+
 ## v1.7.3 — 1 Eylül 2026
 
 - Ses analizinden sonra kullanılan geçici ses kimliği ve STT kullanım durumu tarayıcıda açıkça tanımlandı; `lastAudioId is not defined` hatası giderildi.

@@ -129,7 +129,13 @@ function bodyHTML(k, sekme) {
 }
 
 async function indirPdf(btn) {
-  const rec = btn.dataset.pdf, id = btn.dataset.rid;
+  const aliases = {
+    hasta: "hasta", hasta_ozeti: "hasta",
+    doktor: "doktor", doctor: "doktor", epikriz: "doktor", doktor_epikrizi: "doktor",
+    yonetim: "yonetim", yonetim_raporu: "yonetim"
+  };
+  const rawRec = String(btn.dataset.pdf || "").trim().toLowerCase().replace(/[ -]+/g, "_");
+  const rec = aliases[rawRec] || "doktor", id = btn.dataset.rid;
   const orig = btn.innerHTML;
   btn.disabled = true; btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Hazırlanıyor…';
   try {

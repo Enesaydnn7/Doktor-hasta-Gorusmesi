@@ -44,20 +44,82 @@ function showTab(name) {
   ["hasta", "doktor", "yonetim"].forEach(n => $("panel-" + n).classList.toggle("hidden", n !== name));
 }
 
+const ANALYSIS_STEP_LABELS = {
+  hasta: "Hasta özeti",
+  doktor: "Detaylı epikriz",
+  yonetim: "Yönetim raporu"
+};
+
+function updateAnalysisProgress(event = {}) {
+  const completed = Math.max(0, Math.min(3, Number(event.completed || 0)));
+  const percent = Math.max(0, Math.min(100, Number(event.percent || 0)));
+  $("analysis-progress-fill").style.width = percent + "%";
+  $("analysis-progress-percent").textContent = Math.round(percent) + "%";
+  $("analysis-progress").setAttribute("aria-valuenow", String(Math.round(percent)));
+  document.querySelectorAll("[data-analysis-step]").forEach((step, index) => {
+    step.classList.toggle("done", index < completed);
+    step.classList.toggle("active", step.dataset.analysisStep === event.step && event.status === "running");
+  });
+  if (!event.step) {
+    $("analysis-progress-text").textContent = "Analiz başlatılıyor…";
+  } else if (percent === 100) {
+    $("analysis-progress-text").textContent = "Üç rapor tamamlandı.";
+  } else {
+    const label = ANALYSIS_STEP_LABELS[event.step] || "Rapor";
+    $("analysis-progress-text").textContent = event.status === "completed"
+      ? label + " tamamlandı."
+      : label + " hazırlanıyor…";
+  }
+}
+
+async function analyzeWithProgress(payload) {
+  const res = await fetch("/analyze/stream", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+  if (!res.ok) {
+    const error = await readApiResponse(res);
+    throw new Error(formatApiError(error));
+  }
+  if (!res.body) throw new Error("Canlı analiz ilerlemesi başlatılamadı.");
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "", result = null;
+
+  const handleLine = (line) => {
+    if (!line.trim()) return;
+    const event = JSON.parse(line);
+    if (event.type === "progress") updateAnalysisProgress(event);
+    else if (event.type === "error") throw new Error(formatApiError(event));
+    else if (event.type === "result") result = event.data;
+  };
+
+  while (true) {
+    const { value, done } = await reader.read();
+    buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() || "";
+    lines.forEach(handleLine);
+    if (done) break;
+  }
+  handleLine(buffer);
+  if (!result) throw new Error("Analiz sonucu alınamadı.");
+  return result;
+}
+
 async function analyze() {
   const transcript = $("transcript").value.trim();
   $("error").classList.add("hidden");
   if (!transcript) { showError("Lütfen önce bir görüşme metni girin."); return; }
   $("results").classList.add("hidden");
+  updateAnalysisProgress();
   $("loading").classList.remove("hidden");
   $("btn-analyze").disabled = true;
   try {
-    const res = await fetch("/analyze", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ transcript, audio_id: lastAudioId, stt_usage: lastTranscribeUsage })
+    const data = await analyzeWithProgress({
+      transcript, audio_id: lastAudioId, stt_usage: lastTranscribeUsage
     });
-    const data = await readApiResponse(res);
-    if (!res.ok || data.error) throw new Error(formatApiError(data));
     window.__son = data;
     renderHasta(data.hasta);
     renderDoktor(data.doktor);

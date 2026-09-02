@@ -8,12 +8,14 @@ Kullanıcı paneli : http://127.0.0.1:8000
 Admin paneli     : http://127.0.0.1:8000/admin   (kullanıcı: admin / şifre: admin)
 """
 import asyncio
+import json
 import logging
 import uuid
+from contextlib import suppress
 from urllib.parse import quote
 
 from fastapi import FastAPI, Request, UploadFile, File, Depends, HTTPException, status, Form
-from fastapi.responses import HTMLResponse, JSONResponse, Response, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, Response, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
@@ -79,6 +81,27 @@ class PdfIn(BaseModel):
     data: dict          # o raporun JSON'u
 
 
+def _store_analysis(body: AnalyzeIn, text: str, result: dict) -> dict:
+    """Başarılı analiz sonucunu kaydet; kayıt hatası raporları engellemesin."""
+    ses = mime = ad = None
+    if body.audio_id:
+        got = _PENDING.pop(body.audio_id, None)
+        if got:
+            ses, mime, ad = got
+    try:
+        kid = db.kaydet(
+            transkript=text,
+            hasta=result.get("hasta"), doktor=result.get("doktor"),
+            yonetim=result.get("yonetim"),
+            usage={"analiz": result.get("usage") or {}, "ses": body.stt_usage or {}},
+            ses=ses, ses_mime=mime, ses_ad=ad,
+        )
+        result["kayit_id"] = kid
+    except Exception as e:  # noqa: BLE001
+        result["kayit_hatasi"] = str(e)
+    return result
+
+
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
     return templates.TemplateResponse(
@@ -103,23 +126,62 @@ async def analyze(body: AnalyzeIn):
             status_code=503,
         )
 
-    # kaydet (veritabanı hatası analizi bozmasın)
-    ses = mime = ad = None
-    if body.audio_id:
-        got = _PENDING.pop(body.audio_id, None)
-        if got:
-            ses, mime, ad = got
-    try:
-        kid = db.kaydet(
-            transkript=text,
-            hasta=result.get("hasta"), doktor=result.get("doktor"), yonetim=result.get("yonetim"),
-            usage={"analiz": result.get("usage") or {}, "ses": body.stt_usage or {}},
-            ses=ses, ses_mime=mime, ses_ad=ad,
-        )
-        result["kayit_id"] = kid
-    except Exception as e:  # noqa: BLE001
-        result["kayit_hatasi"] = str(e)
-    return result
+    return _store_analysis(body, text, result)
+
+
+@app.post("/analyze/stream")
+async def analyze_stream(body: AnalyzeIn):
+    """Gerçek rapor adımlarını satır satır bildir, sonunda normal analiz sonucunu gönder."""
+    text = (body.transcript or "").strip()
+    if not text:
+        return JSONResponse({"error": "Görüşme metni boş olamaz."}, status_code=400)
+
+    async def events():
+        queue = asyncio.Queue()
+
+        async def progress(event: dict):
+            await queue.put({"type": "progress", **event})
+
+        async def work():
+            try:
+                result = await llm.analyze_all(text, progress=progress)
+                await queue.put({
+                    "type": "result",
+                    "data": _store_analysis(body, text, result),
+                })
+            except Exception as e:  # noqa: BLE001
+                error_id = uuid.uuid4().hex[:8]
+                logger.exception("Analiz hatası [%s]", error_id)
+                await queue.put({
+                    "type": "error",
+                    "error": public_error_message(e),
+                    "error_id": error_id,
+                })
+            finally:
+                await queue.put(None)
+
+        worker = asyncio.create_task(work())
+        try:
+            while True:
+                try:
+                    event = await asyncio.wait_for(queue.get(), timeout=10)
+                except asyncio.TimeoutError:
+                    yield json.dumps({"type": "heartbeat"}) + "\n"
+                    continue
+                if event is None:
+                    break
+                yield json.dumps(event, ensure_ascii=False) + "\n"
+        finally:
+            if not worker.done():
+                worker.cancel()
+            with suppress(asyncio.CancelledError):
+                await worker
+
+    return StreamingResponse(
+        events(),
+        media_type="application/x-ndjson",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 @app.post("/pdf")
@@ -276,14 +338,30 @@ async def admin_ses(kid: int, request: Request):
     return Response(content=chunk, status_code=206, media_type=mime, headers=headers)
 
 
+def _admin_report_type(rec: str) -> str:
+    """Eski/önbellekte kalmış admin istemcilerindeki rapor adlarını kabul et."""
+    key = (rec or "").strip().lower().replace("-", "_").replace(" ", "_")
+    aliases = {
+        "hasta": "hasta",
+        "hasta_ozeti": "hasta",
+        "doktor": "doktor",
+        "doctor": "doktor",
+        "epikriz": "doktor",
+        "doktor_epikrizi": "doktor",
+        "yonetim": "yonetim",
+        "yonetim_raporu": "yonetim",
+    }
+    # Bu uç yalnızca rapor sekmelerinden çağrılır; bilinmeyen eski değer epikrizdir.
+    return aliases.get(key, "doktor")
+
+
 @app.post("/admin/pdf/{kid}/{rec}")
 async def admin_pdf(kid: int, rec: str, request: Request):
     admin_auth(request)
     k = db.getir(kid)
     if not k:
         return JSONResponse({"error": "Kayıt bulunamadı."}, status_code=404)
-    if rec not in ("hasta", "doktor", "yonetim"):
-        return JSONResponse({"error": "Geçersiz rapor tipi."}, status_code=400)
+    rec = _admin_report_type(rec)
     try:
         content, fname = pdf_report.build_pdf(rec, k[rec])
         return Response(content=content, media_type="application/pdf",
