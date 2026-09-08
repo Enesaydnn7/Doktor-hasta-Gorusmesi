@@ -1,5 +1,15 @@
 # Sürüm Geçmişi
 
+## v2.0.0 — 8 Eylül 2026
+
+- `mobile_app/` altında Android ve iOS hedefli “Klinot” Flutter MVP'si eklendi.
+- Yüz yüze görüşme için açık kayıt durumu, canlı ses seviyesi, süre, duraklat/devam, iptal ve metne dönüştürme akışı eklendi.
+- Metin kontrolünden sonra üç rapor mevcut sırayla hazırlanıyor; mobil yüzde göstergesi sunucunun gerçek `0 → 33 → 67 → 100` olaylarını kullanıyor.
+- Doktor ve yönetici rolleri için imzalı, süreli Bearer oturumuna sahip `/api/v1/mobile/*` API uçları eklendi.
+- Mobil kayıtlar mevcut SQLite kayıtları ve web admin paneliyle birleştirildi; kaynak ve mobil sürüm bilgisi saklanıyor.
+- Sesin STT ile analiz istekleri arasında işlem belleğinde kaybolmaması için geçici ses aktarımı SQLite tablosuna taşındı.
+- Mevcut web paneli, rapor promptları, Scribe/OpenAI STT zinciri ve üçlü Gemini analiz davranışı değiştirilmedi.
+
 ## v1.8.0 — 2 Eylül 2026
 
 - Eski veya tarayıcı önbelleğinde kalmış epikriz rapor adı güvenli biçimde `doktor` raporuna çevriliyor; eski kayıt PDF isteği artık “Geçersiz rapor tipi” hatasıyla durmuyor.
