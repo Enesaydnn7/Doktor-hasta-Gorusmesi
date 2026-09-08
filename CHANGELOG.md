@@ -1,5 +1,11 @@
 # Sürüm Geçmişi
 
+## v2.0.1 — 8 Eylül 2026
+
+- Flutter mobil uygulamasının Android derleme hedefi, `flutter_secure_storage` uyumluluğu için API 37'ye yükseltildi.
+- Android Gradle Plugin 9.1.1'e geçirildi; uygulamanın minimum/target Android sürümü ve çalışma davranışı değiştirilmedi.
+- Mobil istemci sürümü `2.0.1+2` olarak kaydedildi.
+
 ## v2.0.0 — 8 Eylül 2026
 
 - `mobile_app/` altında Android ve iOS hedefli “Klinot” Flutter MVP'si eklendi.

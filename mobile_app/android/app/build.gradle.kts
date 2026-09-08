@@ -6,7 +6,9 @@ plugins {
 
 android {
     namespace = "com.klinot.klinot"
-    compileSdk = flutter.compileSdkVersion
+    // flutter_secure_storage 11 requires Android API 37 at compile time.
+    // targetSdk/minSdk remain controlled by Flutter, so runtime behavior is unchanged.
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {

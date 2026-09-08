@@ -154,7 +154,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         const SizedBox(height: 18),
                         const Text(
-                          'Klinot mobil · v1.0.0',
+                          'Klinot mobil · v2.0.1',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 12,
