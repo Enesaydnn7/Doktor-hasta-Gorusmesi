@@ -16,6 +16,8 @@ MAX_AGE = int(os.getenv("SESSION_HOURS", "12")) * 3600
 
 ADMIN_USER = os.getenv("ADMIN_USER", "admin")
 ADMIN_PASS = os.getenv("ADMIN_PASS", "admin")
+MOBILE_DOCTOR_USER = os.getenv("MOBILE_DOCTOR_USER", "").strip()
+MOBILE_DOCTOR_PASS = os.getenv("MOBILE_DOCTOR_PASS", "")
 
 # Render yeniden başlasa da aynı yönetici bilgileri aynı imza anahtarını üretir.
 _configured_secret = os.getenv("SESSION_SECRET", "").strip()
@@ -57,3 +59,49 @@ def token_gecerli(token: str) -> bool:
         return (time.time() - int(ts)) < MAX_AGE
     except Exception:
         return False
+
+
+def api_giris_rolu(user: str, password: str) -> str | None:
+    """Mobil API kullanıcısını doğrula ve yetki rolünü döndür."""
+    if dogrula_giris(user, password):
+        return "admin"
+    if (
+        MOBILE_DOCTOR_USER
+        and MOBILE_DOCTOR_PASS
+        and secrets.compare_digest(user or "", MOBILE_DOCTOR_USER)
+        and secrets.compare_digest(password or "", MOBILE_DOCTOR_PASS)
+    ):
+        return "doctor"
+    return None
+
+
+def api_token_uret(user: str, role: str) -> str:
+    """Mobil istemciler için süreli ve imzalı Bearer token üret."""
+    if role not in {"doctor", "admin"}:
+        raise ValueError("Geçersiz kullanıcı rolü")
+    msg = f"api|{user}|{role}|{int(time.time())}"
+    body = base64.urlsafe_b64encode(msg.encode()).decode().rstrip("=")
+    return f"{body}.{_sign(msg)}"
+
+
+def api_token_bilgisi(token: str) -> dict | None:
+    """Geçerli Bearer token içindeki kullanıcı ve rol bilgisini döndür."""
+    if not token or "." not in token:
+        return None
+    body, sig = token.rsplit(".", 1)
+    try:
+        pad = "=" * (-len(body) % 4)
+        msg = base64.urlsafe_b64decode(body + pad).decode()
+    except Exception:
+        return None
+    if not hmac.compare_digest(_sign(msg), sig):
+        return None
+    try:
+        marker, user, role, ts = msg.split("|", 3)
+        if marker != "api" or role not in {"doctor", "admin"}:
+            return None
+        if (time.time() - int(ts)) >= MAX_AGE:
+            return None
+        return {"user": user, "role": role}
+    except Exception:
+        return None

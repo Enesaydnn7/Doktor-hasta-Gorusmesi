@@ -13,7 +13,13 @@ services:
       - key: GEMINI_API_KEY
         sync: false                 # anahtarı panelden gizli olarak sen gireceksin
       - key: APP_VERSION
-        value: v1.8.0
+        value: v2.0.0
+      - key: MOBILE_DOCTOR_USER
+        sync: false
+      - key: MOBILE_DOCTOR_PASS
+        sync: false
+      - key: SESSION_SECRET
+        sync: false
       - key: SEED_MANAGER_DEMO
         value: true
       - key: ELEVENLABS_STT_MODEL

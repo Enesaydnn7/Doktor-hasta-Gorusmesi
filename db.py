@@ -58,10 +58,29 @@ def init():
         columns = {row[1] for row in c.execute("PRAGMA table_info(kayitlar)")}
         if "demo_key" not in columns:
             c.execute("ALTER TABLE kayitlar ADD COLUMN demo_key TEXT")
+        if "source" not in columns:
+            c.execute("ALTER TABLE kayitlar ADD COLUMN source TEXT NOT NULL DEFAULT 'web'")
+        if "client_version" not in columns:
+            c.execute("ALTER TABLE kayitlar ADD COLUMN client_version TEXT")
+        if "metadata" not in columns:
+            c.execute("ALTER TABLE kayitlar ADD COLUMN metadata TEXT")
         c.execute("CREATE INDEX IF NOT EXISTS ix_olusturma ON kayitlar(olusturma DESC)")
         c.execute(
             "CREATE UNIQUE INDEX IF NOT EXISTS ux_demo_key ON kayitlar(demo_key) "
             "WHERE demo_key IS NOT NULL"
+        )
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS bekleyen_sesler (
+                id TEXT PRIMARY KEY,
+                olusturma TEXT NOT NULL,
+                ses BLOB NOT NULL,
+                ses_mime TEXT,
+                ses_ad TEXT
+            )
+        """)
+        c.execute(
+            "CREATE INDEX IF NOT EXISTS ix_bekleyen_ses_olusturma "
+            "ON bekleyen_sesler(olusturma DESC)"
         )
         _ensure_demo_record(c)
 
@@ -111,16 +130,21 @@ def _kisa_ozet(doktor: dict, transkript: str) -> str:
 
 def kaydet(transkript: str, hasta: dict, doktor: dict, yonetim: dict,
            usage: dict = None, ses: bytes = None,
-           ses_mime: str = None, ses_ad: str = None) -> int:
+           ses_mime: str = None, ses_ad: str = None,
+           source: str = "web", client_version: str = None,
+           metadata: dict = None) -> int:
     j = lambda d: json.dumps(d or {}, ensure_ascii=False)
     with _lock, _conn() as c:
         cur = c.execute(
             """INSERT INTO kayitlar
-               (olusturma, transkript, hasta, doktor, yonetim, usage, ses, ses_mime, ses_ad, ozet)
-               VALUES (?,?,?,?,?,?,?,?,?,?)""",
+               (olusturma, transkript, hasta, doktor, yonetim, usage, ses, ses_mime,
+                ses_ad, ozet, source, client_version, metadata)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (datetime.now().isoformat(timespec="seconds"), transkript,
              j(hasta), j(doktor), j(yonetim), j(usage),
-             ses, ses_mime, ses_ad, _kisa_ozet(doktor, transkript)),
+             ses, ses_mime, ses_ad, _kisa_ozet(doktor, transkript),
+             (source or "web")[:30], (client_version or "")[:30] or None,
+             j(metadata)),
         )
         return cur.lastrowid
 
@@ -130,6 +154,7 @@ def liste(limit: int = 200):
     with _lock, _conn() as c:
         rows = c.execute(
             """SELECT id, olusturma, ozet, ses_mime, ses_ad, usage,
+                      source, client_version,
                       (ses IS NOT NULL) AS ses_var, LENGTH(transkript) AS uzunluk
                FROM kayitlar ORDER BY id DESC LIMIT ?""", (limit,)
         ).fetchall()
@@ -148,18 +173,51 @@ def getir(kid: int):
     with _lock, _conn() as c:
         r = c.execute(
             """SELECT id, olusturma, transkript, hasta, doktor, yonetim, usage,
+                      source, client_version, metadata,
                       ses_mime, ses_ad, (ses IS NOT NULL) AS ses_var
                FROM kayitlar WHERE id=?""", (kid,)
         ).fetchone()
     if not r:
         return None
     d = dict(r)
-    for k in ("hasta", "doktor", "yonetim", "usage"):
+    for k in ("hasta", "doktor", "yonetim", "usage", "metadata"):
         try:
             d[k] = json.loads(d.get(k) or "{}")
         except Exception:
             d[k] = {}
     return d
+
+
+def bekleyen_ses_kaydet(kimlik: str, ses: bytes, ses_mime: str,
+                        ses_ad: str, limit: int = 20) -> None:
+    """STT ile analiz arasındaki sesi süreç belleği yerine veritabanında tut."""
+    with _lock, _conn() as c:
+        c.execute(
+            """INSERT OR REPLACE INTO bekleyen_sesler
+               (id, olusturma, ses, ses_mime, ses_ad) VALUES (?,?,?,?,?)""",
+            (kimlik, datetime.now().isoformat(timespec="microseconds"),
+             ses, ses_mime, ses_ad),
+        )
+        eski = c.execute(
+            "SELECT id FROM bekleyen_sesler ORDER BY olusturma DESC LIMIT -1 OFFSET ?",
+            (max(1, int(limit)),),
+        ).fetchall()
+        if eski:
+            c.executemany("DELETE FROM bekleyen_sesler WHERE id=?", [(r["id"],) for r in eski])
+
+
+def bekleyen_ses_al(kimlik: str, sil: bool = True):
+    """Bekleyen sesi getir; analiz kaydına taşınacaksa atomik olarak sil."""
+    with _lock, _conn() as c:
+        r = c.execute(
+            "SELECT ses, ses_mime, ses_ad FROM bekleyen_sesler WHERE id=?",
+            (kimlik,),
+        ).fetchone()
+        if not r:
+            return None
+        if sil:
+            c.execute("DELETE FROM bekleyen_sesler WHERE id=?", (kimlik,))
+        return r["ses"], (r["ses_mime"] or "audio/mpeg"), (r["ses_ad"] or "kayit")
 
 
 def ses_getir(kid: int):

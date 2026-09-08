@@ -14,7 +14,10 @@ import uuid
 from contextlib import suppress
 from urllib.parse import quote
 
-from fastapi import FastAPI, Request, UploadFile, File, Depends, HTTPException, status, Form
+from fastapi import (
+    FastAPI, Request, UploadFile, File, Depends, HTTPException, status, Form,
+    Header, Query,
+)
 from fastapi.responses import HTMLResponse, JSONResponse, Response, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -58,15 +61,12 @@ def admin_auth(request: Request):
 
 
 # ---- Ses, analizden önce yüklendiği için geçici olarak burada tutulur ----
-_PENDING = {}          # audio_id -> (bytes, mime, ad)
 _PENDING_MAX = 20
 
 
 def _pending_put(data: bytes, mime: str, ad: str) -> str:
-    if len(_PENDING) >= _PENDING_MAX:
-        _PENDING.pop(next(iter(_PENDING)), None)
     aid = uuid.uuid4().hex
-    _PENDING[aid] = (data, mime, ad)
+    db.bekleyen_ses_kaydet(aid, data, mime, ad, limit=_PENDING_MAX)
     return aid
 
 
@@ -74,6 +74,14 @@ class AnalyzeIn(BaseModel):
     transcript: str
     audio_id: str | None = None
     stt_usage: dict | None = None
+    source: str = "web"
+    client_version: str | None = None
+    metadata: dict | None = None
+
+
+class MobileLoginIn(BaseModel):
+    username: str
+    password: str
 
 
 class PdfIn(BaseModel):
@@ -81,11 +89,30 @@ class PdfIn(BaseModel):
     data: dict          # o raporun JSON'u
 
 
+def mobile_auth(authorization: str | None = Header(default=None)) -> dict:
+    """Mobil API Bearer token doğrulaması."""
+    scheme, _, token = (authorization or "").partition(" ")
+    info = auth.api_token_bilgisi(token) if scheme.lower() == "bearer" else None
+    if not info:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Geçerli mobil oturum gerekli",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return info
+
+
+def mobile_admin(user: dict = Depends(mobile_auth)) -> dict:
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Yönetici yetkisi gerekli")
+    return user
+
+
 def _store_analysis(body: AnalyzeIn, text: str, result: dict) -> dict:
     """Başarılı analiz sonucunu kaydet; kayıt hatası raporları engellemesin."""
     ses = mime = ad = None
     if body.audio_id:
-        got = _PENDING.pop(body.audio_id, None)
+        got = db.bekleyen_ses_al(body.audio_id, sil=False)
         if got:
             ses, mime, ad = got
     try:
@@ -95,7 +122,11 @@ def _store_analysis(body: AnalyzeIn, text: str, result: dict) -> dict:
             yonetim=result.get("yonetim"),
             usage={"analiz": result.get("usage") or {}, "ses": body.stt_usage or {}},
             ses=ses, ses_mime=mime, ses_ad=ad,
+            source=body.source, client_version=body.client_version,
+            metadata=body.metadata,
         )
+        if body.audio_id and ses:
+            db.bekleyen_ses_al(body.audio_id, sil=True)
         result["kayit_id"] = kid
     except Exception as e:  # noqa: BLE001
         result["kayit_hatasi"] = str(e)
@@ -231,6 +262,69 @@ async def transcribe(file: UploadFile = File(...)):
             {"error": public_error_message(e), "error_id": error_id},
             status_code=503,
         )
+
+
+# ============================ MOBILE API v1 ============================
+@app.post("/api/v1/mobile/auth/login")
+async def mobile_login(body: MobileLoginIn):
+    role = auth.api_giris_rolu(body.username.strip(), body.password)
+    if not role:
+        raise HTTPException(status_code=401, detail="Kullanıcı adı veya şifre hatalı")
+    user = body.username.strip()
+    return {
+        "access_token": auth.api_token_uret(user, role),
+        "token_type": "bearer",
+        "expires_in": auth.MAX_AGE,
+        "user": {"username": user, "role": role},
+        "api_version": "v1",
+    }
+
+
+@app.get("/api/v1/mobile/health")
+async def mobile_health():
+    payload = await health()
+    return {**payload, "api_version": "v1", "app": "Klinot"}
+
+
+@app.post("/api/v1/mobile/transcribe")
+async def mobile_transcribe(
+    file: UploadFile = File(...),
+    _user: dict = Depends(mobile_auth),
+):
+    return await transcribe(file)
+
+
+@app.post("/api/v1/mobile/analyze/stream")
+async def mobile_analyze_stream(
+    body: AnalyzeIn,
+    user: dict = Depends(mobile_auth),
+):
+    metadata = {**(body.metadata or {}), "api_user": user["user"]}
+    mobile_body = body.model_copy(update={"source": "mobile", "metadata": metadata})
+    return await analyze_stream(mobile_body)
+
+
+@app.get("/api/v1/mobile/records")
+async def mobile_records(
+    limit: int = Query(default=100, ge=1, le=200),
+    _user: dict = Depends(mobile_admin),
+):
+    return {"records": db.liste(limit=limit), "stats": db.istatistik()}
+
+
+@app.get("/api/v1/mobile/records/{kid}")
+async def mobile_record(kid: int, _user: dict = Depends(mobile_admin)):
+    record = db.getir(kid)
+    if not record:
+        raise HTTPException(status_code=404, detail="Kayıt bulunamadı")
+    return record
+
+
+@app.delete("/api/v1/mobile/records/{kid}")
+async def mobile_record_delete(kid: int, _user: dict = Depends(mobile_admin)):
+    if not db.sil(kid):
+        raise HTTPException(status_code=404, detail="Kayıt bulunamadı")
+    return {"deleted": True, "id": kid}
 
 
 # ============================== ADMIN ==============================
