@@ -85,7 +85,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         const SizedBox(height: 6),
                         const Text(
-                          'Yüz yüze görüşmeyi kaydedin,\nraporları güvenle hazırlayın.',
+                          'Yüz yüze görüşmeyi kaydedin,\ndoktor epikrizini güvenle hazırlayın.',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             color: Color(0xFF60777D),
@@ -154,7 +154,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         const SizedBox(height: 18),
                         const Text(
-                          'Klinot mobil · v2.0.1',
+                          'Klinot doktor · v2.1.0',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 12,

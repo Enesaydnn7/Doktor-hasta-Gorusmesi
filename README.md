@@ -3,7 +3,7 @@
 Doktor–hasta görüşmesinin metnini alır, **Gemini** ile aynı görüşmeden **üç rapor** üretir.
 Epikriz şeması, gerçek hastane epikrizlerinin yapısına göre kurulmuştur (sigorta/kayıt uyumlu).
 
-`mobile_app/` altında yüz yüze görüşmeler için Android/iOS **Klinot** Flutter MVP'si bulunur. Mobil mimari ve kurulum: [MOBILE_APP.md](MOBILE_APP.md).
+`mobile_app/` altında yüz yüze görüşmeler için Android/iOS **Klinot Doktor** Flutter MVP'si bulunur. Mobil uygulama yalnızca kayıt, transkript kontrolü, doktor epikrizi ve epikriz PDF indirme akışını içerir; yönetim ekranları ayrı web `/admin` panelindedir. Mobil mimari ve kurulum: [MOBILE_APP.md](MOBILE_APP.md).
 
 | Kime | Ne alır |
 |---|---|
@@ -52,7 +52,7 @@ Tarayıcı: **http://127.0.0.1:8000** → "Örnek yükle" → "Analiz et".
 
 GEMINI_API_KEY=...
 GEMINI_MODEL=gemini-2.5-flash
-APP_VERSION=v2.0.0
+APP_VERSION=v2.1.0
 ELEVENLABS_API_KEY=...
 ELEVENLABS_STT_MODEL=scribe_v2
 ELEVENLABS_STT_LANGUAGE=tr

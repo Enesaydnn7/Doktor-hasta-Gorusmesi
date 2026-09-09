@@ -100,6 +100,32 @@ class MobileApiTests(unittest.TestCase):
         self.assertEqual(response.json()["app"], "Klinot")
         self.assertEqual(response.json()["api_version"], "v1")
 
+    def test_mobile_epikriz_pdf_requires_login(self):
+        response = self.client.post(
+            "/api/v1/mobile/pdf/epikriz",
+            json={"data": {"epikriz": "test"}},
+        )
+        self.assertEqual(response.status_code, 401)
+
+    def test_mobile_epikriz_pdf_uses_doctor_template(self):
+        token = auth.api_token_uret("dr-enes", "doctor")
+        with patch.object(
+            main.pdf_report,
+            "build_pdf",
+            return_value=(b"%PDF-test", "epikriz_20260908.pdf"),
+        ) as build_pdf:
+            response = self.client.post(
+                "/api/v1/mobile/pdf/epikriz",
+                headers={"Authorization": f"Bearer {token}"},
+                json={"data": {"tani": "Gastrit"}},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content, b"%PDF-test")
+        self.assertEqual(response.headers["content-type"], "application/pdf")
+        self.assertIn("epikriz_20260908.pdf", response.headers["content-disposition"])
+        build_pdf.assert_called_once_with("doktor", {"tani": "Gastrit"})
+
 
 if __name__ == "__main__":
     unittest.main()

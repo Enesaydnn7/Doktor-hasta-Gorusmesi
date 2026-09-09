@@ -41,9 +41,9 @@ class _TranscriptScreenState extends State<TranscriptScreen> {
   }
 
   String _stepLabel(String step) => switch (step) {
-    'hasta' => 'Hasta özeti hazırlanıyor',
+    'hasta' => 'Klinik bulgular düzenleniyor',
     'doktor' => 'Detaylı epikriz hazırlanıyor',
-    'yonetim' => 'Yönetim raporu hazırlanıyor',
+    'yonetim' => 'Görüşme kaydı tamamlanıyor',
     _ => 'Analiz hazırlanıyor',
   };
 
@@ -79,7 +79,11 @@ class _TranscriptScreenState extends State<TranscriptScreen> {
           setState(() => _percent = 100);
           await Navigator.of(context).pushReplacement(
             MaterialPageRoute(
-              builder: (_) => ReportsScreen(result: event.result),
+              builder: (_) => ReportsScreen(
+                api: widget.api,
+                session: widget.session,
+                result: event.result,
+              ),
             ),
           );
           return;
@@ -155,12 +159,12 @@ class _TranscriptScreenState extends State<TranscriptScreen> {
                     label: Text(
                       _analyzing
                           ? 'Analiz sürüyor · %$_percent'
-                          : 'Üç raporu hazırla',
+                          : 'Epikrizi hazırla',
                     ),
                   ),
                   const SizedBox(height: 12),
                   const Text(
-                    'Raporlar sırayla üretilir. Gösterilen yüzde sunucudan gelen gerçek tamamlanma bilgisidir.',
+                    'Epikriz adımları sırayla tamamlanır. Gösterilen yüzde sunucudan gelen gerçek tamamlanma bilgisidir.',
                     textAlign: TextAlign.center,
                     style: TextStyle(fontSize: 12, color: Color(0xFF71868B)),
                   ),
