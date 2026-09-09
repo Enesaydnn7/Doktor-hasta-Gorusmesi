@@ -89,6 +89,10 @@ class PdfIn(BaseModel):
     data: dict          # o raporun JSON'u
 
 
+class MobileEpikrizPdfIn(BaseModel):
+    data: dict
+
+
 def mobile_auth(authorization: str | None = Header(default=None)) -> dict:
     """Mobil API Bearer token doğrulaması."""
     scheme, _, token = (authorization or "").partition(" ")
@@ -302,6 +306,26 @@ async def mobile_analyze_stream(
     metadata = {**(body.metadata or {}), "api_user": user["user"]}
     mobile_body = body.model_copy(update={"source": "mobile", "metadata": metadata})
     return await analyze_stream(mobile_body)
+
+
+@app.post("/api/v1/mobile/pdf/epikriz")
+async def mobile_epikriz_pdf(
+    body: MobileEpikrizPdfIn,
+    _user: dict = Depends(mobile_auth),
+):
+    """Doktor uygulamasındaki güncel epikrizi mevcut PDF şablonuyla üret."""
+    try:
+        content, fname = pdf_report.build_pdf("doktor", body.data)
+        return Response(
+            content=content,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'attachment; filename="{fname}"'},
+        )
+    except Exception as e:  # noqa: BLE001
+        return JSONResponse(
+            {"error": f"Epikriz PDF oluşturulamadı: {e}"},
+            status_code=500,
+        )
 
 
 @app.get("/api/v1/mobile/records")

@@ -18,8 +18,10 @@ abstract class KlinotApi {
     String token,
     TranscriptionResult transcription,
   );
-  Future<AdminRecords> records(String token);
-  Future<Map<String, dynamic>> record(String token, int id);
+  Future<DownloadedPdf> downloadEpikriz(
+    String token,
+    Map<String, dynamic> epikriz,
+  );
 }
 
 class ApiException implements Exception {
@@ -110,7 +112,7 @@ class ApiClient implements KlinotApi {
         'audio_id': transcription.audioId,
         'stt_usage': transcription.usage,
         'source': 'mobile',
-        'client_version': '2.0.1',
+        'client_version': '2.1.0',
         'metadata': {'platform': Platform.operatingSystem},
       });
 
@@ -159,28 +161,25 @@ class ApiClient implements KlinotApi {
   }
 
   @override
-  Future<AdminRecords> records(String token) async {
+  Future<DownloadedPdf> downloadEpikriz(
+    String token,
+    Map<String, dynamic> epikriz,
+  ) async {
     final response = await _client
-        .get(_uri('/api/v1/mobile/records'), headers: _headers(token))
-        .timeout(const Duration(seconds: 70));
-    final data = _decodeResponse(response);
-    final rows = (data['records'] as List? ?? const [])
-        .map(
-          (item) =>
-              RecordSummary.fromJson(Map<String, dynamic>.from(item as Map)),
+        .post(
+          _uri('/api/v1/mobile/pdf/epikriz'),
+          headers: {..._headers(token), 'Content-Type': 'application/json'},
+          body: jsonEncode({'data': epikriz}),
         )
-        .toList();
-    return AdminRecords(
-      records: rows,
-      stats: Map<String, dynamic>.from(data['stats'] as Map? ?? const {}),
-    );
-  }
-
-  @override
-  Future<Map<String, dynamic>> record(String token, int id) async {
-    final response = await _client
-        .get(_uri('/api/v1/mobile/records/$id'), headers: _headers(token))
         .timeout(const Duration(seconds: 70));
-    return _decodeResponse(response);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      _decodeResponse(response);
+    }
+    final disposition = response.headers['content-disposition'] ?? '';
+    final match = RegExp(r'filename="?([^";]+)').firstMatch(disposition);
+    final fileName =
+        match?.group(1)?.trim() ??
+        'epikriz_${DateTime.now().millisecondsSinceEpoch}.pdf';
+    return DownloadedPdf(bytes: response.bodyBytes, fileName: fileName);
   }
 }

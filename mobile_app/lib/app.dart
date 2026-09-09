@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-import 'admin_screen.dart';
 import 'api_client.dart';
 import 'login_screen.dart';
 import 'models.dart';
@@ -89,7 +88,7 @@ class _SplashScreen extends StatelessWidget {
       const Scaffold(body: Center(child: CircularProgressIndicator()));
 }
 
-class HomeShell extends StatefulWidget {
+class HomeShell extends StatelessWidget {
   const HomeShell({
     super.key,
     required this.api,
@@ -102,19 +101,7 @@ class HomeShell extends StatefulWidget {
   final VoidCallback onLogout;
 
   @override
-  State<HomeShell> createState() => _HomeShellState();
-}
-
-class _HomeShellState extends State<HomeShell> {
-  var _index = 0;
-
-  @override
   Widget build(BuildContext context) {
-    final pages = <Widget>[
-      RecorderScreen(api: widget.api, session: widget.session),
-      if (widget.session.isAdmin)
-        AdminScreen(api: widget.api, session: widget.session),
-    ];
     return Scaffold(
       appBar: AppBar(
         title: const _Brand(),
@@ -123,13 +110,13 @@ class _HomeShellState extends State<HomeShell> {
             padding: const EdgeInsets.only(right: 4),
             child: Center(
               child: Text(
-                widget.session.username,
+                session.username,
                 style: const TextStyle(fontWeight: FontWeight.w600),
               ),
             ),
           ),
           IconButton(
-            onPressed: widget.onLogout,
+            onPressed: onLogout,
             tooltip: 'Çıkış yap',
             icon: const Icon(Icons.logout_rounded),
           ),
@@ -137,26 +124,8 @@ class _HomeShellState extends State<HomeShell> {
         ],
       ),
       body: SafeArea(
-        child: IndexedStack(index: _index, children: pages),
+        child: RecorderScreen(api: api, session: session),
       ),
-      bottomNavigationBar: widget.session.isAdmin
-          ? NavigationBar(
-              selectedIndex: _index,
-              onDestinationSelected: (value) => setState(() => _index = value),
-              destinations: const [
-                NavigationDestination(
-                  icon: Icon(Icons.mic_none_rounded),
-                  selectedIcon: Icon(Icons.mic_rounded),
-                  label: 'Görüşme',
-                ),
-                NavigationDestination(
-                  icon: Icon(Icons.dashboard_outlined),
-                  selectedIcon: Icon(Icons.dashboard_rounded),
-                  label: 'Yönetim',
-                ),
-              ],
-            )
-          : null,
     );
   }
 }

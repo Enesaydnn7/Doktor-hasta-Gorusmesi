@@ -1,52 +1,174 @@
 import 'package:flutter/material.dart';
+import 'package:file_saver/file_saver.dart';
 
+import 'api_client.dart';
 import 'models.dart';
 import 'theme.dart';
 
-class ReportsScreen extends StatelessWidget {
-  const ReportsScreen({super.key, required this.result});
+class ReportsScreen extends StatefulWidget {
+  const ReportsScreen({
+    super.key,
+    required this.api,
+    required this.session,
+    required this.result,
+  });
+
+  final KlinotApi api;
+  final UserSession session;
   final AnalysisResult result;
 
   @override
+  State<ReportsScreen> createState() => _ReportsScreenState();
+}
+
+class _ReportsScreenState extends State<ReportsScreen> {
+  var _downloading = false;
+
+  Future<void> _downloadPdf() async {
+    if (_downloading) return;
+    setState(() => _downloading = true);
+    try {
+      final pdf = await widget.api.downloadEpikriz(
+        widget.session.token,
+        widget.result.doctor,
+      );
+      final baseName = pdf.fileName.replaceFirst(
+        RegExp(r'\.pdf$', caseSensitive: false),
+        '',
+      );
+      final savedPath = await FileSaver.instance.saveAs(
+        name: baseName,
+        bytes: pdf.bytes,
+        fileExtension: 'pdf',
+        mimeType: MimeType.pdf,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            savedPath == null
+                ? 'PDF kaydetme işlemi iptal edildi.'
+                : 'Epikriz PDF olarak kaydedildi.',
+          ),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('PDF indirilemedi: $error')));
+    } finally {
+      if (mounted) setState(() => _downloading = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 3,
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(
-            result.recordId == null
-                ? 'Hazırlanan raporlar'
-                : 'Kayıt #${result.recordId}',
-          ),
-          bottom: const TabBar(
-            isScrollable: true,
-            tabAlignment: TabAlignment.start,
-            tabs: [
-              Tab(
-                icon: Icon(Icons.person_outline_rounded),
-                text: 'Hasta özeti',
-              ),
-              Tab(
-                icon: Icon(Icons.description_outlined),
-                text: 'Doktor epikrizi',
-              ),
-              Tab(icon: Icon(Icons.shield_outlined), text: 'Yönetim'),
-            ],
+    final recordLabel = widget.result.recordId == null
+        ? 'Yeni görüşme'
+        : 'Kayıt #${widget.result.recordId}';
+    return Scaffold(
+      appBar: AppBar(title: const Text('Doktor epikrizi')),
+      body: SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 760),
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(18, 8, 18, 0),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE7F5F3),
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: const Color(0xFFB4DFDB)),
+                    ),
+                    child: Row(
+                      children: [
+                        const CircleAvatar(
+                          radius: 24,
+                          backgroundColor: klinotTeal,
+                          child: Icon(
+                            Icons.description_rounded,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Epikriz hazır',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w800,
+                                  color: klinotNavy,
+                                ),
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                '$recordLabel · Doktor kontrolüne hazır',
+                                style: const TextStyle(
+                                  color: Color(0xFF4F696F),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(
+                          Icons.check_circle_rounded,
+                          color: klinotTeal,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                Expanded(child: JsonReportView(data: widget.result.doctor)),
+              ],
+            ),
           ),
         ),
-        body: TabBarView(
-          children: [
-            JsonReportView(data: result.patient),
-            JsonReportView(data: result.doctor),
-            JsonReportView(data: result.management),
-          ],
-        ),
-        bottomNavigationBar: SafeArea(
-          minimum: const EdgeInsets.all(16),
-          child: FilledButton.icon(
-            onPressed: () => Navigator.of(context).pop(),
-            icon: const Icon(Icons.add_rounded),
-            label: const Text('Yeni görüşme'),
+      ),
+      bottomNavigationBar: SafeArea(
+        minimum: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+        child: Center(
+          heightFactor: 1,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 760),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                FilledButton.icon(
+                  key: const Key('downloadEpikrizButton'),
+                  onPressed: _downloading ? null : _downloadPdf,
+                  icon: _downloading
+                      ? const SizedBox.square(
+                          dimension: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.picture_as_pdf_rounded),
+                  label: Text(
+                    _downloading
+                        ? 'PDF hazırlanıyor…'
+                        : 'Epikrizi PDF olarak indir',
+                  ),
+                ),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  onPressed: _downloading
+                      ? null
+                      : () => Navigator.of(context).pop(),
+                  icon: const Icon(Icons.add_rounded),
+                  label: const Text('Yeni görüşme'),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -67,7 +189,7 @@ class JsonReportView extends StatelessWidget {
       if (data.isEmpty)
         const Padding(
           padding: EdgeInsets.all(28),
-          child: Center(child: Text('Bu raporda gösterilecek veri yok.')),
+          child: Center(child: Text('Epikrizde gösterilecek veri yok.')),
         ),
     ],
   );
