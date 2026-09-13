@@ -1,14 +1,15 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 
 import 'api_client.dart';
 import 'audio_recorder_service.dart';
 import 'models.dart';
+import 'reports_screen.dart';
 import 'theme.dart';
-import 'transcript_screen.dart';
 
-enum RecordingState { idle, recording, paused, uploading }
+enum RecordingState { idle, recording, paused, ready, processing }
 
 class RecorderScreen extends StatefulWidget {
   const RecorderScreen({
@@ -34,6 +35,7 @@ class _RecorderScreenState extends State<RecorderScreen> {
   Duration _elapsed = Duration.zero;
   var _level = 0.0;
   var _consent = false;
+  File? _recordedFile;
   String? _error;
 
   bool get _isRecording =>
@@ -99,43 +101,95 @@ class _RecorderScreenState extends State<RecorderScreen> {
     }
   }
 
-  Future<void> _stopAndTranscribe() async {
+  Future<void> _stop() async {
     _timer?.cancel();
-    setState(() {
-      _state = RecordingState.uploading;
-      _error = null;
-    });
     try {
       final file = await _recorder.stop();
-      if (file == null || !await file.exists() || await file.length() == 0) {
+      if (file == null || !file.existsSync() || file.lengthSync() == 0) {
         throw StateError(
           'Kayıt dosyası boş. Mikrofonu kontrol edip tekrar deneyin.',
         );
       }
-      final result = await widget.api.transcribe(widget.session.token, file);
-      if (result.transcript.trim().isEmpty) {
-        throw const ApiException('Ses metne dönüştürülemedi.');
-      }
       if (!mounted) return;
-      await Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => TranscriptScreen(
-            api: widget.api,
-            session: widget.session,
-            transcription: result,
-          ),
-        ),
-      );
+      setState(() {
+        _recordedFile = file;
+        _state = RecordingState.ready;
+        _level = 0;
+        _error = null;
+      });
     } catch (error) {
-      if (mounted) setState(() => _error = error.toString());
-    } finally {
       if (mounted) {
         setState(() {
           _state = RecordingState.idle;
-          _elapsed = Duration.zero;
           _level = 0;
+          _error = error.toString();
         });
       }
+    }
+  }
+
+  Future<void> _discardRecordedFile() async {
+    final file = _recordedFile;
+    if (file != null && file.existsSync()) {
+      file.deleteSync();
+    }
+    if (!mounted) return;
+    setState(() {
+      _recordedFile = null;
+      _state = RecordingState.idle;
+      _elapsed = Duration.zero;
+      _level = 0;
+      _error = null;
+    });
+  }
+
+  Future<void> _analyze() async {
+    final file = _recordedFile;
+    if (file == null) return;
+    setState(() {
+      _state = RecordingState.processing;
+      _error = null;
+    });
+
+    try {
+      final transcription = await widget.api.transcribe(
+        widget.session.token,
+        file,
+      );
+      if (transcription.transcript.trim().isEmpty) {
+        throw const ApiException('Ses metne dönüştürülemedi.');
+      }
+
+      AnalysisResult? completed;
+      await for (final event in widget.api.analyze(
+        widget.session.token,
+        transcription,
+      )) {
+        // Sunucunun gerçek ilerleme olayları alınmaya devam eder; doktor ekranına
+        // metin, adım veya yüzde yansıtılmaz.
+        if (event is AnalysisCompleted) completed = event.result;
+      }
+      if (completed == null) {
+        throw const ApiException('Sunucu analiz sonucunu göndermedi.');
+      }
+      if (!mounted) return;
+
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => ReportsScreen(
+            api: widget.api,
+            session: widget.session,
+            result: completed!,
+          ),
+        ),
+      );
+      await _discardRecordedFile();
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _state = RecordingState.ready;
+        _error = error.toString();
+      });
     }
   }
 
@@ -147,7 +201,9 @@ class _RecorderScreenState extends State<RecorderScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final busy = _state == RecordingState.uploading;
+    final ready =
+        _state == RecordingState.ready || _state == RecordingState.processing;
+    final processing = _state == RecordingState.processing;
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
       child: Center(
@@ -158,7 +214,11 @@ class _RecorderScreenState extends State<RecorderScreen> {
             children: [
               const SizedBox(height: 8),
               Text(
-                _isRecording ? 'Görüşme kaydediliyor' : 'Yeni görüşme',
+                _isRecording
+                    ? 'Görüşme kaydediliyor'
+                    : ready
+                    ? 'Görüşme tamamlandı'
+                    : 'Yeni görüşme',
                 style: Theme.of(context).textTheme.headlineMedium
                     ?.copyWith(fontWeight: FontWeight.w800, color: klinotNavy),
               ),
@@ -166,6 +226,8 @@ class _RecorderScreenState extends State<RecorderScreen> {
               Text(
                 _isRecording
                     ? 'Telefonu masanın ortasında bırakın ve doğal biçimde konuşun.'
+                    : ready
+                    ? 'Görüşme metni ekranda gösterilmez; kayıt analiz için hazır.'
                     : 'Telefonu doktor ile hastanın arasına, mikrofonu açık kalacak şekilde yerleştirin.',
                 style: const TextStyle(color: Color(0xFF60777D), height: 1.45),
               ),
@@ -175,17 +237,23 @@ class _RecorderScreenState extends State<RecorderScreen> {
                   padding: const EdgeInsets.fromLTRB(22, 28, 22, 24),
                   child: AnimatedSwitcher(
                     duration: const Duration(milliseconds: 250),
-                    child: busy
-                        ? const _UploadState()
-                        : _isRecording
+                    child: _isRecording
                         ? _ActiveRecording(
                             key: const ValueKey('active'),
                             elapsed: _time,
                             level: _level,
                             paused: _state == RecordingState.paused,
                             onPause: _togglePause,
-                            onStop: _stopAndTranscribe,
+                            onStop: _stop,
                             onCancel: _cancel,
+                          )
+                        : ready
+                        ? _ReadyRecording(
+                            key: const ValueKey('ready'),
+                            elapsed: _time,
+                            processing: processing,
+                            onAnalyze: _analyze,
+                            onDiscard: _discardRecordedFile,
                           )
                         : _IdleRecording(
                             key: const ValueKey('idle'),
@@ -408,8 +476,68 @@ class _ActiveRecording extends StatelessWidget {
       ),
       const SizedBox(height: 10),
       const Text(
-        'Bitir ve metne dönüştür',
+        'Görüşmeyi bitir',
         style: TextStyle(fontWeight: FontWeight.w600),
+      ),
+    ],
+  );
+}
+
+class _ReadyRecording extends StatelessWidget {
+  const _ReadyRecording({
+    super.key,
+    required this.elapsed,
+    required this.processing,
+    required this.onAnalyze,
+    required this.onDiscard,
+  });
+
+  final String elapsed;
+  final bool processing;
+  final VoidCallback onAnalyze;
+  final VoidCallback onDiscard;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    children: [
+      const CircleAvatar(
+        radius: 48,
+        backgroundColor: Color(0xFFE5F5F3),
+        child: Icon(Icons.check_rounded, size: 52, color: klinotTeal),
+      ),
+      const SizedBox(height: 20),
+      Text(
+        'Kayıt hazır',
+        style: Theme.of(context).textTheme.titleLarge
+            ?.copyWith(fontWeight: FontWeight.w800),
+      ),
+      const SizedBox(height: 7),
+      Text(
+        'Görüşme süresi $elapsed',
+        style: const TextStyle(color: Color(0xFF60777D)),
+      ),
+      const SizedBox(height: 8),
+      const Text(
+        'Analiz başladığında görüşme metni ve işlem adımları gösterilmez. Epikriz hazır olunca doktor ekranı otomatik açılır.',
+        textAlign: TextAlign.center,
+        style: TextStyle(color: Color(0xFF60777D), height: 1.45),
+      ),
+      const SizedBox(height: 24),
+      SizedBox(
+        width: double.infinity,
+        child: FilledButton.icon(
+          key: const Key('analyzeButton'),
+          onPressed: processing ? null : onAnalyze,
+          icon: const Icon(Icons.auto_awesome_rounded),
+          label: const Text('Analiz et'),
+        ),
+      ),
+      const SizedBox(height: 8),
+      TextButton.icon(
+        key: const Key('discardRecordingButton'),
+        onPressed: processing ? null : onDiscard,
+        icon: const Icon(Icons.delete_outline_rounded),
+        label: const Text('Kaydı sil ve yeniden başla'),
       ),
     ],
   );
@@ -443,28 +571,6 @@ class _LevelMeter extends StatelessWidget {
           );
         }),
       ),
-    ),
-  );
-}
-
-class _UploadState extends StatelessWidget {
-  const _UploadState();
-
-  @override
-  Widget build(BuildContext context) => const Padding(
-    padding: EdgeInsets.symmetric(vertical: 52),
-    child: Column(
-      key: ValueKey('uploading'),
-      children: [
-        SizedBox.square(dimension: 46, child: CircularProgressIndicator()),
-        SizedBox(height: 22),
-        Text(
-          'Ses güvenli biçimde işleniyor…',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-        ),
-        SizedBox(height: 8),
-        Text('Render uyanıyorsa ilk işlem biraz uzun sürebilir.'),
-      ],
     ),
   );
 }
