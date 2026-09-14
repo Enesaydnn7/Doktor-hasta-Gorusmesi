@@ -52,7 +52,7 @@ Tarayıcı: **http://127.0.0.1:8000** → "Örnek yükle" → "Analiz et".
 
 GEMINI_API_KEY=...
 GEMINI_MODEL=gemini-2.5-flash
-APP_VERSION=v2.1.0
+APP_VERSION=v2.2.1
 ELEVENLABS_API_KEY=...
 ELEVENLABS_STT_MODEL=scribe_v2
 ELEVENLABS_STT_LANGUAGE=tr

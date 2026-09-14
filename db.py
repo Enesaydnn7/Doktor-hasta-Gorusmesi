@@ -25,6 +25,9 @@ DEMO_RECORD_KEY = "manager-gastrit-demo-2026-08-27"
 DEMO_DIR = Path(__file__).resolve().parent / "demo_records"
 DEMO_JSON_PATH = DEMO_DIR / "gastrit_demo_kayit_2_2026-08-27.json"
 DEMO_AUDIO_PATH = DEMO_DIR / "gastrit_demo_kayit_2_2026-08-27.webm"
+LEG_PAIN_DEMO_RECORD_KEY = "manager-leg-pain-demo-2026-09-09"
+LEG_PAIN_DEMO_JSON_PATH = DEMO_DIR / "bacak_agrisi_demo_kayit_2_2026-09-09.json"
+LEG_PAIN_DEMO_AUDIO_PATH = DEMO_DIR / "bacak_agrisi_demo_kayit_2_2026-09-09.m4a"
 _lock = threading.Lock()
 
 
@@ -86,32 +89,60 @@ def init():
 
 
 def _ensure_demo_record(c):
-    """Repo içindeki yönetici demosunu her yeni/geçici veritabanına bir kez ekle."""
+    """Repo içindeki yönetici demolarını her yeni/geçici veritabanına bir kez ekle."""
     enabled = os.getenv("SEED_MANAGER_DEMO", "true").strip().lower()
     if enabled not in {"1", "true", "yes", "on"}:
         return
-    if c.execute(
-        "SELECT 1 FROM kayitlar WHERE demo_key=?", (DEMO_RECORD_KEY,)
-    ).fetchone():
-        return
-    if not DEMO_JSON_PATH.is_file() or not DEMO_AUDIO_PATH.is_file():
-        return
 
-    record = json.loads(DEMO_JSON_PATH.read_text(encoding="utf-8"))
-    audio = DEMO_AUDIO_PATH.read_bytes()
     encode = lambda value: json.dumps(value or {}, ensure_ascii=False)
-    c.execute(
-        """INSERT INTO kayitlar
-           (olusturma, transkript, hasta, doktor, yonetim, usage,
-            ses, ses_mime, ses_ad, ozet, demo_key)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
-        (
-            record["olusturma"], record["transkript"],
-            encode(record.get("hasta")), encode(record.get("doktor")),
-            encode(record.get("yonetim")), encode(record.get("usage")),
-            audio, "audio/webm", DEMO_AUDIO_PATH.name,
-            record.get("ozet") or "Yönetici demosu · Gastrit", DEMO_RECORD_KEY,
-        ),
+    for spec in _demo_record_specs():
+        demo_key = spec["key"]
+        if c.execute(
+            "SELECT 1 FROM kayitlar WHERE demo_key=?", (demo_key,)
+        ).fetchone():
+            continue
+
+        json_path = spec["json_path"]
+        audio_path = spec["audio_path"]
+        if not json_path.is_file() or not audio_path.is_file():
+            continue
+
+        record = json.loads(json_path.read_text(encoding="utf-8"))
+        c.execute(
+            """INSERT INTO kayitlar
+               (olusturma, transkript, hasta, doktor, yonetim, usage,
+                ses, ses_mime, ses_ad, ozet, demo_key,
+                source, client_version, metadata)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (
+                record["olusturma"], record["transkript"],
+                encode(record.get("hasta")), encode(record.get("doktor")),
+                encode(record.get("yonetim")), encode(record.get("usage")),
+                audio_path.read_bytes(), spec["audio_mime"],
+                record.get("ses_ad") or audio_path.name,
+                record.get("ozet") or spec["summary"], demo_key,
+                record.get("source") or "demo",
+                record.get("client_version"), encode(record.get("metadata")),
+            ),
+        )
+
+
+def _demo_record_specs():
+    return (
+        {
+            "key": DEMO_RECORD_KEY,
+            "json_path": DEMO_JSON_PATH,
+            "audio_path": DEMO_AUDIO_PATH,
+            "audio_mime": "audio/webm",
+            "summary": "Yönetici demosu · Gastrit",
+        },
+        {
+            "key": LEG_PAIN_DEMO_RECORD_KEY,
+            "json_path": LEG_PAIN_DEMO_JSON_PATH,
+            "audio_path": LEG_PAIN_DEMO_AUDIO_PATH,
+            "audio_mime": "audio/mp4",
+            "summary": "Yönetici demosu · Bacak ağrısı",
+        },
     )
 
 

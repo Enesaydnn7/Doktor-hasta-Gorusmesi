@@ -10,3 +10,14 @@
 - Arşiv verisi: `gastrit_demo_kayit_2_2026-08-27.json`
 
 Dosya private repoda korunur. Uygulama her yeni/geçici SQLite veritabanında bu arşivi bir kez otomatik eklediği için demo admin panelinde yeniden görünür.
+
+## Bacak ağrısı deneme kaydı
+
+- Ses: `bacak_agrisi_demo_kayit_2_2026-09-09.m4a`
+- Arşiv verisi: `bacak_agrisi_demo_kayit_2_2026-09-09.json`
+- Kayıt zamanı: `9 Eylül 2026 16:55:15`
+- Senaryo: Doktor–hasta bacak ağrısı görüşmesi
+- Ses boyutu: `998.957` bayt
+- SHA-256: `DB6FBD6D6B7C46124DC1FE4291816CED21FD5065D16317F1F43DAE81CE7CEC10`
+
+Bu deneme de benzersiz `demo_key` ile her yeni/geçici SQLite veritabanına yalnızca bir kez eklenir; deploy sonrasında admin panelinde sesi ve raporlarıyla yeniden görünür.
