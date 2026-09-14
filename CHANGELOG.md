@@ -1,5 +1,11 @@
 # Sürüm Geçmişi
 
+## v2.2.1 — 14 Eylül 2026
+
+- 9 Eylül tarihli bacak ağrısı deneme kaydı, sesi ve üç raporuyla birlikte sürümlü demo arşivine eklendi.
+- Render yeniden başlatma veya deploy sırasında geçici SQLite silinse bile hem gastrit hem bacak ağrısı demosu admin paneline otomatik ve tek kopya olarak geri ekleniyor.
+- Analiz promptları, STT zinciri, mobil ekranlar ve normal yeni kayıt akışı değiştirilmedi.
+
 ## v2.0.1 — 8 Eylül 2026
 
 - Flutter mobil uygulamasının Android derleme hedefi, `flutter_secure_storage` uyumluluğu için API 37'ye yükseltildi.

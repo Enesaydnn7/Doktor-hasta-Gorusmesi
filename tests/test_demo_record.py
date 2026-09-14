@@ -34,8 +34,19 @@ class DemoRecordSeedTests(unittest.TestCase):
 
             with (
                 patch.object(db, "DB_PATH", str(db_path)),
-                patch.object(db, "DEMO_AUDIO_PATH", audio_path),
-                patch.object(db, "DEMO_JSON_PATH", json_path),
+                patch.object(
+                    db,
+                    "_demo_record_specs",
+                    return_value=(
+                        {
+                            "key": "test-demo",
+                            "json_path": json_path,
+                            "audio_path": audio_path,
+                            "audio_mime": "audio/webm",
+                            "summary": "Yönetici demosu",
+                        },
+                    ),
+                ),
                 patch.dict(os.environ, {"SEED_MANAGER_DEMO": "true"}),
             ):
                 db.init()
@@ -48,6 +59,27 @@ class DemoRecordSeedTests(unittest.TestCase):
             self.assertTrue(records[0]["ses_var"])
             self.assertEqual(audio[0], b"\x1a\x45\xdf\xa3demo-audio")
             self.assertEqual(audio[1], "audio/webm")
+
+    def test_all_repository_demos_are_seeded_once(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            db_path = Path(tmp) / "records.db"
+            with (
+                patch.object(db, "DB_PATH", str(db_path)),
+                patch.dict(os.environ, {"SEED_MANAGER_DEMO": "true"}),
+            ):
+                db.init()
+                db.init()
+                records = db.liste()
+
+            self.assertEqual(len(records), 2)
+            self.assertEqual(
+                {record["ozet"] for record in records},
+                {
+                    "Yönetici demosu · Gastrit (mide iltihabı)",
+                    "Yönetici demosu · Bacak ağrısı",
+                },
+            )
+            self.assertTrue(all(record["ses_var"] for record in records))
 
 
 if __name__ == "__main__":

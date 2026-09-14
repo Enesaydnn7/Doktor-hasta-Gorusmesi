@@ -121,21 +121,23 @@ class AdminMediaEndpointTests(unittest.TestCase):
 
     def test_saved_demo_produces_all_three_admin_pdfs(self):
         records = main.db.liste()
-        demo = next(
-            record
-            for record in records
-            if record["ses_ad"] == "gastrit_demo_kayit_2_2026-08-27.webm"
-        )
-        for report_type in ("hasta", "doktor", "yonetim"):
-            with self.subTest(report_type=report_type):
-                response = self.client.post(
-                    f"/admin/pdf/{demo['id']}/{report_type}"
-                )
-                self.assertEqual(response.status_code, 200)
-                self.assertTrue(response.content.startswith(b"%PDF-"))
-                self.assertTrue(
-                    response.headers["content-type"].startswith("application/pdf")
-                )
+        for audio_name in (
+            "gastrit_demo_kayit_2_2026-08-27.webm",
+            "klinot_1788972814701.m4a",
+        ):
+            demo = next(
+                record for record in records if record["ses_ad"] == audio_name
+            )
+            for report_type in ("hasta", "doktor", "yonetim"):
+                with self.subTest(audio_name=audio_name, report_type=report_type):
+                    response = self.client.post(
+                        f"/admin/pdf/{demo['id']}/{report_type}"
+                    )
+                    self.assertEqual(response.status_code, 200)
+                    self.assertTrue(response.content.startswith(b"%PDF-"))
+                    self.assertTrue(
+                        response.headers["content-type"].startswith("application/pdf")
+                    )
 
     def test_saved_demo_forces_legacy_or_unknown_epikriz_name_to_doctor_pdf(self):
         demo = next(
