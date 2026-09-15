@@ -13,7 +13,9 @@ services:
       - key: GEMINI_API_KEY
         sync: false                 # anahtarı panelden gizli olarak sen gireceksin
       - key: APP_VERSION
-        value: v2.2.1
+        value: v2.3.0
+      - key: MOBILE_SESSION_DAYS
+        value: 30
       - key: MOBILE_DOCTOR_USER
         sync: false
       - key: MOBILE_DOCTOR_PASS

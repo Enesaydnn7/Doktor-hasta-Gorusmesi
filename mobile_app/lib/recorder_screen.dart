@@ -17,11 +17,13 @@ class RecorderScreen extends StatefulWidget {
     required this.api,
     required this.session,
     this.recorder,
+    this.onSessionExpired,
   });
 
   final KlinotApi api;
   final UserSession session;
   final AudioRecorderService? recorder;
+  final VoidCallback? onSessionExpired;
 
   @override
   State<RecorderScreen> createState() => _RecorderScreenState();
@@ -186,6 +188,12 @@ class _RecorderScreenState extends State<RecorderScreen> {
       await _discardRecordedFile();
     } catch (error) {
       if (!mounted) return;
+      if (error is ApiException &&
+          error.statusCode == 401 &&
+          widget.onSessionExpired != null) {
+        widget.onSessionExpired!();
+        return;
+      }
       setState(() {
         _state = RecordingState.ready;
         _error = error.toString();
@@ -216,6 +224,8 @@ class _RecorderScreenState extends State<RecorderScreen> {
               Text(
                 _isRecording
                     ? 'Görüşme kaydediliyor'
+                    : processing
+                    ? 'Epikriz hazırlanıyor'
                     : ready
                     ? 'Görüşme tamamlandı'
                     : 'Yeni görüşme',
@@ -226,6 +236,8 @@ class _RecorderScreenState extends State<RecorderScreen> {
               Text(
                 _isRecording
                     ? 'Telefonu masanın ortasında bırakın ve doğal biçimde konuşun.'
+                    : processing
+                    ? 'Görüşmeniz güvenli biçimde analiz ediliyor. Epikriz hazır olduğunda rapor otomatik açılacak.'
                     : ready
                     ? 'Görüşme metni ekranda gösterilmez; kayıt analiz için hazır.'
                     : 'Telefonu doktor ile hastanın arasına, mikrofonu açık kalacak şekilde yerleştirin.',
@@ -247,11 +259,14 @@ class _RecorderScreenState extends State<RecorderScreen> {
                             onStop: _stop,
                             onCancel: _cancel,
                           )
+                        : processing
+                        ? const _ProcessingRecording(
+                            key: ValueKey('processing'),
+                          )
                         : ready
                         ? _ReadyRecording(
                             key: const ValueKey('ready'),
                             elapsed: _time,
-                            processing: processing,
                             onAnalyze: _analyze,
                             onDiscard: _discardRecordedFile,
                           )
@@ -487,13 +502,11 @@ class _ReadyRecording extends StatelessWidget {
   const _ReadyRecording({
     super.key,
     required this.elapsed,
-    required this.processing,
     required this.onAnalyze,
     required this.onDiscard,
   });
 
   final String elapsed;
-  final bool processing;
   final VoidCallback onAnalyze;
   final VoidCallback onDiscard;
 
@@ -527,7 +540,7 @@ class _ReadyRecording extends StatelessWidget {
         width: double.infinity,
         child: FilledButton.icon(
           key: const Key('analyzeButton'),
-          onPressed: processing ? null : onAnalyze,
+          onPressed: onAnalyze,
           icon: const Icon(Icons.auto_awesome_rounded),
           label: const Text('Analiz et'),
         ),
@@ -535,9 +548,82 @@ class _ReadyRecording extends StatelessWidget {
       const SizedBox(height: 8),
       TextButton.icon(
         key: const Key('discardRecordingButton'),
-        onPressed: processing ? null : onDiscard,
+        onPressed: onDiscard,
         icon: const Icon(Icons.delete_outline_rounded),
         label: const Text('Kaydı sil ve yeniden başla'),
+      ),
+    ],
+  );
+}
+
+class _ProcessingRecording extends StatelessWidget {
+  const _ProcessingRecording({super.key});
+
+  @override
+  Widget build(BuildContext context) => Column(
+    children: [
+      SizedBox.square(
+        dimension: 116,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            const SizedBox.expand(
+              child: CircularProgressIndicator(
+                key: Key('epikrizLoadingIndicator'),
+                strokeWidth: 9,
+                color: klinotTeal,
+                backgroundColor: Color(0xFFD9EFEC),
+              ),
+            ),
+            Container(
+              width: 82,
+              height: 82,
+              decoration: const BoxDecoration(
+                color: Color(0xFFE5F5F3),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.description_rounded,
+                size: 42,
+                color: klinotTeal,
+              ),
+            ),
+          ],
+        ),
+      ),
+      const SizedBox(height: 26),
+      Text(
+        'Epikriz hazırlanıyor',
+        style: Theme.of(context).textTheme.titleLarge
+            ?.copyWith(fontWeight: FontWeight.w800, color: klinotNavy),
+      ),
+      const SizedBox(height: 10),
+      const Text(
+        'Ses kaydı analiz ediliyor. İşlem tamamlandığında epikriz raporunu görebileceksiniz.',
+        textAlign: TextAlign.center,
+        style: TextStyle(color: Color(0xFF60777D), height: 1.5),
+      ),
+      const SizedBox(height: 18),
+      Container(
+        key: const Key('privateAnalysisNotice'),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+        decoration: BoxDecoration(
+          color: klinotCanvas,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: const Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(Icons.visibility_off_outlined, color: klinotTeal, size: 21),
+            SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Görüşme metni, analiz adımları ve yüzdeler bu ekranda gösterilmez.',
+                style: TextStyle(color: Color(0xFF60777D), height: 1.4),
+              ),
+            ),
+          ],
+        ),
       ),
     ],
   );

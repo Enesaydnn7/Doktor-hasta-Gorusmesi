@@ -19,6 +19,9 @@ class FakeApi implements KlinotApi {
       UserSession(token: 'test-token', username: username, role: 'doctor');
 
   @override
+  Future<void> validateSession(String token) async {}
+
+  @override
   Stream<AnalysisEvent> analyze(
     String token,
     TranscriptionResult transcription,
@@ -95,7 +98,7 @@ void main() {
     );
 
     expect(find.text('Klinot'), findsOneWidget);
-    expect(find.textContaining('v2.2.0'), findsOneWidget);
+    expect(find.textContaining('v2.3.0'), findsOneWidget);
     await tester.enterText(find.byKey(const Key('usernameField')), 'admin');
     await tester.enterText(find.byKey(const Key('passwordField')), 'secret');
     await tester.tap(find.byKey(const Key('loginButton')));
@@ -191,11 +194,19 @@ void main() {
       await tester.tap(find.byKey(const Key('analyzeButton')));
       await tester.pump();
 
+      expect(find.text('Görüşme tamamlandı'), findsNothing);
+      expect(find.text('Epikriz hazırlanıyor'), findsWidgets);
+      expect(find.byKey(const Key('epikrizLoadingIndicator')), findsOneWidget);
+      expect(find.byKey(const Key('privateAnalysisNotice')), findsOneWidget);
       expect(find.byKey(const Key('analysisProgress')), findsNothing);
       expect(find.byType(LinearProgressIndicator), findsNothing);
-      expect(find.byType(CircularProgressIndicator), findsNothing);
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
       expect(find.textContaining('%33'), findsNothing);
       expect(find.textContaining('Başım ağrıyor'), findsNothing);
+      expect(
+        find.textContaining('epikriz raporunu görebileceksiniz'),
+        findsOneWidget,
+      );
 
       api.analysisGate.complete();
       await tester.pumpAndSettle();

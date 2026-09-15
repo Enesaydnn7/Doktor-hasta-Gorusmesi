@@ -13,6 +13,7 @@ import secrets
 
 COOKIE = "klinik_admin"
 MAX_AGE = int(os.getenv("SESSION_HOURS", "12")) * 3600
+MOBILE_API_MAX_AGE = int(os.getenv("MOBILE_SESSION_DAYS", "30")) * 86400
 
 ADMIN_USER = os.getenv("ADMIN_USER", "admin")
 ADMIN_PASS = os.getenv("ADMIN_PASS", "admin")
@@ -100,7 +101,7 @@ def api_token_bilgisi(token: str) -> dict | None:
         marker, user, role, ts = msg.split("|", 3)
         if marker != "api" or role not in {"doctor", "admin"}:
             return None
-        if (time.time() - int(ts)) >= MAX_AGE:
+        if (time.time() - int(ts)) >= MOBILE_API_MAX_AGE:
             return None
         return {"user": user, "role": role}
     except Exception:
