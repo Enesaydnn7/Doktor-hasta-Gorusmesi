@@ -13,6 +13,7 @@ const defaultApiBaseUrl = String.fromEnvironment(
 
 abstract class KlinotApi {
   Future<UserSession> login(String username, String password);
+  Future<void> validateSession(String token);
   Future<TranscriptionResult> transcribe(String token, File file);
   Stream<AnalysisEvent> analyze(
     String token,
@@ -81,6 +82,14 @@ class ApiClient implements KlinotApi {
   }
 
   @override
+  Future<void> validateSession(String token) async {
+    final response = await _client
+        .get(_uri('/api/v1/mobile/auth/session'), headers: _headers(token))
+        .timeout(const Duration(seconds: 70));
+    _decodeResponse(response);
+  }
+
+  @override
   Future<TranscriptionResult> transcribe(String token, File file) async {
     final request = http.MultipartRequest(
       'POST',
@@ -112,7 +121,7 @@ class ApiClient implements KlinotApi {
         'audio_id': transcription.audioId,
         'stt_usage': transcription.usage,
         'source': 'mobile',
-        'client_version': '2.2.0',
+        'client_version': '2.3.0',
         'metadata': {'platform': Platform.operatingSystem},
       });
 

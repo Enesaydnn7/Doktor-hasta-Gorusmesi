@@ -29,7 +29,39 @@ class MobileApiTests(unittest.TestCase):
         payload = response.json()
         self.assertEqual(payload["token_type"], "bearer")
         self.assertEqual(payload["user"]["role"], "admin")
+        self.assertEqual(payload["expires_in"], auth.MOBILE_API_MAX_AGE)
         self.assertEqual(auth.api_token_bilgisi(payload["access_token"])["role"], "admin")
+
+    def test_mobile_session_endpoint_validates_saved_token(self):
+        token = auth.api_token_uret("dr-enes", "doctor")
+        response = self.client.get(
+            "/api/v1/mobile/auth/session",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["valid"])
+        self.assertEqual(response.json()["user"]["username"], "dr-enes")
+        self.assertEqual(response.json()["expires_in"], auth.MOBILE_API_MAX_AGE)
+
+    def test_mobile_token_outlives_web_cookie_but_still_expires(self):
+        issued_at = 1_800_000_000
+        with patch.object(auth.time, "time", return_value=issued_at):
+            token = auth.api_token_uret("dr-enes", "doctor")
+
+        with patch.object(
+            auth.time,
+            "time",
+            return_value=issued_at + auth.MAX_AGE + 1,
+        ):
+            self.assertIsNotNone(auth.api_token_bilgisi(token))
+
+        with patch.object(
+            auth.time,
+            "time",
+            return_value=issued_at + auth.MOBILE_API_MAX_AGE + 1,
+        ):
+            self.assertIsNone(auth.api_token_bilgisi(token))
 
     def test_wrong_password_is_rejected(self):
         response = self.client.post(

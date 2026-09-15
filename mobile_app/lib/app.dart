@@ -41,7 +41,27 @@ class _KlinotAppState extends State<KlinotApp> {
       final username = await _storage.read(key: 'username');
       final role = await _storage.read(key: 'role');
       if (token != null && username != null && role != null) {
-        _session = UserSession(token: token, username: username, role: role);
+        final stored = UserSession(
+          token: token,
+          username: username,
+          role: role,
+        );
+        try {
+          await _api.validateSession(token);
+          _session = stored;
+        } on ApiException catch (error) {
+          if (error.statusCode == 401) {
+            await _storage.deleteAll();
+          } else {
+            // Geçici ağ/Render uyanma hatasında oturumu silme; işlem sırasında
+            // sunucu yeniden kontrol edecektir.
+            _session = stored;
+          }
+        } catch (_) {
+          // Telefon çevrimdışıysa veya Render henüz uyanmadıysa geçerli olabilecek
+          // oturumu gereksiz yere silme.
+          _session = stored;
+        }
       }
     } catch (_) {
       // Secure storage may be unavailable in tests or unsupported environments.
@@ -124,7 +144,11 @@ class HomeShell extends StatelessWidget {
         ],
       ),
       body: SafeArea(
-        child: RecorderScreen(api: api, session: session),
+        child: RecorderScreen(
+          api: api,
+          session: session,
+          onSessionExpired: onLogout,
+        ),
       ),
     );
   }

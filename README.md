@@ -52,7 +52,8 @@ Tarayıcı: **http://127.0.0.1:8000** → "Örnek yükle" → "Analiz et".
 
 GEMINI_API_KEY=...
 GEMINI_MODEL=gemini-2.5-flash
-APP_VERSION=v2.2.1
+APP_VERSION=v2.3.0
+MOBILE_SESSION_DAYS=30
 ELEVENLABS_API_KEY=...
 ELEVENLABS_STT_MODEL=scribe_v2
 ELEVENLABS_STT_LANGUAGE=tr
@@ -118,7 +119,8 @@ OPENAI_STT_FALLBACK_MODEL=gpt-transcribe
 4. **Environment** sekmesinden değişkenleri gir:
    - `GEMINI_API_KEY` = (anahtarın)
    - `GEMINI_MODEL` = `gemini-2.5-flash`
-   - `APP_VERSION` = `v1.7.0`
+   - `APP_VERSION` = `v2.3.0`
+   - `MOBILE_SESSION_DAYS` = `30`
    - `ELEVENLABS_API_KEY` = (ElevenLabs API anahtarın)
    - `ELEVENLABS_STT_MODEL` = `scribe_v2`
    - `ELEVENLABS_STT_LANGUAGE` = `tr`

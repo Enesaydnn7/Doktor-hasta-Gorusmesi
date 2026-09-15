@@ -1,5 +1,13 @@
 # Sürüm Geçmişi
 
+## v2.3.0 — 15 Eylül 2026
+
+- Mobil Bearer oturumu web panelinin 12 saatlik çerezinden ayrıldı ve 30 günlük güvenli mobil oturum süresi tanımlandı; 12 saatten eski fakat 30 günü doldurmamış mevcut APK tokenları yeniden çalışır.
+- APK, güvenli depodan açılan oturumu sunucuda doğruluyor; gerçekten geçersiz tokenla kayıt alınmasına izin vermek yerine kullanıcıyı giriş ekranına yönlendiriyor.
+- “Analiz et” sonrasında tamamlandı kartı kaldırıldı; tam dönen dairesel gösterge, “Epikriz hazırlanıyor” açıklaması ve gizli arka plan işleme ekranı eklendi.
+- Analiz tamamlandığında doktor epikrizi otomatik açılmaya devam ediyor; görüşme metni, analiz adımları ve yüzdeler doktora gösterilmiyor.
+- STT/LLM sağlayıcıları, analiz promptları, admin paneli ve kalıcı demo kayıtları değiştirilmedi.
+
 ## v2.2.1 — 14 Eylül 2026
 
 - 9 Eylül tarihli bacak ağrısı deneme kaydı, sesi ve üç raporuyla birlikte sürümlü demo arşivine eklendi.

@@ -278,9 +278,19 @@ async def mobile_login(body: MobileLoginIn):
     return {
         "access_token": auth.api_token_uret(user, role),
         "token_type": "bearer",
-        "expires_in": auth.MAX_AGE,
+        "expires_in": auth.MOBILE_API_MAX_AGE,
         "user": {"username": user, "role": role},
         "api_version": "v1",
+    }
+
+
+@app.get("/api/v1/mobile/auth/session")
+async def mobile_session(user: dict = Depends(mobile_auth)):
+    """Uygulama açılışında saklanan mobil oturumu doğrula."""
+    return {
+        "valid": True,
+        "user": {"username": user["user"], "role": user["role"]},
+        "expires_in": auth.MOBILE_API_MAX_AGE,
     }
 
 
