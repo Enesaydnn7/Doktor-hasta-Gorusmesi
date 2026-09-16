@@ -7,6 +7,46 @@ import db
 
 
 class MobileDatabaseTests(unittest.TestCase):
+    def test_comed_worklist_accepts_button_rows_and_scopes_each_user(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "comed.db"
+            with (
+                patch.object(db, "DB_PATH", str(path)),
+                patch.dict("os.environ", {"SEED_MANAGER_DEMO": "false"}),
+            ):
+                db.init()
+                row = {
+                    "visit_id": "22207357",
+                    "clinical_card_id": "",
+                    "patient_name": "Dursun Kılıçarslan",
+                    "patient_no": "476644",
+                    "protocol_no": "V-22207357",
+                    "task": "Kardiyoloji muayenesi Bekliyor",
+                    "clinical_card_url": "",
+                }
+                db.comed_worklist_sync([row], synced_by="doctor-a")
+
+                self.assertEqual(len(db.comed_worklist(synced_by="doctor-a")), 1)
+                self.assertEqual(db.comed_worklist(synced_by="doctor-b"), [])
+
+                completed = {
+                    **row,
+                    "clinical_card_id": "30416836",
+                    "clinical_card_url": "http://goztepe.comedtest.mlpcare.com/card",
+                }
+                db.comed_worklist_sync(
+                    [completed], synced_by="doctor-a", replace=False
+                )
+                # A later table refresh has no card URL; the discovered card must survive.
+                db.comed_worklist_sync([row], synced_by="doctor-a", replace=True)
+                saved = db.comed_worklist(synced_by="doctor-a")[0]
+
+        self.assertEqual(saved["clinical_card_id"], "30416836")
+        self.assertEqual(
+            saved["clinical_card_url"],
+            "http://goztepe.comedtest.mlpcare.com/card",
+        )
+
     def test_pending_audio_survives_between_requests_and_moves_to_record(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "mobile.db"

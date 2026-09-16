@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Klinot COMED Köprüsü",
-  "version": "2.4.0",
+  "version": "2.4.1",
   "description": "Klinot taslaklarını açık Göztepe COMED test oturumuna taşır.",
   "permissions": ["storage"],
   "host_permissions": [

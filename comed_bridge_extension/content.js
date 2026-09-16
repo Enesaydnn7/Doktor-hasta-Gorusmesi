@@ -1,5 +1,7 @@
 (() => {
   const CARD_RE = /\/hasta-tibbi-karti\/(\d+)\/patient-clinical-card\/(\d+)\/?/;
+  const WORKLIST_RE = /\/medical(?:\/hasta-tibbi-karti)?\/?$/;
+  const SELECTED_PATIENT_KEY = "klinot-comed-selected-patient";
   let activeTransferId = null;
   let busy = false;
 
@@ -33,36 +35,85 @@
     return (root?.innerText || "").replace(/\s+/g, " ").trim();
   }
 
+  function parseRow(row, card = {}) {
+    if (!row) return null;
+    const cells = [...row.querySelectorAll(":scope > td, :scope > [role=cell]")];
+    const raw = textOf(row);
+    const protocol = raw.match(/V-(\d+)/)?.[0] || "";
+    const visitId = String(card.visitId || protocol.replace("V-", "")).trim();
+    if (!visitId) return null;
+    const patientCell = cells[0];
+    const patientLines = (patientCell?.innerText || "")
+      .split(/\r?\n/).map((value) => value.trim()).filter(Boolean);
+    const patientNo = patientLines.findLast?.((value) => /^\d{4,}$/.test(value))
+      || raw.match(/\b(\d{5,})\b/)?.[1] || "";
+    const patientName = patientCell?.querySelector("img[alt]")?.alt
+      || patientLines[0] || "COMED hastası";
+    const taskText = textOf(cells[6]) || raw;
+    const doctorLines = (cells[9]?.innerText || "")
+      .split(/\r?\n/).map((value) => value.trim()).filter(Boolean);
+    return {
+      visit_id: visitId,
+      clinical_card_id: String(card.cardId || ""),
+      patient_id: patientNo,
+      patient_name: patientName,
+      patient_no: patientNo,
+      protocol_no: protocol || `V-${visitId}`,
+      department: taskText.replace(/\s*muayenesi.*$/i, "").trim(),
+      doctor_name: doctorLines.at(-1) || "",
+      task: taskText,
+      status: /Bekliyor/i.test(raw) ? "Bekliyor" : "",
+      clinical_card_url: card.url || "",
+    };
+  }
+
   function parseWorklist() {
     const seen = new Set();
-    return [...document.querySelectorAll(`a[href*="/hasta-tibbi-karti/"]`)].map((anchor) => {
-      const match = anchor.href.match(CARD_RE);
-      if (!match || seen.has(match[1])) return null;
-      seen.add(match[1]);
-      const row = anchor.closest("tr,[role=row],.v-data-table__tr,.row") || anchor.parentElement?.parentElement;
-      const raw = textOf(row);
-      const image = row?.querySelector("img[alt]");
-      const protocol = raw.match(/V-\d+/)?.[0] || `V-${match[1]}`;
-      const patientNo = raw.match(/(?:Hasta\s*No[:\s]*|\|\s*)(\d{4,})/i)?.[1] || "";
-      const name = image?.alt || raw.split(protocol)[0].replace(/\b\d{1,3}yıl\b.*$/i, "").trim();
-      return {
-        visit_id: match[1], clinical_card_id: match[2], patient_id: patientNo,
-        patient_name: name || "COMED hastası", patient_no: patientNo, protocol_no: protocol,
-        department: raw.match(/(?:Kardiyoloji|Dermatoloji|İç Hastalıkları|Genel Cerrahi|Ortopedi|Nöroloji)/i)?.[0] || "",
-        doctor_name: "", task: raw, status: /Bekliyor/i.test(raw) ? "Bekliyor" : "",
-        clinical_card_url: anchor.href,
-      };
-    }).filter(Boolean);
+    return [...document.querySelectorAll("tbody tr, [role=row]")]
+      .map((row) => parseRow(row))
+      .filter((item) => item && !seen.has(item.visit_id) && seen.add(item.visit_id));
+  }
+
+  async function syncCurrentCard() {
+    const match = location.pathname.match(CARD_RE);
+    if (!match) return;
+    let selected = null;
+    try {
+      selected = JSON.parse(sessionStorage.getItem(SELECTED_PATIENT_KEY) || "null");
+    } catch (_) {}
+    const headerText = textOf(document.body).slice(0, 1600);
+    const fallback = {
+      visit_id: match[1],
+      patient_name: headerText.match(/^([^|\n]{3,80})/)?.[1]?.trim() || "COMED hastası",
+      patient_no: headerText.match(/Hasta\s*No[:\s]*(\d+)/i)?.[1] || "",
+      protocol_no: `V-${match[1]}`,
+      task: "Açık hasta tıbbi kartı",
+    };
+    const item = {
+      ...fallback,
+      ...(selected?.visit_id === match[1] ? selected : {}),
+      visit_id: match[1],
+      clinical_card_id: match[2],
+      clinical_card_url: location.href,
+    };
+    await request("/api/v1/mobile/comed/worklist/sync", {
+      method: "POST", body: JSON.stringify({items: [item], replace: false}),
+    });
+    sessionStorage.removeItem(SELECTED_PATIENT_KEY);
   }
 
   async function syncWorklist() {
     const items = parseWorklist();
-    if (!items.length) return;
     try {
       await request("/api/v1/mobile/comed/worklist/sync", {
-        method: "POST", body: JSON.stringify({items}),
+        method: "POST", body: JSON.stringify({items, replace: true}),
       });
-      bridgeStatus(`${items.length} hasta iş listesine eşitlendi`, "ok");
+      bridgeStatus(
+        items.length
+          ? `${items.length} hasta iş listesine eşitlendi`
+          : "İş listesi boş olarak eşitlendi",
+        "ok",
+      );
     } catch (error) {
       bridgeStatus(error.message, "bad");
     }
@@ -167,6 +218,10 @@
 
   document.addEventListener("click", (event) => {
     const button = event.target.closest("button");
+    if (button && textOf(button) === "Göreve Git") {
+      const selected = parseRow(button.closest("tr,[role=row]"));
+      if (selected) sessionStorage.setItem(SELECTED_PATIENT_KEY, JSON.stringify(selected));
+    }
     if (!activeTransferId || !button || textOf(button) !== "Kaydet") return;
     const id = activeTransferId;
     setTimeout(() => {
@@ -179,11 +234,12 @@
     }, 1800);
   }, true);
 
-  if (location.pathname.replace(/\/$/, "") === "/tr-tr/medical") {
+  if (WORKLIST_RE.test(location.pathname)) {
     setTimeout(syncWorklist, 2500);
     setInterval(syncWorklist, 60000);
   }
   if (CARD_RE.test(location.pathname)) {
+    setTimeout(() => syncCurrentCard().catch((error) => bridgeStatus(error.message, "bad")), 1500);
     setTimeout(pollTransfer, 2500);
     setInterval(pollTransfer, 5000);
   }

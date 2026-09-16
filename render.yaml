@@ -13,7 +13,7 @@ services:
       - key: GEMINI_API_KEY
         sync: false                 # anahtarı panelden gizli olarak sen gireceksin
       - key: APP_VERSION
-        value: v2.4.0
+        value: v2.4.1
       - key: COMED_WEB_BASE_URL
         value: http://goztepe.comedtest.mlpcare.com/tr-tr/medical
       - key: COMED_API_BASE_URL

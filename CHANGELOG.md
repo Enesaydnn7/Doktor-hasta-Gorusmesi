@@ -1,5 +1,14 @@
 # Sürüm Geçmişi
 
+## v2.4.1 — 16 Eylül 2026
+
+- COMED iş listesi artık bağlantı olmayan “Göreve Git” düğmeli tablo satırlarını doğrudan okuyup mobil uygulamaya eşitliyor.
+- Hasta kartı ilk kez açıldığında klinik kart kimliği ve gerçek URL aynı kayda ekleniyor; sonraki liste yenilemelerinde bu bilgi korunuyor.
+- COMED iş listeleri Klinot kullanıcısına göre ayrıldı; farklı doktor oturumlarının listeleri birbirini silmiyor veya görmüyor.
+- Mobil boş iş listesine eklenti kurulum adımları ve COMED/Klinot girişlerinin farkını açıklayan yardım eklendi.
+- Yönetici kayıt listesi eski beş sütunlu düzenine döndürüldü. COMED durumu işlem alanında gösteriliyor; iletişim önerileri belirgin kartlarla sunuluyor.
+- Yönetici CSS dosyasına sürüm parametresi eklendi; eski tarayıcı önbelleğinin yeni HTML düzenini bozması engellendi.
+
 ## v2.4.0 — 16 Eylül 2026
 
 - Mobil görüşme akışına COMED iş listesinden hasta/protokol seçimi eklendi; hasta seçilmeden kayıt başlatılması engellendi.

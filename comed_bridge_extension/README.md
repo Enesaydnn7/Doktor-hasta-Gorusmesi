@@ -3,10 +3,27 @@
 Bu Manifest V3 Chrome eklentisi, Göztepe COMED test ekranı ile Klinot arasındaki
 kurumsal-ağ köprüsüdür.
 
-1. Chrome `chrome://extensions` ekranında geliştirici modunu açın.
-2. **Paketlenmemiş öğe yükle** ile bu klasörü seçin.
-3. Eklenti penceresinde Klinot kullanıcı adı/şifresiyle bağlanın.
-4. `http://goztepe.comedtest.mlpcare.com/tr-tr/medical/` iş listesini açın.
+## Kurulum
+
+1. Bu `comed_bridge_extension` klasörünü bilgisayara indirin. GitHub ZIP'i
+   kullanıyorsanız önce ZIP'i klasöre çıkarın.
+2. Chrome adres çubuğuna `chrome://extensions` yazın.
+3. Sağ üstten **Geliştirici modu** seçeneğini açın.
+4. **Paketlenmemiş öğe yükle** düğmesine basın.
+5. İçinde `manifest.json` bulunan `comed_bridge_extension` klasörünü seçin.
+6. Chrome araç çubuğundaki yapboz simgesinden **Klinot COMED Köprüsü** eklentisini
+   sabitleyin ve açın.
+7. Eklentide API adresini değiştirmeden, mobil Klinot'a girdiğiniz **Klinot kullanıcı
+   adı ve şifresiyle** “Köprüyü bağla” deyin. Buraya COMED parolası yazılmaz.
+8. Kurumsal Wi-Fi'da `http://goztepe.comedtest.mlpcare.com/tr-tr/medical/hasta-tibbi-karti`
+   iş listesini açın ve COMED'e kendi hesabınızla giriş yapın.
+9. İş listesi sayfasını bir kez yenileyin. Sağ altta “Klinot · 1 hasta iş listesine
+   eşitlendi” bildirimi görünmelidir.
+10. Telefonda Klinot iş listesindeki yenile simgesine basın.
+
+COMED'deki **Göreve Git** düğmesi normal bir bağlantı olmadığı için köprü tablo
+satırını doğrudan okur. Göreve ilk kez girildiğinde hasta kartı kimliği de otomatik
+tamamlanır. Liste ve kart bilgileri yalnız aynı Klinot kullanıcısına gösterilir.
 
 Köprü iş listesini mobil uygulamaya eşitler. Mobilde **COMED'e aktar** denince
 bekleyen taslağı yalnız aynı protokole ait açık tıbbi kartta doldurur. Doktorun
