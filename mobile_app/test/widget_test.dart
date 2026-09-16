@@ -108,6 +108,24 @@ class EmptyWorklistApi extends FakeApi {
   Future<List<ComedPatient>> getComedWorklist(String token) async => const [];
 }
 
+class QueuedTransferApi extends FakeApi {
+  var createCalls = 0;
+
+  @override
+  Future<ComedTransfer> createComedTransfer(
+    String token,
+    int recordId,
+    ComedPatient patient,
+  ) async {
+    createCalls++;
+    return const ComedTransfer(id: 17, status: 'queued', clinicalCardUrl: '');
+  }
+
+  @override
+  Future<ComedTransfer> getComedTransfer(String token, int transferId) async =>
+      const ComedTransfer(id: 17, status: 'queued', clinicalCardUrl: '');
+}
+
 class FakeRecorder extends AudioRecorderService {
   FakeRecorder(this.file);
 
@@ -137,7 +155,7 @@ void main() {
     );
 
     expect(find.text('Klinot'), findsOneWidget);
-    expect(find.textContaining('v2.4.1'), findsOneWidget);
+    expect(find.textContaining('v2.4.2'), findsOneWidget);
     await tester.enterText(find.byKey(const Key('usernameField')), 'admin');
     await tester.enterText(find.byKey(const Key('passwordField')), 'secret');
     await tester.tap(find.byKey(const Key('loginButton')));
@@ -242,6 +260,52 @@ void main() {
     expect(find.text('Yönetim'), findsNothing);
     expect(find.text('Hasta özeti'), findsNothing);
   });
+
+  testWidgets(
+    'queued COMED transfer stops spinning and retries without duplicate',
+    (tester) async {
+      final api = QueuedTransferApi();
+      const result = AnalysisResult(
+        doctor: {'epikriz': 'Kontrol notu'},
+        comedPatient: ComedPatient(
+          visitId: '22207357',
+          clinicalCardId: '',
+          patientName: 'Test Hasta',
+          protocolNo: 'V-22207357',
+          clinicalCardUrl: '',
+        ),
+        recordId: 42,
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: buildKlinotTheme(),
+          home: ReportsScreen(
+            api: api,
+            session: UserSession(
+              token: 'doctor-token',
+              username: 'doctor',
+              role: 'doctor',
+            ),
+            result: result,
+          ),
+        ),
+      );
+
+      await tester.tap(find.byKey(const Key('transferToComedButton')));
+      await tester.pump();
+      for (var i = 0; i < 16; i++) {
+        await tester.pump(const Duration(seconds: 2));
+      }
+      expect(find.text('COMED bekliyor · Tekrar kontrol et'), findsOneWidget);
+      expect(api.createCalls, 1);
+
+      await tester.tap(find.byKey(const Key('transferToComedButton')));
+      await tester.pump();
+      expect(api.createCalls, 1);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(seconds: 3));
+    },
+  );
 
   testWidgets(
     'recording is analyzed without exposing transcript or progress UI',

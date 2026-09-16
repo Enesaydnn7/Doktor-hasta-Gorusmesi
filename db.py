@@ -309,6 +309,12 @@ def comed_worklist_sync(items: list[dict], synced_by: str = "",
                     url, now, synced_by,
                 ),
             )
+            if url:
+                c.execute(
+                    """UPDATE comed_transfers SET clinical_card_url=?
+                       WHERE visit_id=? AND COALESCE(clinical_card_url,'')=''""",
+                    (url, visit_id),
+                )
         if replace:
             if synced_visits:
                 placeholders = ",".join("?" for _ in synced_visits)
@@ -386,12 +392,17 @@ def comed_transfer_latest_for_record(record_id: int) -> dict | None:
     return _transfer_dict(row)
 
 
-def comed_transfer_pending(visit_id: str | None = None, limit: int = 20) -> list[dict]:
+def comed_transfer_pending(visit_id: str | None = None,
+                           requested_by: str | None = None,
+                           limit: int = 20) -> list[dict]:
     params: list = ["queued", "filling"]
     where = "status IN (?,?)"
     if visit_id:
         where += " AND visit_id=?"
         params.append(str(visit_id))
+    if requested_by is not None:
+        where += " AND requested_by=?"
+        params.append(requested_by)
     params.append(limit)
     with _lock, _conn() as c:
         rows = c.execute(

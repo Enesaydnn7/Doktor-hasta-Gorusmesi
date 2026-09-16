@@ -76,6 +76,7 @@ class ComedIntegrationTests(unittest.TestCase):
             patch.object(main.db, "getir", return_value={"id": 55, "comed": {}}),
             patch.object(main.comed_integration, "build_transfer_bundle", return_value={"auto_sign": False}),
             patch.object(main.db, "comed_transfer_create", return_value=transfer),
+            patch.object(main.db, "comed_transfer_pending", return_value=[transfer]) as pending,
             TestClient(main.app) as client,
         ):
             unauthorized = client.get("/api/v1/mobile/comed/worklist")
@@ -85,12 +86,17 @@ class ComedIntegrationTests(unittest.TestCase):
                 headers=headers,
                 json={"record_id": 55, "patient": patient},
             )
+            bridge_queue = client.get(
+                "/api/v1/mobile/comed/bridge/transfers", headers=headers
+            )
 
         self.assertEqual(unauthorized.status_code, 401)
         self.assertEqual(worklist.status_code, 200)
         self.assertEqual(worklist.json()["items"][0]["visit_id"], "22207357")
         self.assertEqual(created.status_code, 200)
         self.assertEqual(created.json()["status"], "queued")
+        self.assertEqual(bridge_queue.status_code, 200)
+        pending.assert_called_once_with(visit_id=None, requested_by="dr-enes")
 
 
 if __name__ == "__main__":
