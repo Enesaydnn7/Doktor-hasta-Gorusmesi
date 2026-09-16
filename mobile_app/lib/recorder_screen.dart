@@ -437,18 +437,48 @@ class _ComedPatientSelector extends StatelessWidget {
             if (loading)
               const LinearProgressIndicator(minHeight: 3)
             else if (patients.isEmpty)
-              Container(
-                padding: const EdgeInsets.all(13),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFF7E8),
-                  borderRadius: BorderRadius.circular(13),
-                ),
-                child: Text(
-                  error == null
-                      ? 'İş listesi boş. Bilgisayarda COMED köprüsünü ve Göztepe test ekranını açıp yenileyin.'
-                      : 'İş listesi alınamadı: $error',
-                  style: const TextStyle(color: Color(0xFF795A18), height: 1.4),
-                ),
+              Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(13),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF7E8),
+                      borderRadius: BorderRadius.circular(13),
+                    ),
+                    child: Text(
+                      error == null
+                          ? 'İş listesi henüz eşitlenmedi. Köprü kurulumunu tamamlayıp COMED iş listesini yenileyin.'
+                          : 'İş listesi alınamadı: $error',
+                      style: const TextStyle(
+                        color: Color(0xFF795A18),
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const ExpansionTile(
+                    key: Key('comedSetupInstructions'),
+                    tilePadding: EdgeInsets.symmetric(horizontal: 4),
+                    childrenPadding: EdgeInsets.fromLTRB(8, 0, 8, 10),
+                    leading: Icon(Icons.extension_outlined),
+                    title: Text(
+                      'COMED bağlantısı nasıl kurulur?',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    children: [
+                      Text(
+                        '1. Bilgisayardaki Chrome’a Klinot COMED Köprüsü eklentisini kurun.\n'
+                        '2. COMED’e kendi hesabınızla normal şekilde giriş yapın.\n'
+                        '3. Eklentiyi Klinot kullanıcı adınız ve şifrenizle bağlayın. COMED parolanızı eklentiye yazmayın.\n'
+                        '4. COMED iş listesini yenileyin, sonra bu ekrandaki yenile simgesine basın.',
+                        style: TextStyle(
+                          color: Color(0xFF526B73),
+                          height: 1.55,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               )
             else
               DropdownButtonFormField<ComedPatient>(

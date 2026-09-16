@@ -65,6 +65,9 @@ class BrowserStateRegressionTests(unittest.TestCase):
 
         self.assertIn("goztepe.comedtest.mlpcare.com", manifest)
         self.assertIn("ready_for_review", content)
+        self.assertIn('textOf(button) === "Göreve Git"', content)
+        self.assertIn('querySelectorAll("tbody tr, [role=row]")', content)
+        self.assertIn("syncCurrentCard", content)
         self.assertNotIn("Kaydet ve İmzala", content)
         self.assertNotIn("x-authentication-token", background.lower())
 

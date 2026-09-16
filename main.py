@@ -96,6 +96,7 @@ class MobileEpikrizPdfIn(BaseModel):
 
 class ComedWorklistSyncIn(BaseModel):
     items: list[dict]
+    replace: bool = True
 
 
 class ComedTransferIn(BaseModel):
@@ -355,10 +356,10 @@ async def mobile_epikriz_pdf(
 
 
 @app.get("/api/v1/mobile/comed/worklist")
-async def mobile_comed_worklist(_user: dict = Depends(mobile_auth)):
+async def mobile_comed_worklist(user: dict = Depends(mobile_auth)):
     """Kurumsal ağdaki tarayıcı köprüsünün son eşitlediği doktor iş listesi."""
     return {
-        "items": db.comed_worklist(),
+        "items": db.comed_worklist(synced_by=user["user"]),
         "web_base_url": config.COMED_WEB_BASE_URL,
     }
 
@@ -368,7 +369,9 @@ async def mobile_comed_worklist_sync(
     body: ComedWorklistSyncIn,
     user: dict = Depends(mobile_auth),
 ):
-    count = db.comed_worklist_sync(body.items[:200], synced_by=user["user"])
+    count = db.comed_worklist_sync(
+        body.items[:200], synced_by=user["user"], replace=body.replace
+    )
     return {"synced": count}
 
 
@@ -376,7 +379,7 @@ def _create_comed_transfer(record_id: int, patient: dict, requested_by: str) -> 
     record = db.getir(record_id)
     if not record:
         raise HTTPException(status_code=404, detail="Kayıt bulunamadı")
-    if not patient.get("visit_id") or not patient.get("clinical_card_url"):
+    if not patient.get("visit_id"):
         raise HTTPException(status_code=422, detail="COMED hasta/protokol bilgisi eksik")
     bundle = comed_integration.build_transfer_bundle(record, patient)
     return db.comed_transfer_create(record_id, patient, bundle, requested_by)

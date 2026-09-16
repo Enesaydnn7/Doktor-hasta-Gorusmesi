@@ -103,6 +103,11 @@ class FlowFakeApi extends FakeApi {
   }
 }
 
+class EmptyWorklistApi extends FakeApi {
+  @override
+  Future<List<ComedPatient>> getComedWorklist(String token) async => const [];
+}
+
 class FakeRecorder extends AudioRecorderService {
   FakeRecorder(this.file);
 
@@ -132,7 +137,7 @@ void main() {
     );
 
     expect(find.text('Klinot'), findsOneWidget);
-    expect(find.textContaining('v2.4.0'), findsOneWidget);
+    expect(find.textContaining('v2.4.1'), findsOneWidget);
     await tester.enterText(find.byKey(const Key('usernameField')), 'admin');
     await tester.enterText(find.byKey(const Key('passwordField')), 'secret');
     await tester.tap(find.byKey(const Key('loginButton')));
@@ -157,6 +162,28 @@ void main() {
     expect(find.text('Yeni görüşme'), findsOneWidget);
     expect(find.text('Yönetim'), findsNothing);
     expect(find.byIcon(Icons.dashboard_rounded), findsNothing);
+  });
+
+  testWidgets('empty COMED worklist explains bridge installation', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildKlinotTheme(),
+        home: RecorderScreen(
+          api: EmptyWorklistApi(),
+          session: UserSession(
+            token: 'doctor-token',
+            username: 'doctor',
+            role: 'doctor',
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('comedSetupInstructions')), findsOneWidget);
+    expect(find.text('COMED bağlantısı nasıl kurulur?'), findsOneWidget);
   });
 
   testWidgets('result screen exposes structured epikriz and COMED actions', (

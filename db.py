@@ -266,24 +266,39 @@ def getir(kid: int):
     return d
 
 
-def comed_worklist_sync(items: list[dict], synced_by: str = "") -> int:
+def comed_worklist_sync(items: list[dict], synced_by: str = "",
+                        replace: bool = True) -> int:
     """Tarayıcı köprüsünün gördüğü COMED iş listesini atomik olarak yenile."""
     now = datetime.now().isoformat(timespec="seconds")
     with _lock, _conn() as c:
-        c.execute("DELETE FROM comed_worklist")
+        synced_visits = []
         for item in items:
             visit_id = str(item.get("visit_id") or "").strip()
             card_id = str(item.get("clinical_card_id") or "").strip()
             name = str(item.get("patient_name") or "").strip()
             url = str(item.get("clinical_card_url") or "").strip()
-            if not visit_id or not card_id or not name or not url:
+            if not visit_id or not name:
                 continue
+            synced_visits.append(visit_id)
             c.execute(
                 """INSERT INTO comed_worklist
                    (visit_id, clinical_card_id, patient_id, patient_name, patient_no,
                     protocol_no, department, doctor_name, task, status,
                     clinical_card_url, synced_at, synced_by)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+                   ON CONFLICT(visit_id) DO UPDATE SET
+                     clinical_card_id=COALESCE(NULLIF(excluded.clinical_card_id,''), comed_worklist.clinical_card_id),
+                     patient_id=excluded.patient_id,
+                     patient_name=excluded.patient_name,
+                     patient_no=excluded.patient_no,
+                     protocol_no=excluded.protocol_no,
+                     department=excluded.department,
+                     doctor_name=excluded.doctor_name,
+                     task=excluded.task,
+                     status=excluded.status,
+                     clinical_card_url=COALESCE(NULLIF(excluded.clinical_card_url,''), comed_worklist.clinical_card_url),
+                     synced_at=excluded.synced_at,
+                     synced_by=excluded.synced_by""",
                 (
                     visit_id, card_id, str(item.get("patient_id") or ""), name,
                     str(item.get("patient_no") or ""),
@@ -294,15 +309,32 @@ def comed_worklist_sync(items: list[dict], synced_by: str = "") -> int:
                     url, now, synced_by,
                 ),
             )
-    return len(comed_worklist())
+        if replace:
+            if synced_visits:
+                placeholders = ",".join("?" for _ in synced_visits)
+                c.execute(
+                    f"DELETE FROM comed_worklist WHERE synced_by=? "
+                    f"AND visit_id NOT IN ({placeholders})",
+                    (synced_by, *synced_visits),
+                )
+            else:
+                c.execute("DELETE FROM comed_worklist WHERE synced_by=?", (synced_by,))
+    return len(comed_worklist(synced_by=synced_by))
 
 
-def comed_worklist(limit: int = 100) -> list[dict]:
+def comed_worklist(limit: int = 100, synced_by: str | None = None) -> list[dict]:
     with _lock, _conn() as c:
-        rows = c.execute(
-            "SELECT * FROM comed_worklist ORDER BY synced_at DESC, patient_name LIMIT ?",
-            (limit,),
-        ).fetchall()
+        if synced_by is None:
+            rows = c.execute(
+                "SELECT * FROM comed_worklist ORDER BY synced_at DESC, patient_name LIMIT ?",
+                (limit,),
+            ).fetchall()
+        else:
+            rows = c.execute(
+                """SELECT * FROM comed_worklist WHERE synced_by=?
+                   ORDER BY synced_at DESC, patient_name LIMIT ?""",
+                (synced_by, limit),
+            ).fetchall()
     return [dict(row) for row in rows]
 
 

@@ -9,12 +9,14 @@
 <body>
   <header><span>↗</span><div><b>Klinot</b><small>COMED Köprüsü</small></div></header>
   <main>
+    <div class="note"><b>1. COMED:</b> Göztepe COMED'e normal kullanıcı bilgilerinizle ayrı sekmede giriş yapın. COMED parolanızı bu eklentiye yazmayın.</div>
+    <div class="note"><b>2. Klinot:</b> Aşağıya mobil uygulamada kullandığınız Klinot hesabını yazıp köprüyü bağlayın.</div>
     <label>API adresi<input id="api" value="https://doktor-hasta-gorusmesi.onrender.com"></label>
-    <label>Kullanıcı adı<input id="user" autocomplete="username"></label>
-    <label>Şifre<input id="password" type="password" autocomplete="current-password"></label>
+    <label>Klinot kullanıcı adı<input id="user" autocomplete="username"></label>
+    <label>Klinot şifresi<input id="password" type="password" autocomplete="current-password"></label>
     <button id="connect">Köprüyü bağla</button>
     <p id="status">Bağlantı bekleniyor.</p>
-    <div class="note">COMED oturum anahtarı okunmaz veya saklanmaz. Alanlar açık COMED ekranında doldurulur; kaydı doktor tamamlar.</div>
+    <div class="note">Bağlandıktan sonra COMED iş listesi sayfasını bir kez yenileyin. Köprü açık oturumdaki doktorun satırlarını Klinot'a yollar; COMED oturum anahtarı ve parolası okunmaz.</div>
   </main>
   <script src="popup.js"></script>
 </body>
