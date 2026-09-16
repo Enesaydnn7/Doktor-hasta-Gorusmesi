@@ -26,7 +26,9 @@ satırını doğrudan okur. Göreve ilk kez girildiğinde hasta kartı kimliği 
 tamamlanır. Liste ve kart bilgileri yalnız aynı Klinot kullanıcısına gösterilir.
 
 Köprü iş listesini mobil uygulamaya eşitler. Mobilde **COMED'e aktar** denince
-bekleyen taslağı yalnız aynı protokole ait açık tıbbi kartta doldurur. Doktorun
+bekleyen taslak için doğru protokolün **Göreve Git** düğmesini açar ve yalnız aynı
+protokole ait tıbbi kartta alanları doldurur. COMED'in sayfa yenilemeden yaptığı
+ekran geçişleri de köprü tarafından izlenir. Doktorun
 `Kaydet` düğmesine basması COMED'in kendi `forms/document/saveDocumentProcesses`
 POST akışını çalıştırır. Köprü COMED oturum tokenını okumaz, saklamaz veya Klinot
 sunucusuna göndermez; otomatik imza da atmaz.

@@ -68,6 +68,9 @@ class BrowserStateRegressionTests(unittest.TestCase):
         self.assertIn('textOf(button) === "Göreve Git"', content)
         self.assertIn('querySelectorAll("tbody tr, [role=row]")', content)
         self.assertIn("syncCurrentCard", content)
+        self.assertIn("openPendingTransferFromWorklist", content)
+        self.assertIn("monitorRoute", content)
+        self.assertIn("setInterval(monitorRoute, 5000)", content)
         self.assertNotIn("Kaydet ve İmzala", content)
         self.assertNotIn("x-authentication-token", background.lower())
 

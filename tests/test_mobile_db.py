@@ -26,8 +26,21 @@ class MobileDatabaseTests(unittest.TestCase):
                 }
                 db.comed_worklist_sync([row], synced_by="doctor-a")
 
+                transfer_a = db.comed_transfer_create(
+                    41, row, {"requests": []}, requested_by="doctor-a"
+                )
+                db.comed_transfer_create(
+                    42, row, {"requests": []}, requested_by="doctor-b"
+                )
+
                 self.assertEqual(len(db.comed_worklist(synced_by="doctor-a")), 1)
                 self.assertEqual(db.comed_worklist(synced_by="doctor-b"), [])
+                self.assertEqual(
+                    len(db.comed_transfer_pending(requested_by="doctor-a")), 1
+                )
+                self.assertEqual(
+                    len(db.comed_transfer_pending(requested_by="doctor-b")), 1
+                )
 
                 completed = {
                     **row,
@@ -40,10 +53,15 @@ class MobileDatabaseTests(unittest.TestCase):
                 # A later table refresh has no card URL; the discovered card must survive.
                 db.comed_worklist_sync([row], synced_by="doctor-a", replace=True)
                 saved = db.comed_worklist(synced_by="doctor-a")[0]
+                updated_transfer = db.comed_transfer_get(transfer_a["id"])
 
         self.assertEqual(saved["clinical_card_id"], "30416836")
         self.assertEqual(
             saved["clinical_card_url"],
+            "http://goztepe.comedtest.mlpcare.com/card",
+        )
+        self.assertEqual(
+            updated_transfer["clinical_card_url"],
             "http://goztepe.comedtest.mlpcare.com/card",
         )
 

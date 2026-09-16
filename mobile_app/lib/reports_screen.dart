@@ -66,6 +66,17 @@ class _ReportsScreenState extends State<ReportsScreen> {
     if (_transferring || patient == null || recordId == null) return;
     setState(() => _transferring = true);
     try {
+      final existing = _transfer;
+      if (existing != null && {'queued', 'filling'}.contains(existing.status)) {
+        final completed = await _pollTransfer(existing.id);
+        if (!completed && mounted) {
+          _notice(
+            'COMED yanıtı bekleniyor. Bilgisayarda COMED iş listesini açık tutup tekrar kontrol edin.',
+            error: true,
+          );
+        }
+        return;
+      }
       final transfer = await widget.api.createComedTransfer(
         widget.session.token,
         recordId,
@@ -76,7 +87,13 @@ class _ReportsScreenState extends State<ReportsScreen> {
       _notice(
         'COMED aktarımı kuyruğa alındı. Açık COMED ekranına gönderiliyor.',
       );
-      await _pollTransfer(transfer.id);
+      final completed = await _pollTransfer(transfer.id);
+      if (!completed && mounted) {
+        _notice(
+          'COMED yanıtı bekleniyor. Bilgisayarda COMED iş listesini açık tutup tekrar kontrol edin.',
+          error: true,
+        );
+      }
     } catch (error) {
       if (mounted) _notice('COMED aktarımı başlatılamadı: $error', error: true);
     } finally {
@@ -84,28 +101,29 @@ class _ReportsScreenState extends State<ReportsScreen> {
     }
   }
 
-  Future<void> _pollTransfer(int transferId) async {
+  Future<bool> _pollTransfer(int transferId) async {
     for (var attempt = 0; attempt < 15 && mounted; attempt++) {
       await Future<void>.delayed(const Duration(seconds: 2));
-      if (!mounted) return;
+      if (!mounted) return false;
       try {
         final current = await widget.api.getComedTransfer(
           widget.session.token,
           transferId,
         );
-        if (!mounted) return;
+        if (!mounted) return false;
         setState(() => _transfer = current);
         if ({
           'ready_for_review',
           'completed',
           'failed',
         }.contains(current.status)) {
-          return;
+          return true;
         }
       } catch (_) {
-        return;
+        return false;
       }
     }
+    return false;
   }
 
   Future<void> _openComed() async {
@@ -287,7 +305,10 @@ class _ReportActions extends StatelessWidget {
     'ready_for_review' => 'COMED’e aktarıldı · Kontrol bekliyor',
     'completed' => 'COMED kaydı tamamlandı',
     'failed' => 'Aktarım başarısız · Tekrar dene',
-    'queued' => 'COMED aktarımı sırada…',
+    'queued' =>
+      transferring
+          ? 'COMED aktarımı sırada…'
+          : 'COMED bekliyor · Tekrar kontrol et',
     _ => 'COMED’e aktar',
   };
 
@@ -301,13 +322,15 @@ class _ReportActions extends StatelessWidget {
         FilledButton.icon(
           key: const Key('transferToComedButton'),
           onPressed:
-              (!canTransfer || transferring || transfer?.status == 'completed')
+              (!canTransfer ||
+                  transferring ||
+                  {'completed', 'ready_for_review'}.contains(transfer?.status))
               ? null
               : onTransfer,
           style: FilledButton.styleFrom(
             backgroundColor: const Color(0xFF3158C8),
           ),
-          icon: transferring || {'queued', 'filling'}.contains(transfer?.status)
+          icon: transferring || transfer?.status == 'filling'
               ? const SizedBox.square(
                   dimension: 19,
                   child: CircularProgressIndicator(

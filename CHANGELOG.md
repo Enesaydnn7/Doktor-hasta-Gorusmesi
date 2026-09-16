@@ -1,5 +1,12 @@
 # Sürüm Geçmişi
 
+## v2.4.2 — 16 Eylül 2026
+
+- COMED'in sayfa yenilemeden yaptığı iş listesi → hasta kartı geçişi artık algılanıyor; köprü kart açıldıktan sonra bekleyen aktarımı otomatik dolduruyor.
+- Bekleyen aktarım bulunduğunda köprü doğru protokolün “Göreve Git” düğmesini otomatik çalıştırıyor; otomatik kaydetme ve imzalama hâlâ kapalı.
+- Köprü yalnız giriş yapan Klinot kullanıcısının aktarım kuyruğunu görüyor ve hasta kartının gerçek URL'sini aktarım kaydına ekliyor.
+- Mobil uygulama yanıt gelmezse sonsuz yükleme göstermek yerine açıklama ve aynı aktarımı tekrar kontrol etme seçeneği sunuyor; yeni mükerrer kuyruk kaydı oluşturmuyor.
+
 ## v2.4.1 — 16 Eylül 2026
 
 - COMED iş listesi artık bağlantı olmayan “Göreve Git” düğmeli tablo satırlarını doğrudan okuyup mobil uygulamaya eşitliyor.

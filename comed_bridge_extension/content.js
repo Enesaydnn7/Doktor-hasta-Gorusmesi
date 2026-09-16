@@ -4,6 +4,10 @@
   const SELECTED_PATIENT_KEY = "klinot-comed-selected-patient";
   let activeTransferId = null;
   let busy = false;
+  let routeBusy = false;
+  let lastPath = "";
+  let lastWorklistSyncAt = 0;
+  let openingVisitId = null;
 
   function request(path, options = {}) {
     return new Promise((resolve, reject) => {
@@ -72,6 +76,30 @@
     return [...document.querySelectorAll("tbody tr, [role=row]")]
       .map((row) => parseRow(row))
       .filter((item) => item && !seen.has(item.visit_id) && seen.add(item.visit_id));
+  }
+
+  function rowForVisit(visitId) {
+    return [...document.querySelectorAll("tbody tr, [role=row]")]
+      .find((row) => parseRow(row)?.visit_id === String(visitId));
+  }
+
+  async function openPendingTransferFromWorklist() {
+    if (openingVisitId) return;
+    const payload = await request("/api/v1/mobile/comed/bridge/transfers");
+    const pending = (payload.items || []).find((item) => rowForVisit(item.visit_id));
+    if (!pending) return;
+    const row = rowForVisit(pending.visit_id);
+    const button = [...(row?.querySelectorAll("button") || [])]
+      .find((item) => textOf(item) === "Göreve Git");
+    if (!button) return;
+    const selected = parseRow(row);
+    if (selected) sessionStorage.setItem(SELECTED_PATIENT_KEY, JSON.stringify(selected));
+    openingVisitId = String(pending.visit_id);
+    bridgeStatus(`${selected?.patient_name || "Hasta"} kartı aktarım için açılıyor`);
+    button.click();
+    setTimeout(() => {
+      if (WORKLIST_RE.test(location.pathname)) openingVisitId = null;
+    }, 10000);
   }
 
   async function syncCurrentCard() {
@@ -216,6 +244,33 @@
     }
   }
 
+  async function monitorRoute() {
+    if (routeBusy) return;
+    routeBusy = true;
+    try {
+      const path = location.pathname;
+      const routeChanged = path !== lastPath;
+      if (routeChanged) {
+        lastPath = path;
+        openingVisitId = null;
+      }
+      if (WORKLIST_RE.test(path)) {
+        if (routeChanged || Date.now() - lastWorklistSyncAt >= 60000) {
+          await syncWorklist();
+          lastWorklistSyncAt = Date.now();
+        }
+        await openPendingTransferFromWorklist();
+      } else if (CARD_RE.test(path)) {
+        if (routeChanged) await syncCurrentCard();
+        await pollTransfer();
+      }
+    } catch (error) {
+      if (!/bağlı değil/i.test(error.message)) bridgeStatus(error.message, "bad");
+    } finally {
+      routeBusy = false;
+    }
+  }
+
   document.addEventListener("click", (event) => {
     const button = event.target.closest("button");
     if (button && textOf(button) === "Göreve Git") {
@@ -234,13 +289,6 @@
     }, 1800);
   }, true);
 
-  if (WORKLIST_RE.test(location.pathname)) {
-    setTimeout(syncWorklist, 2500);
-    setInterval(syncWorklist, 60000);
-  }
-  if (CARD_RE.test(location.pathname)) {
-    setTimeout(() => syncCurrentCard().catch((error) => bridgeStatus(error.message, "bad")), 1500);
-    setTimeout(pollTransfer, 2500);
-    setInterval(pollTransfer, 5000);
-  }
+  setTimeout(monitorRoute, 1500);
+  setInterval(monitorRoute, 5000);
 })();

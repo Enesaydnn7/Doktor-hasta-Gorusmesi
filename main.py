@@ -407,10 +407,14 @@ async def mobile_comed_transfer_get(
 @app.get("/api/v1/mobile/comed/bridge/transfers")
 async def mobile_comed_bridge_pending(
     visit_id: str | None = Query(default=None),
-    _user: dict = Depends(mobile_auth),
+    user: dict = Depends(mobile_auth),
 ):
     """Tarayıcı köprüsüne yalnız bekleyen taslakları verir; COMED tokenı almaz."""
-    return {"items": db.comed_transfer_pending(visit_id=visit_id)}
+    return {
+        "items": db.comed_transfer_pending(
+            visit_id=visit_id, requested_by=user["user"]
+        )
+    }
 
 
 @app.post("/api/v1/mobile/comed/bridge/transfers/{transfer_id}/status")
