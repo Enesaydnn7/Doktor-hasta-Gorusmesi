@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="popup.css">
+  <title>Klinot COMED Köprüsü</title>
+</head>
+<body>
+  <header><span>↗</span><div><b>Klinot</b><small>COMED Köprüsü</small></div></header>
+  <main>
+    <label>API adresi<input id="api" value="https://doktor-hasta-gorusmesi.onrender.com"></label>
+    <label>Kullanıcı adı<input id="user" autocomplete="username"></label>
+    <label>Şifre<input id="password" type="password" autocomplete="current-password"></label>
+    <button id="connect">Köprüyü bağla</button>
+    <p id="status">Bağlantı bekleniyor.</p>
+    <div class="note">COMED oturum anahtarı okunmaz veya saklanmaz. Alanlar açık COMED ekranında doldurulur; kaydı doktor tamamlar.</div>
+  </main>
+  <script src="popup.js"></script>
+</body>
+</html>

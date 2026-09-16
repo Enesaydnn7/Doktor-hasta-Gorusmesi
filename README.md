@@ -1,6 +1,6 @@
 # Klinik Görüşme Analiz Paneli — Scribe/OpenAI ses dökümü + Gemini analiz
 
-Doktor–hasta görüşmesinin metnini alır, **Gemini** ile aynı görüşmeden **üç rapor** üretir.
+Doktor–hasta görüşmesinin metnini alır, **Gemini** ile aynı görüşmeden üç rapor ve COMED alan taslağını paralel üretir.
 Epikriz şeması, gerçek hastane epikrizlerinin yapısına göre kurulmuştur (sigorta/kayıt uyumlu).
 
 `mobile_app/` altında yüz yüze görüşmeler için Android/iOS **Klinot Doktor** Flutter MVP'si bulunur. Mobil uygulama yalnızca kayıt, transkript kontrolü, doktor epikrizi ve epikriz PDF indirme akışını içerir; yönetim ekranları ayrı web `/admin` panelindedir. Mobil mimari ve kurulum: [MOBILE_APP.md](MOBILE_APP.md).
@@ -52,7 +52,9 @@ Tarayıcı: **http://127.0.0.1:8000** → "Örnek yükle" → "Analiz et".
 
 GEMINI_API_KEY=...
 GEMINI_MODEL=gemini-2.5-flash
-APP_VERSION=v2.3.0
+APP_VERSION=v2.4.0
+COMED_WEB_BASE_URL=http://goztepe.comedtest.mlpcare.com/tr-tr/medical
+COMED_API_BASE_URL=http://goztepe.comedtestapi.mlpcare.com/tr-tr/api/json
 MOBILE_SESSION_DAYS=30
 ELEVENLABS_API_KEY=...
 ELEVENLABS_STT_MODEL=scribe_v2
@@ -67,10 +69,12 @@ OPENAI_STT_FALLBACK_MODEL=gpt-transcribe
 | Dosya | İş |
 |---|---|
 | `main.py` | FastAPI; `/analyze` |
-| `llm.py` | Gemini çağrısı; görüşme tarihini ekler; 3 raporu sırayla üretir |
+| `llm.py` | Gemini çağrısı; görüşme tarihini ekler; 3 rapor ile COMED taslağını paralel üretir |
 | `stt.py` | ElevenLabs Scribe v2, OpenAI yedeği ve konuşmacı etiketleme |
 | `role_classifier.py` | Konuşmacı metinlerinden Gemini ile yalnızca doktor/hasta rol eşlemesi |
-| `prompts.py` | 3 system prompt (detaylı epikriz şeması burada) |
+| `prompts.py` | Hasta, doktor, yönetim ve COMED system promptları |
+| `comed_integration.py` | COMED taslağı normalizasyonu, zorunlu alan kontrolü ve aktarım paketi |
+| `comed_bridge_extension/` | Kurumsal ağdaki açık COMED oturumuna taslakları taşıyan Chrome köprüsü |
 | `pdf_report.py` | Rapor PDF üretimi (epikriz formatı) |
 | `config.py` | `.env` ayarları |
 | `templates/`, `static/` | panel arayüzü |
@@ -119,7 +123,7 @@ OPENAI_STT_FALLBACK_MODEL=gpt-transcribe
 4. **Environment** sekmesinden değişkenleri gir:
    - `GEMINI_API_KEY` = (anahtarın)
    - `GEMINI_MODEL` = `gemini-2.5-flash`
-   - `APP_VERSION` = `v2.3.0`
+   - `APP_VERSION` = `v2.4.0`
    - `MOBILE_SESSION_DAYS` = `30`
    - `ELEVENLABS_API_KEY` = (ElevenLabs API anahtarın)
    - `ELEVENLABS_STT_MODEL` = `scribe_v2`
@@ -163,7 +167,7 @@ Panelde metin kutusunun üstünde **Kaydet** ve **Ses dosyası yükle** var:
    boşsa son kez OpenAI `gpt-transcribe` denenir. Bilgisayara veya Render'a model indirilmez.
 5. Gemini yalnızca A/B konuşmacılarından hangisinin doktor, hangisinin hasta olduğunu cümlelerin anlamından seçer.
 6. Metin, düzenlenebilir kutuya düşer — kontrol edip düzeltirsin.
-7. "Analiz et" ile 3 rapor + epikriz üretilir.
+7. "Analiz et" ile üç rapor ve COMED alan taslağı aynı anda üretilir.
 
 ### STT model seçimi ve ücret
 
@@ -209,9 +213,9 @@ Her analizden sonra sonuçların üstünde küçük bir çubuk çıkar:
 
 Ses yüklendiğinde de o dökümün token/maliyeti "metne döküldü" satırında gösterilir.
 Doktor/hasta rol sınıflandırmasının Gemini token ve maliyeti ayrı satırda gösterilir. Sesli akışta
-Gemini toplam dört kez çağrılır: bir rol tespiti ve "Analiz et" sonrasında üç rapor.
+Sesli akışta Gemini toplam beş kez çağrılır: bir rol tespiti; "Analiz et" sonrasında üç rapor ve paralel COMED taslağı.
 
-Fiyatlar `pricing.py` içindedir. Üç rapor için Gemini 2.5 Flash; birincil ses dökümü için Scribe v2'nin
+Fiyatlar `pricing.py` içindedir. Üç rapor ve COMED taslağı için Gemini 2.5 Flash; birincil ses dökümü için Scribe v2'nin
 ses süresine dayalı liste fiyatı kullanılır. OpenAI yedeği devreye girerse kendi token/süre fiyatı ayrıca
 hesaplanır. API yeterli süre veya kullanım bilgisi döndürmezse arayüz ses maliyetini `—` gösterir;
 sıfır dolar gibi yanıltıcı bir değer yazmaz.

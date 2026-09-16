@@ -20,7 +20,7 @@
 .search-wrap input:focus{outline:none;border-color:var(--teal);box-shadow:0 0 0 3px var(--teal-soft)}
 
 /* liste başlığı ve satırlar */
-.rec-head,.rec-row{display:grid;grid-template-columns:70px 155px 1fr 80px 300px;gap:12px;align-items:center}
+.rec-head,.rec-row{display:grid;grid-template-columns:65px 145px 1fr 70px 105px 280px;gap:12px;align-items:center}
 .rec-head{padding:8px 16px;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);font-weight:600}
 .rec-head .ta-r{text-align:right}
 .rec-item{background:#fff;border:1px solid var(--line);border-radius:11px;margin-bottom:8px;overflow:hidden}
@@ -31,6 +31,8 @@
 .rec-ozet{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)}
 .badge-ses{font-size:11px;font-weight:600;color:var(--teal-2);background:var(--teal-soft);padding:3px 8px;border-radius:10px;display:inline-flex;gap:5px;align-items:center}
 .badge-none{font-size:11px;color:var(--muted)}
+.badge-comed{font-size:10.5px;font-weight:700;padding:4px 8px;border-radius:99px;display:inline-flex;gap:5px;align-items:center;white-space:nowrap}
+.badge-comed.done{background:#e4f7ef;color:#087454}.badge-comed.review{background:#fff2cf;color:#8a5b00}.badge-comed.pending{background:#eaf0ff;color:#4058ad}
 .rec-act{display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap}
 
 .mini-btn{border:1px solid var(--line);background:#fff;color:var(--slate);border-radius:8px;padding:6px 11px;
@@ -61,6 +63,14 @@
 .det-meta b{color:var(--ink)}
 .det-loading{padding:20px;text-align:center;color:var(--muted);font-size:13.5px}
 
+/* COMED aktarım yüzeyi */
+.comed-action-bar{display:flex;justify-content:space-between;gap:16px;align-items:center;background:linear-gradient(135deg,#eef3ff,#f7f9ff);border:1px solid #d8e0f7;border-radius:13px;padding:13px 15px;margin-bottom:14px}
+.comed-action-copy{display:flex;gap:10px;align-items:center;color:#273a73}.comed-action-copy>.bi{font-size:21px}.comed-action-copy span{display:flex;flex-direction:column;gap:2px}.comed-action-copy b{font-size:13px}.comed-action-buttons{display:flex;gap:7px;flex-wrap:wrap}.mini-btn.comed-send{background:#3158c8;border-color:#3158c8;color:#fff}.mini-btn.comed-open{text-decoration:none;color:#3158c8;border-color:#b9c6ef}.comed-inline-status{font-size:11px;font-weight:650}.comed-inline-status.done{color:#087454}.comed-inline-status.review{color:#8a5b00}.comed-inline-status.pending{color:#4058ad}.comed-inline-status.failed{color:#b5322d}.comed-inline-status.idle{color:var(--muted)}
+.comed-draft-hero{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;background:linear-gradient(135deg,#172c4b,#263f68);color:#fff;padding:18px;border-radius:15px;margin-bottom:14px}.comed-draft-hero .eyebrow{font-size:10px;letter-spacing:.7px;color:#bcd0f2}.comed-draft-hero h3{margin:4px 0;font-size:19px}.comed-draft-hero p{margin:0;color:#d7e2f4;font-size:12.5px}.comed-warning,.comed-ok,.comed-review-note{display:flex;gap:11px;align-items:flex-start;border-radius:13px;padding:13px 14px;margin-bottom:14px}.comed-warning{background:#fff7e5;color:#76530d;border:1px solid #f2dfad}.comed-warning p{margin:3px 0 0;font-size:12.5px;line-height:1.5}.comed-ok{background:#e8f7f1;color:#087454}.comed-field-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.comed-field{padding:12px;border:1px solid var(--line);border-radius:11px;background:#fbfcff}.comed-field span{display:block;color:var(--muted);font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px}.comed-field b{font-size:13px;line-height:1.45}.comed-diagnoses{display:flex;gap:8px;flex-wrap:wrap}.comed-diagnoses>span{display:flex;gap:7px;background:#eef3ff;color:#304779;padding:8px 11px;border-radius:9px;font-size:12.5px}.comed-review-note{margin:0;background:#f0f7f6;color:#315d5a;font-size:12.5px;line-height:1.5}
+
+/* İletişim önerileri */
+.communication-sec{background:linear-gradient(180deg,#fafbff,#f7f8ff)}.communication-head{display:flex;gap:12px;align-items:center;margin-bottom:15px}.communication-head .sec-title{margin:0}.communication-head p{margin:3px 0 0;color:var(--muted);font-size:12px}.communication-icon{width:42px;height:42px;border-radius:13px;background:#e7eafd;color:#4d5fc4;display:grid;place-items:center;font-size:20px}.coach-v2{display:grid;grid-template-columns:32px 1fr;gap:11px;background:#fff;border:1px solid #dfe3f3;border-radius:14px;padding:14px;margin-bottom:10px;box-shadow:0 5px 16px rgba(43,58,103,.05)}.coach-index{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:#e7eafd;color:#4d5fc4;font-size:11px;font-weight:800}.coach-label{font-size:9.5px;letter-spacing:.55px;font-weight:800;color:#78839e}.coach-v2 p{margin:4px 0 0;line-height:1.55}.coach-v2 .c-oneri{display:flex;gap:9px;background:#fff9e8;border-radius:11px;padding:11px;margin-top:10px;color:#584718}.coach-v2 .c-oneri>.bi{color:#c58a00;margin-top:1px}
+
 /* boş durum */
 .empty-box{background:#fff;border:1px solid var(--line);border-radius:12px;padding:40px 24px;text-align:center;color:var(--muted)}
 .empty-box .bi{font-size:32px;color:var(--line);display:block;margin-bottom:10px}
@@ -74,6 +84,7 @@
   .rec-head{display:none}
   .rec-row{grid-template-columns:1fr;gap:6px}
   .rec-act{justify-content:flex-start}
+  .comed-action-bar{align-items:flex-start;flex-direction:column}.comed-field-grid{grid-template-columns:1fr}
 }
 .pill-out{text-decoration:none;background:rgba(214,69,69,.18);color:#ffb4b4}
 .pill-out:hover{background:rgba(214,69,69,.3);color:#fff}

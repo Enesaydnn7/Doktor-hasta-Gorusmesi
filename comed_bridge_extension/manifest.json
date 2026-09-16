@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "Klinot COMED Köprüsü",
+  "version": "2.4.0",
+  "description": "Klinot taslaklarını açık Göztepe COMED test oturumuna taşır.",
+  "permissions": ["storage"],
+  "host_permissions": [
+    "http://goztepe.comedtest.mlpcare.com/*",
+    "http://goztepe.comedtestapi.mlpcare.com/*",
+    "https://doktor-hasta-gorusmesi.onrender.com/*",
+    "http://127.0.0.1:8000/*",
+    "http://localhost:8000/*"
+  ],
+  "background": {"service_worker": "background.js"},
+  "action": {
+    "default_title": "Klinot COMED Köprüsü",
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["http://goztepe.comedtest.mlpcare.com/tr-tr/medical/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

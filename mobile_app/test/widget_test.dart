@@ -24,10 +24,43 @@ class FakeApi implements KlinotApi {
   @override
   Stream<AnalysisEvent> analyze(
     String token,
-    TranscriptionResult transcription,
-  ) async* {
+    TranscriptionResult transcription, {
+    ComedPatient? comedPatient,
+  }) async* {
     yield const AnalysisProgress(percent: 33, step: 'hasta', status: 'done');
   }
+
+  @override
+  Future<List<ComedPatient>> getComedWorklist(String token) async => const [
+    ComedPatient(
+      visitId: '22207357',
+      clinicalCardId: '30416836',
+      patientName: 'Test Hasta',
+      clinicalCardUrl: 'http://goztepe.comedtest.mlpcare.com/test',
+      patientNo: '476644',
+      protocolNo: 'V-22207357',
+      department: 'Kardiyoloji',
+    ),
+  ];
+
+  @override
+  Future<ComedTransfer> createComedTransfer(
+    String token,
+    int recordId,
+    ComedPatient patient,
+  ) async => const ComedTransfer(
+    id: 7,
+    status: 'ready_for_review',
+    clinicalCardUrl: 'http://goztepe.comedtest.mlpcare.com/test',
+  );
+
+  @override
+  Future<ComedTransfer> getComedTransfer(String token, int transferId) async =>
+      const ComedTransfer(
+        id: 7,
+        status: 'ready_for_review',
+        clinicalCardUrl: 'http://goztepe.comedtest.mlpcare.com/test',
+      );
 
   @override
   Future<DownloadedPdf> downloadEpikriz(
@@ -53,8 +86,9 @@ class FlowFakeApi extends FakeApi {
   @override
   Stream<AnalysisEvent> analyze(
     String token,
-    TranscriptionResult transcription,
-  ) async* {
+    TranscriptionResult transcription, {
+    ComedPatient? comedPatient,
+  }) async* {
     yield const AnalysisProgress(percent: 33, step: 'hasta', status: 'done');
     await analysisGate.future;
     yield const AnalysisCompleted(
@@ -98,7 +132,7 @@ void main() {
     );
 
     expect(find.text('Klinot'), findsOneWidget);
-    expect(find.textContaining('v2.3.0'), findsOneWidget);
+    expect(find.textContaining('v2.4.0'), findsOneWidget);
     await tester.enterText(find.byKey(const Key('usernameField')), 'admin');
     await tester.enterText(find.byKey(const Key('passwordField')), 'secret');
     await tester.tap(find.byKey(const Key('loginButton')));
@@ -125,11 +159,32 @@ void main() {
     expect(find.byIcon(Icons.dashboard_rounded), findsNothing);
   });
 
-  testWidgets('result screen exposes only doctor epikriz and PDF download', (
+  testWidgets('result screen exposes structured epikriz and COMED actions', (
     tester,
   ) async {
     const result = AnalysisResult(
-      doctor: {'epikriz': 'Doktor raporu'},
+      doctor: {
+        'epikriz': {
+          'sikayet': 'Bacak ağrısı',
+          'oyku': 'Bir haftadır devam ediyor.',
+        },
+        'koclugu': {
+          'guclu': ['Açık ve sakin iletişim'],
+          'oneriler': [
+            {
+              'alinti': 'Hasta: Bacağım ağrıyor.',
+              'oneri': 'Ağrının niteliğini ve şiddetini ayrıntılandırın.',
+            },
+          ],
+        },
+      },
+      comedPatient: ComedPatient(
+        visitId: '22207357',
+        clinicalCardId: '30416836',
+        patientName: 'Test Hasta',
+        protocolNo: 'V-22207357',
+        clinicalCardUrl: 'http://goztepe.comedtest.mlpcare.com/test',
+      ),
       recordId: 42,
     );
     await tester.pumpWidget(
@@ -148,9 +203,15 @@ void main() {
     );
 
     expect(find.text('Doktor epikrizi'), findsOneWidget);
-    expect(find.textContaining('Kayıt #42'), findsOneWidget);
-    expect(find.text('Doktor raporu'), findsOneWidget);
+    expect(find.textContaining('Test Hasta · V-22207357'), findsOneWidget);
+    expect(find.text('Bacak ağrısı'), findsOneWidget);
+    expect(find.text('İletişim önerileri'), findsOneWidget);
     expect(find.byKey(const Key('downloadEpikrizButton')), findsOneWidget);
+    expect(find.byKey(const Key('transferToComedButton')), findsOneWidget);
+    final transfer = tester.widget<FilledButton>(
+      find.byKey(const Key('transferToComedButton')),
+    );
+    expect(transfer.onPressed, isNotNull);
     expect(find.text('Yönetim'), findsNothing);
     expect(find.text('Hasta özeti'), findsNothing);
   });
@@ -180,9 +241,12 @@ void main() {
         ),
       );
 
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.byKey(const Key('startRecordingButton')));
       await tester.tap(find.byType(Checkbox));
       await tester.tap(find.byKey(const Key('startRecordingButton')));
       await tester.pump();
+      await tester.ensureVisible(find.byKey(const Key('stopRecordingButton')));
       await tester.tap(find.byKey(const Key('stopRecordingButton')));
       await tester.pumpAndSettle();
 
@@ -191,6 +255,7 @@ void main() {
       expect(find.byKey(const Key('transcriptField')), findsNothing);
       expect(find.textContaining('Başım ağrıyor'), findsNothing);
 
+      await tester.ensureVisible(find.byKey(const Key('analyzeButton')));
       await tester.tap(find.byKey(const Key('analyzeButton')));
       await tester.pump();
 
