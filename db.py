@@ -4,7 +4,7 @@ SQLite veritabanı katmanı.
 Her analiz bir "kayıt" (session) olarak saklanır:
   - kayıt no, tarih-saat
   - görüşme metni (transkript)
-  - 3 rapor (hasta / doktor / yönetim) — JSON olarak
+  - 3 rapor (hasta / doktor / yönetim) ve COMED taslağı — JSON olarak
   - varsa ses kaydı (blob) ve türü
   - token/maliyet/süre bilgisi (JSON)
 
@@ -67,6 +67,8 @@ def init():
             c.execute("ALTER TABLE kayitlar ADD COLUMN client_version TEXT")
         if "metadata" not in columns:
             c.execute("ALTER TABLE kayitlar ADD COLUMN metadata TEXT")
+        if "comed" not in columns:
+            c.execute("ALTER TABLE kayitlar ADD COLUMN comed TEXT")
         c.execute("CREATE INDEX IF NOT EXISTS ix_olusturma ON kayitlar(olusturma DESC)")
         c.execute(
             "CREATE UNIQUE INDEX IF NOT EXISTS ux_demo_key ON kayitlar(demo_key) "
@@ -84,6 +86,47 @@ def init():
         c.execute(
             "CREATE INDEX IF NOT EXISTS ix_bekleyen_ses_olusturma "
             "ON bekleyen_sesler(olusturma DESC)"
+        )
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS comed_worklist (
+                visit_id TEXT PRIMARY KEY,
+                clinical_card_id TEXT NOT NULL,
+                patient_id TEXT,
+                patient_name TEXT NOT NULL,
+                patient_no TEXT,
+                protocol_no TEXT,
+                department TEXT,
+                doctor_name TEXT,
+                task TEXT,
+                status TEXT,
+                clinical_card_url TEXT NOT NULL,
+                synced_at TEXT NOT NULL,
+                synced_by TEXT
+            )
+        """)
+        c.execute(
+            "CREATE INDEX IF NOT EXISTS ix_comed_worklist_synced "
+            "ON comed_worklist(synced_at DESC)"
+        )
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS comed_transfers (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                record_id INTEGER NOT NULL,
+                visit_id TEXT NOT NULL,
+                patient_id TEXT,
+                clinical_card_url TEXT NOT NULL,
+                status TEXT NOT NULL,
+                bundle TEXT NOT NULL,
+                error TEXT,
+                requested_by TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                FOREIGN KEY(record_id) REFERENCES kayitlar(id)
+            )
+        """)
+        c.execute(
+            "CREATE INDEX IF NOT EXISTS ix_comed_transfer_status "
+            "ON comed_transfers(status, visit_id, id DESC)"
         )
         _ensure_demo_record(c)
 
@@ -160,6 +203,7 @@ def _kisa_ozet(doktor: dict, transkript: str) -> str:
 
 
 def kaydet(transkript: str, hasta: dict, doktor: dict, yonetim: dict,
+           comed: dict = None,
            usage: dict = None, ses: bytes = None,
            ses_mime: str = None, ses_ad: str = None,
            source: str = "web", client_version: str = None,
@@ -168,11 +212,11 @@ def kaydet(transkript: str, hasta: dict, doktor: dict, yonetim: dict,
     with _lock, _conn() as c:
         cur = c.execute(
             """INSERT INTO kayitlar
-               (olusturma, transkript, hasta, doktor, yonetim, usage, ses, ses_mime,
+               (olusturma, transkript, hasta, doktor, yonetim, comed, usage, ses, ses_mime,
                 ses_ad, ozet, source, client_version, metadata)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (datetime.now().isoformat(timespec="seconds"), transkript,
-             j(hasta), j(doktor), j(yonetim), j(usage),
+             j(hasta), j(doktor), j(yonetim), j(comed), j(usage),
              ses, ses_mime, ses_ad, _kisa_ozet(doktor, transkript),
              (source or "web")[:30], (client_version or "")[:30] or None,
              j(metadata)),
@@ -184,10 +228,12 @@ def liste(limit: int = 200):
     """Admin listesi için özet satırlar (ses baytları hariç — hafif olsun)."""
     with _lock, _conn() as c:
         rows = c.execute(
-            """SELECT id, olusturma, ozet, ses_mime, ses_ad, usage,
-                      source, client_version,
-                      (ses IS NOT NULL) AS ses_var, LENGTH(transkript) AS uzunluk
-               FROM kayitlar ORDER BY id DESC LIMIT ?""", (limit,)
+            """SELECT k.id, k.olusturma, k.ozet, k.ses_mime, k.ses_ad, k.usage,
+                      k.source, k.client_version,
+                      (k.ses IS NOT NULL) AS ses_var, LENGTH(k.transkript) AS uzunluk,
+                      (SELECT status FROM comed_transfers t
+                       WHERE t.record_id=k.id ORDER BY t.id DESC LIMIT 1) AS comed_status
+               FROM kayitlar k ORDER BY k.id DESC LIMIT ?""", (limit,)
         ).fetchall()
     out = []
     for r in rows:
@@ -203,7 +249,7 @@ def liste(limit: int = 200):
 def getir(kid: int):
     with _lock, _conn() as c:
         r = c.execute(
-            """SELECT id, olusturma, transkript, hasta, doktor, yonetim, usage,
+            """SELECT id, olusturma, transkript, hasta, doktor, yonetim, comed, usage,
                       source, client_version, metadata,
                       ses_mime, ses_ad, (ses IS NOT NULL) AS ses_var
                FROM kayitlar WHERE id=?""", (kid,)
@@ -211,12 +257,130 @@ def getir(kid: int):
     if not r:
         return None
     d = dict(r)
-    for k in ("hasta", "doktor", "yonetim", "usage", "metadata"):
+    for k in ("hasta", "doktor", "yonetim", "comed", "usage", "metadata"):
         try:
             d[k] = json.loads(d.get(k) or "{}")
         except Exception:
             d[k] = {}
+    d["comed_transfer"] = comed_transfer_latest_for_record(kid)
     return d
+
+
+def comed_worklist_sync(items: list[dict], synced_by: str = "") -> int:
+    """Tarayıcı köprüsünün gördüğü COMED iş listesini atomik olarak yenile."""
+    now = datetime.now().isoformat(timespec="seconds")
+    with _lock, _conn() as c:
+        c.execute("DELETE FROM comed_worklist")
+        for item in items:
+            visit_id = str(item.get("visit_id") or "").strip()
+            card_id = str(item.get("clinical_card_id") or "").strip()
+            name = str(item.get("patient_name") or "").strip()
+            url = str(item.get("clinical_card_url") or "").strip()
+            if not visit_id or not card_id or not name or not url:
+                continue
+            c.execute(
+                """INSERT INTO comed_worklist
+                   (visit_id, clinical_card_id, patient_id, patient_name, patient_no,
+                    protocol_no, department, doctor_name, task, status,
+                    clinical_card_url, synced_at, synced_by)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (
+                    visit_id, card_id, str(item.get("patient_id") or ""), name,
+                    str(item.get("patient_no") or ""),
+                    str(item.get("protocol_no") or ""),
+                    str(item.get("department") or ""),
+                    str(item.get("doctor_name") or ""),
+                    str(item.get("task") or ""), str(item.get("status") or ""),
+                    url, now, synced_by,
+                ),
+            )
+    return len(comed_worklist())
+
+
+def comed_worklist(limit: int = 100) -> list[dict]:
+    with _lock, _conn() as c:
+        rows = c.execute(
+            "SELECT * FROM comed_worklist ORDER BY synced_at DESC, patient_name LIMIT ?",
+            (limit,),
+        ).fetchall()
+    return [dict(row) for row in rows]
+
+
+def comed_transfer_create(record_id: int, patient: dict, bundle: dict,
+                          requested_by: str = "") -> dict:
+    now = datetime.now().isoformat(timespec="seconds")
+    with _lock, _conn() as c:
+        cur = c.execute(
+            """INSERT INTO comed_transfers
+               (record_id, visit_id, patient_id, clinical_card_url, status,
+                bundle, requested_by, created_at, updated_at)
+               VALUES (?,?,?,?,?,?,?,?,?)""",
+            (
+                record_id, str(patient.get("visit_id") or ""),
+                str(patient.get("patient_id") or ""),
+                str(patient.get("clinical_card_url") or ""), "queued",
+                json.dumps(bundle, ensure_ascii=False), requested_by, now, now,
+            ),
+        )
+        transfer_id = cur.lastrowid
+    return comed_transfer_get(transfer_id)
+
+
+def _transfer_dict(row) -> dict | None:
+    if not row:
+        return None
+    data = dict(row)
+    try:
+        data["bundle"] = json.loads(data.get("bundle") or "{}")
+    except Exception:
+        data["bundle"] = {}
+    return data
+
+
+def comed_transfer_get(transfer_id: int) -> dict | None:
+    with _lock, _conn() as c:
+        row = c.execute(
+            "SELECT * FROM comed_transfers WHERE id=?", (transfer_id,),
+        ).fetchone()
+    return _transfer_dict(row)
+
+
+def comed_transfer_latest_for_record(record_id: int) -> dict | None:
+    with _lock, _conn() as c:
+        row = c.execute(
+            "SELECT * FROM comed_transfers WHERE record_id=? ORDER BY id DESC LIMIT 1",
+            (record_id,),
+        ).fetchone()
+    return _transfer_dict(row)
+
+
+def comed_transfer_pending(visit_id: str | None = None, limit: int = 20) -> list[dict]:
+    params: list = ["queued", "filling"]
+    where = "status IN (?,?)"
+    if visit_id:
+        where += " AND visit_id=?"
+        params.append(str(visit_id))
+    params.append(limit)
+    with _lock, _conn() as c:
+        rows = c.execute(
+            f"SELECT * FROM comed_transfers WHERE {where} ORDER BY id LIMIT ?",
+            params,
+        ).fetchall()
+    return [_transfer_dict(row) for row in rows]
+
+
+def comed_transfer_update(transfer_id: int, status_value: str,
+                          error: str | None = None) -> dict | None:
+    allowed = {"queued", "filling", "ready_for_review", "completed", "failed"}
+    if status_value not in allowed:
+        raise ValueError("Geçersiz COMED aktarım durumu")
+    now = datetime.now().isoformat(timespec="seconds")
+    with _lock, _conn() as c:
+        c.execute(
+            "UPDATE comed_transfers SET status=?, error=?, updated_at=? WHERE id=?",
+            (status_value, (error or "")[:1000] or None, now, transfer_id),
+        )
+    return comed_transfer_get(transfer_id)
 
 
 def bekleyen_ses_kaydet(kimlik: str, ses: bytes, ses_mime: str,

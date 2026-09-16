@@ -1,5 +1,14 @@
 # Sürüm Geçmişi
 
+## v2.4.0 — 16 Eylül 2026
+
+- Mobil görüşme akışına COMED iş listesinden hasta/protokol seçimi eklendi; hasta seçilmeden kayıt başlatılması engellendi.
+- Hasta, doktor ve yönetim raporlarına ek olarak COMED alan taslağı dördüncü Gemini işi olarak aynı anda hazırlanıyor; mevcut üç raporun bekleme süresi uzatılmıyor.
+- Doktor epikrizi ve iletişim önerileri mobilde daha okunur bölüm/kart yapısıyla, Türkçe alan adlarıyla ve belirgin durum göstergeleriyle yenilendi.
+- Doktor kontrolündeki “COMED'e aktar” akışı, aktarım durumu ve “COMED'de aç” kısayolu mobil uygulamaya ve yönetici paneline eklendi.
+- Göztepe COMED test oturumunda çalışan Chrome köprüsü eklendi. Köprü yalnızca taslak alanları doldurur; COMED'in kendi Kaydet/İmzala işlemi doktor tarafından yapılır.
+- COMED iş listesi, aktarım kuyruğu ve köprü durumları için yeni FastAPI uçları ve SQLite tabloları eklendi.
+
 ## v2.3.0 — 15 Eylül 2026
 
 - Mobil Bearer oturumu web panelinin 12 saatlik çerezinden ayrıldı ve 30 günlük güvenli mobil oturum süresi tanımlandı; 12 saatten eski fakat 30 günü doldurmamış mevcut APK tokenları yeniden çalışır.

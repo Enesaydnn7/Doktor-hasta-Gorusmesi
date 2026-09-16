@@ -16,8 +16,8 @@
       <div class="brand">
         <span class="brand-mark"><i class="bi bi-shield-lock"></i></span>
         <div>
-          <div class="brand-name">Admin · Görüşme Kayıtları</div>
-          <div class="brand-sub">tüm analizler · ses kayıtları · raporlar</div>
+          <div class="brand-name">Klinot · Klinik Kayıt Merkezi</div>
+          <div class="brand-sub">epikriz · iletişim kalitesi · COMED aktarımı</div>
         </div>
       </div>
       <div class="topbar-meta">
@@ -47,7 +47,7 @@
 
     {% if kayitlar %}
     <div class="rec-head">
-      <span>No</span><span>Tarih / Saat</span><span>Özet (tanı / şikayet)</span><span>Ses</span><span class="ta-r">İşlem</span>
+      <span>No</span><span>Tarih / Saat</span><span>Özet (tanı / şikayet)</span><span>Ses</span><span>COMED</span><span class="ta-r">İşlem</span>
     </div>
 
     <div id="rec-list">
@@ -60,6 +60,12 @@
           <span class="rec-audio">
             {% if k.ses_var %}<span class="badge-ses"><i class="bi bi-volume-up"></i> var</span>
             {% else %}<span class="badge-none">yok</span>{% endif %}
+          </span>
+          <span class="rec-comed">
+            {% if k.comed_status == "completed" %}<span class="badge-comed done"><i class="bi bi-check-circle"></i> tamamlandı</span>
+            {% elif k.comed_status == "ready_for_review" %}<span class="badge-comed review"><i class="bi bi-eye"></i> kontrol</span>
+            {% elif k.comed_status %}<span class="badge-comed pending"><i class="bi bi-arrow-repeat"></i> sırada</span>
+            {% else %}<span class="badge-none">—</span>{% endif %}
           </span>
           <span class="rec-act">
             {% if k.ses_var %}

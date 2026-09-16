@@ -17,8 +17,16 @@ abstract class KlinotApi {
   Future<TranscriptionResult> transcribe(String token, File file);
   Stream<AnalysisEvent> analyze(
     String token,
-    TranscriptionResult transcription,
+    TranscriptionResult transcription, {
+    ComedPatient? comedPatient,
+  });
+  Future<List<ComedPatient>> getComedWorklist(String token);
+  Future<ComedTransfer> createComedTransfer(
+    String token,
+    int recordId,
+    ComedPatient patient,
   );
+  Future<ComedTransfer> getComedTransfer(String token, int transferId);
   Future<DownloadedPdf> downloadEpikriz(
     String token,
     Map<String, dynamic> epikriz,
@@ -112,8 +120,9 @@ class ApiClient implements KlinotApi {
   @override
   Stream<AnalysisEvent> analyze(
     String token,
-    TranscriptionResult transcription,
-  ) async* {
+    TranscriptionResult transcription, {
+    ComedPatient? comedPatient,
+  }) async* {
     final request = http.Request('POST', _uri('/api/v1/mobile/analyze/stream'))
       ..headers.addAll({..._headers(token), 'Content-Type': 'application/json'})
       ..body = jsonEncode({
@@ -121,8 +130,11 @@ class ApiClient implements KlinotApi {
         'audio_id': transcription.audioId,
         'stt_usage': transcription.usage,
         'source': 'mobile',
-        'client_version': '2.3.0',
-        'metadata': {'platform': Platform.operatingSystem},
+        'client_version': '2.4.0',
+        'metadata': {
+          'platform': Platform.operatingSystem,
+          if (comedPatient != null) 'comed_patient': comedPatient.toJson(),
+        },
       });
 
     final response = await _client
@@ -167,6 +179,50 @@ class ApiClient implements KlinotApi {
           break;
       }
     }
+  }
+
+  @override
+  Future<List<ComedPatient>> getComedWorklist(String token) async {
+    final response = await _client
+        .get(_uri('/api/v1/mobile/comed/worklist'), headers: _headers(token))
+        .timeout(const Duration(seconds: 70));
+    final data = _decodeResponse(response);
+    return (data['items'] as List? ?? const [])
+        .map(
+          (item) =>
+              ComedPatient.fromJson(Map<String, dynamic>.from(item as Map)),
+        )
+        .toList();
+  }
+
+  @override
+  Future<ComedTransfer> createComedTransfer(
+    String token,
+    int recordId,
+    ComedPatient patient,
+  ) async {
+    final response = await _client
+        .post(
+          _uri('/api/v1/mobile/comed/transfers'),
+          headers: {..._headers(token), 'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'record_id': recordId,
+            'patient': patient.toJson(),
+          }),
+        )
+        .timeout(const Duration(seconds: 70));
+    return ComedTransfer.fromJson(_decodeResponse(response));
+  }
+
+  @override
+  Future<ComedTransfer> getComedTransfer(String token, int transferId) async {
+    final response = await _client
+        .get(
+          _uri('/api/v1/mobile/comed/transfers/$transferId'),
+          headers: _headers(token),
+        )
+        .timeout(const Duration(seconds: 70));
+    return ComedTransfer.fromJson(_decodeResponse(response));
   }
 
   @override

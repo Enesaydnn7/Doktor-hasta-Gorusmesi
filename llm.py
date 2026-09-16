@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 LLM katmanı — tek motor: Gemini.
-- Üç rapor (hasta / doktor / yönetim) sırayla üretilir.
+- Üç rapor (hasta / doktor / yönetim) ve COMED form taslağı paralel üretilir.
 - Görüşme tarihini kullanıcı mesajına ekleriz ki model "3 haftadır" gibi göreli
   süreleri KESİN TARİHE çevirebilsin (sigorta için kritik).
 """
@@ -86,26 +86,36 @@ async def _progress(callback, step: str, status: str, completed: int):
 async def analyze_all(transcript: str, progress=None) -> dict:
     user = _user_message(transcript)
     t0 = time.time()
-    await _progress(progress, "hasta", "running", 0)
-    hasta, uh = await asyncio.to_thread(_gemini, prompts.SYSTEM_HASTA, user)
-    await _progress(progress, "hasta", "completed", 1)
-    await asyncio.sleep(1)
-    await _progress(progress, "doktor", "running", 1)
-    doktor, ud = await asyncio.to_thread(_gemini, prompts.SYSTEM_DOKTOR, user)
-    await _progress(progress, "doktor", "completed", 2)
-    await asyncio.sleep(1)
-    await _progress(progress, "yonetim", "running", 2)
-    yonetim, uy = await asyncio.to_thread(_gemini, prompts.SYSTEM_YONETIM, user)
-    await _progress(progress, "yonetim", "completed", 3)
+
+    completed = 0
+    progress_lock = asyncio.Lock()
+
+    async def run_report(step: str, system: str, visible: bool = True):
+        nonlocal completed
+        if visible:
+            await _progress(progress, step, "running", completed)
+        data, usage = await asyncio.to_thread(_gemini, system, user)
+        if visible:
+            async with progress_lock:
+                completed += 1
+                await _progress(progress, step, "completed", completed)
+        return data, usage
+
+    (hasta, uh), (doktor, ud), (yonetim, uy), (comed, uc) = await asyncio.gather(
+        run_report("hasta", prompts.SYSTEM_HASTA),
+        run_report("doktor", prompts.SYSTEM_DOKTOR),
+        run_report("yonetim", prompts.SYSTEM_YONETIM),
+        run_report("comed", prompts.SYSTEM_COMED, visible=False),
+    )
     secs = round(time.time() - t0, 1)
-    inp = uh["input"] + ud["input"] + uy["input"]
-    out = uh["output"] + ud["output"] + uy["output"]
+    inp = uh["input"] + ud["input"] + uy["input"] + uc["input"]
+    out = uh["output"] + ud["output"] + uy["output"] + uc["output"]
     return {
-        "hasta": hasta, "doktor": doktor, "yonetim": yonetim,
+        "hasta": hasta, "doktor": doktor, "yonetim": yonetim, "comed": comed,
         "provider": config.label(),
         "usage": {
             "input": inp, "output": out, "total": inp + out,
             "cost_usd": round(pricing.text_cost(inp, out), 6),
-            "seconds": secs, "calls": 3,
+            "seconds": secs, "calls": 4, "parallel": True,
         },
     }

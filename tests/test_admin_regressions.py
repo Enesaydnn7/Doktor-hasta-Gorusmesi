@@ -39,6 +39,35 @@ class BrowserStateRegressionTests(unittest.TestCase):
         self.assertIn('epikriz: "doktor"', js)
         self.assertIn('aliases[rawRec] || "doktor"', js)
 
+    def test_admin_exposes_doctor_reviewed_comed_workflow(self):
+        js = (ROOT / "static" / "admin.js").read_text(encoding="utf-8")
+        html = (ROOT / "templates" / "admin.html").read_text(encoding="utf-8")
+        css = (ROOT / "static" / "admin.css").read_text(encoding="utf-8")
+
+        self.assertIn("COMED taslağı", js)
+        self.assertIn("/admin/comed/transfer/", js)
+        self.assertIn("Otomatik imza kapalıdır", js)
+        self.assertIn("COMED taslağı bulunmuyor", js)
+        self.assertIn('["doktor", "hasta", "yonetim"].includes(sekme)', js)
+        self.assertIn("COMED aktarımı", html)
+        self.assertIn("comed-action-bar", css)
+
+    def test_comed_bridge_never_auto_signs_or_embeds_credentials(self):
+        manifest = (ROOT / "comed_bridge_extension" / "manifest.json").read_text(
+            encoding="utf-8"
+        )
+        content = (ROOT / "comed_bridge_extension" / "content.js").read_text(
+            encoding="utf-8"
+        )
+        background = (ROOT / "comed_bridge_extension" / "background.js").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("goztepe.comedtest.mlpcare.com", manifest)
+        self.assertIn("ready_for_review", content)
+        self.assertNotIn("Kaydet ve İmzala", content)
+        self.assertNotIn("x-authentication-token", background.lower())
+
     def test_session_fallback_secret_is_stable(self):
         expected = hashlib.sha256(
             f"klinik-admin-session\0{auth.ADMIN_USER}\0{auth.ADMIN_PASS}".encode()

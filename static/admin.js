@@ -87,15 +87,27 @@ function drawDetail(id, sekme) {
       <audio controls preload="metadata" src="/admin/ses/${k.id}"></audio>
     </div>` : "";
 
-  const tabs = [["doktor", "Doktor epikrizi", "file-medical"], ["hasta", "Hasta özeti", "person-heart"],
-                ["yonetim", "Yönetim raporu", "shield-check"], ["transkript", "Görüşme metni", "chat-left-text"]];
+  const tabs = [["doktor", "Doktor epikrizi", "file-medical"], ["comed", "COMED taslağı", "send-check"],
+                ["hasta", "Hasta özeti", "person-heart"], ["yonetim", "Yönetim raporu", "shield-check"],
+                ["transkript", "Görüşme metni", "chat-left-text"]];
+  const patient = (k.metadata || {}).comed_patient || {};
+  const transfer = k.comed_transfer || {};
+  const comedUrl = transfer.clinical_card_url || patient.clinical_card_url || "";
+  const comedStatus = comedStatusHTML(transfer.status);
 
   det.innerHTML = `
     ${meta}${audio}
+    <div class="comed-action-bar">
+      <div class="comed-action-copy"><i class="bi bi-hospital"></i><span><b>COMED</b>${comedStatus}</span></div>
+      <div class="comed-action-buttons">
+        <button class="mini-btn comed-send" data-comed-send="${id}" ${!patient.visit_id ? "disabled" : ""}><i class="bi bi-send"></i> COMED'e aktar</button>
+        ${comedUrl ? `<a class="mini-btn comed-open" href="${esc(comedUrl)}" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right"></i> COMED'de aç</a>` : ""}
+      </div>
+    </div>
     <div class="det-tabs">
       ${tabs.map(([key, lbl, ic]) => `<button class="det-tab ${key === sekme ? "active" : ""}" data-tab="${key}" data-rid="${id}"><i class="bi bi-${ic}"></i> ${lbl}</button>`).join("")}
     </div>
-    ${sekme !== "transkript" ? `<div class="det-pdf">
+    ${["doktor", "hasta", "yonetim"].includes(sekme) ? `<div class="det-pdf">
        <button class="mini-btn pdf" data-pdf="${sekme}" data-rid="${id}"><i class="bi bi-file-earmark-pdf"></i> Bu raporu PDF indir</button>
      </div>` : ""}
     <div class="det-body">${bodyHTML(k, sekme)}</div>`;
@@ -105,6 +117,35 @@ function drawDetail(id, sekme) {
   det.querySelectorAll(".det-tab").forEach(b => b.onclick = () => drawDetail(b.dataset.rid, b.dataset.tab));
   const pdfBtn = det.querySelector("[data-pdf]");
   if (pdfBtn) pdfBtn.onclick = () => indirPdf(pdfBtn);
+  const comedBtn = det.querySelector("[data-comed-send]");
+  if (comedBtn) comedBtn.onclick = () => comedAktar(id, comedBtn);
+}
+
+function comedStatusHTML(status) {
+  const labels = {
+    queued: ["Aktarım sırasında", "pending"], filling: ["Alanlar dolduruluyor", "pending"],
+    ready_for_review: ["Aktarıldı · doktor kontrolü bekliyor", "review"],
+    completed: ["COMED kaydı tamamlandı", "done"], failed: ["Aktarım başarısız", "failed"]
+  };
+  const item = labels[status] || ["Henüz aktarılmadı", "idle"];
+  return `<small class="comed-inline-status ${item[1]}">${item[0]}</small>`;
+}
+
+async function comedAktar(id, btn) {
+  const old = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Gönderiliyor…';
+  try {
+    const response = await fetch(`/admin/comed/transfer/${id}`, { method: "POST" });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.detail || payload.error || "Aktarım başlatılamadı");
+    cache[id].comed_transfer = payload;
+    drawDetail(id, "comed");
+  } catch (error) {
+    alert("COMED aktarımı başlatılamadı: " + error.message);
+    btn.disabled = false;
+    btn.innerHTML = old;
+  }
 }
 
 function prepareAudioTimeline(audio) {
@@ -123,9 +164,33 @@ function prepareAudioTimeline(audio) {
 
 function bodyHTML(k, sekme) {
   if (sekme === "transkript") return `<div class="det-trans">${esc(k.transkript || "")}</div>`;
+  if (sekme === "comed") return comedHTML(k);
   if (sekme === "hasta") return hastaHTML(k.hasta || {});
   if (sekme === "yonetim") return yonetimHTML(k.yonetim || {});
   return doktorHTML(k.doktor || {});
+}
+
+function comedHTML(k) {
+  const d = k.comed || {};
+  const hasDraft = Object.keys(d).length > 0;
+  const patient = (k.metadata || {}).comed_patient || {};
+  const transfer = k.comed_transfer || {};
+  const required = (transfer.bundle || {}).missing_required || [];
+  const diagnoses = d.diagnoses || [];
+  const line = (label, value) => `<div class="comed-field"><span>${label}</span><b>${val(value)}</b></div>`;
+  return `<div class="panel-body comed-draft">
+    <div class="comed-draft-hero">
+      <div><span class="eyebrow">SEÇİLİ HASTA</span><h3>${esc(patient.patient_name || "Hasta seçilmedi")}</h3>
+      <p>${esc(patient.protocol_no || patient.visit_id || "")} · ${esc(patient.department || "")}</p></div>
+      ${comedStatusHTML(transfer.status)}
+    </div>
+    ${!hasDraft ? `<div class="comed-warning"><i class="bi bi-info-circle"></i><div><b>COMED taslağı bulunmuyor</b><p>Bu kayıt COMED entegrasyonundan önce hazırlanmış. Yeni görüşmelerde alan taslağı analizle birlikte oluşturulur.</p></div></div>` : required.length ? `<div class="comed-warning"><i class="bi bi-exclamation-triangle"></i><div><b>${required.length} zorunlu alan eksik</b><p>Bu alanlar doktor tarafından COMED'de tamamlanmalıdır: ${required.map(esc).join(", ")}</p></div></div>` : `<div class="comed-ok"><i class="bi bi-check-circle"></i> Zorunlu taslak alanları hazır.</div>`}
+    <div class="sec"><div class="sec-title"><i class="bi bi-card-text"></i> Muayene formu taslağı</div>
+      <div class="comed-field-grid">${line("Şikâyet", d.patient_complaint)}${line("Öykü", d.patient_story)}${line("Muayene notu", d.exam_simple_textarea)}${line("Tedavi notu", d.treatment_note_v2)}</div></div>
+    <div class="sec"><div class="sec-title"><i class="bi bi-activity"></i> Tanı önerileri</div>
+      <div class="comed-diagnoses">${diagnoses.map(x => `<span><b>${esc(x.code)}</b>${esc(x.description)}</span>`).join("") || '<div class="empty-mut">Tanı önerisi yok.</div>'}</div></div>
+    <div class="comed-review-note"><i class="bi bi-shield-check"></i><span>Otomatik imza kapalıdır. Alanlar COMED'e taşındıktan sonra doktor kontrol edip kaydeder.</span></div>
+  </div>`;
 }
 
 async function indirPdf(btn) {
@@ -199,9 +264,10 @@ function doktorHTML(d) {
   const tedavi = (e.tedavi || []).length
     ? e.tedavi.map(x => `<div class="med"><i class="bi bi-capsule"></i><span>${esc(x)}</span></div>`).join("")
     : `<div class="empty-mut">Tedavi belirtilmedi.</div>`;
-  const oneriler = (k.oneriler || []).map(o => `<div class="coach">
-      <div class="c-an"><i class="bi bi-chat-quote"></i><span>${esc(o.an)}</span></div>
-      <div class="c-oneri"><i class="bi bi-lightbulb"></i> ${esc(o.oneri)}</div></div>`).join("");
+  const oneriler = (k.oneriler || []).map((o, index) => `<article class="coach-v2">
+      <div class="coach-index">${index + 1}</div>
+      <div class="coach-content"><div class="c-an"><span class="coach-label">GÖRÜŞME ANI</span><p>${esc(o.an)}</p></div>
+      <div class="c-oneri"><i class="bi bi-lightbulb-fill"></i><div><span class="coach-label">ÖNERİ</span><p>${esc(o.oneri)}</p></div></div></div></article>`).join("");
   return `<div class="panel-body">
     <div class="sec">${meta}</div>
     <div class="sec"><div class="sec-title"><i class="bi bi-file-earmark-medical"></i> Şikayet & öykü</div>${fields}</div>
@@ -227,7 +293,7 @@ function doktorHTML(d) {
         <div class="k-line"><span class="k-lbl">Not</span><span>${val(kn.not)}</span></div></div></div>
     <div class="sec"><div class="sec-title"><i class="bi bi-hand-thumbs-up"></i> Güçlü yönler</div>
       <ul class="strong-list">${(k.guclu || []).map(x => `<li><i class="bi bi-check-circle-fill"></i><span>${esc(x)}</span></li>`).join("") || '<li class="empty-mut">—</li>'}</ul></div>
-    <div class="sec"><div class="sec-title"><i class="bi bi-lightbulb"></i> İletişim önerileri</div>${oneriler || '<div class="empty-mut">Öneri yok.</div>'}</div>
+    <div class="sec communication-sec"><div class="communication-head"><span class="communication-icon"><i class="bi bi-chat-heart"></i></span><div><div class="sec-title">İletişim önerileri</div><p>Görüşmeden alınan somut, uygulanabilir gelişim notları</p></div></div>${oneriler || '<div class="empty-mut">Öneri yok.</div>'}</div>
   </div>`;
 }
 

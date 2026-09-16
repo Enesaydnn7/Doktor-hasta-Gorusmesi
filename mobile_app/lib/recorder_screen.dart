@@ -39,6 +39,10 @@ class _RecorderScreenState extends State<RecorderScreen> {
   var _consent = false;
   File? _recordedFile;
   String? _error;
+  List<ComedPatient> _worklist = const [];
+  ComedPatient? _selectedPatient;
+  var _loadingWorklist = true;
+  String? _worklistError;
 
   bool get _isRecording =>
       _state == RecordingState.recording || _state == RecordingState.paused;
@@ -50,6 +54,31 @@ class _RecorderScreenState extends State<RecorderScreen> {
     _levelSubscription = _recorder.levels.listen((level) {
       if (mounted) setState(() => _level = level);
     });
+    unawaited(_loadWorklist());
+  }
+
+  Future<void> _loadWorklist() async {
+    if (mounted) {
+      setState(() {
+        _loadingWorklist = true;
+        _worklistError = null;
+      });
+    }
+    try {
+      final patients = await widget.api.getComedWorklist(widget.session.token);
+      if (!mounted) return;
+      setState(() {
+        _worklist = patients;
+        _selectedPatient = patients.length == 1 ? patients.first : null;
+        _loadingWorklist = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _loadingWorklist = false;
+        _worklistError = error.toString();
+      });
+    }
   }
 
   @override
@@ -61,6 +90,13 @@ class _RecorderScreenState extends State<RecorderScreen> {
   }
 
   Future<void> _start() async {
+    if (_selectedPatient == null) {
+      setState(
+        () => _error =
+            'Kayda başlamadan önce COMED iş listesinden hastayı seçin.',
+      );
+      return;
+    }
     if (!_consent) {
       setState(() => _error = 'Kayıttan önce bilgilendirme onayını alın.');
       return;
@@ -166,6 +202,7 @@ class _RecorderScreenState extends State<RecorderScreen> {
       await for (final event in widget.api.analyze(
         widget.session.token,
         transcription,
+        comedPatient: _selectedPatient,
       )) {
         // Sunucunun gerçek ilerleme olayları alınmaya devam eder; doktor ekranına
         // metin, adım veya yüzde yansıtılmaz.
@@ -244,6 +281,19 @@ class _RecorderScreenState extends State<RecorderScreen> {
                 style: const TextStyle(color: Color(0xFF60777D), height: 1.45),
               ),
               const SizedBox(height: 22),
+              _ComedPatientSelector(
+                patients: _worklist,
+                selected: _selectedPatient,
+                loading: _loadingWorklist,
+                error: _worklistError,
+                locked: _state != RecordingState.idle,
+                onChanged: (patient) => setState(() {
+                  _selectedPatient = patient;
+                  _error = null;
+                }),
+                onRefresh: _loadWorklist,
+              ),
+              const SizedBox(height: 14),
               Card(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(22, 28, 22, 24),
@@ -305,6 +355,177 @@ class _RecorderScreenState extends State<RecorderScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _ComedPatientSelector extends StatelessWidget {
+  const _ComedPatientSelector({
+    required this.patients,
+    required this.selected,
+    required this.loading,
+    required this.error,
+    required this.locked,
+    required this.onChanged,
+    required this.onRefresh,
+  });
+
+  final List<ComedPatient> patients;
+  final ComedPatient? selected;
+  final bool loading;
+  final String? error;
+  final bool locked;
+  final ValueChanged<ComedPatient?> onChanged;
+  final VoidCallback onRefresh;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      key: const Key('comedPatientSelector'),
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE8EEFF),
+                    borderRadius: BorderRadius.circular(13),
+                  ),
+                  child: const Icon(
+                    Icons.badge_outlined,
+                    color: Color(0xFF4A64C8),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'COMED iş listesi',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 16,
+                        ),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'Görüşme yapılacak hastayı seçin',
+                        style: TextStyle(
+                          color: Color(0xFF60777D),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  key: const Key('refreshComedWorklist'),
+                  onPressed: loading || locked ? null : onRefresh,
+                  tooltip: 'İş listesini yenile',
+                  icon: const Icon(Icons.refresh_rounded),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            if (loading)
+              const LinearProgressIndicator(minHeight: 3)
+            else if (patients.isEmpty)
+              Container(
+                padding: const EdgeInsets.all(13),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF7E8),
+                  borderRadius: BorderRadius.circular(13),
+                ),
+                child: Text(
+                  error == null
+                      ? 'İş listesi boş. Bilgisayarda COMED köprüsünü ve Göztepe test ekranını açıp yenileyin.'
+                      : 'İş listesi alınamadı: $error',
+                  style: const TextStyle(color: Color(0xFF795A18), height: 1.4),
+                ),
+              )
+            else
+              DropdownButtonFormField<ComedPatient>(
+                key: const Key('comedPatientDropdown'),
+                initialValue: selected,
+                isExpanded: true,
+                onChanged: locked ? null : onChanged,
+                decoration: const InputDecoration(
+                  labelText: 'Hasta / protokol',
+                  prefixIcon: Icon(Icons.person_search_outlined),
+                ),
+                items: patients
+                    .map(
+                      (patient) => DropdownMenuItem(
+                        value: patient,
+                        child: Text(
+                          '${patient.patientName} · ${patient.protocolNo.isEmpty ? patient.visitId : patient.protocolNo}',
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    )
+                    .toList(),
+              ),
+            if (selected != null) ...[
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  _PatientChip(
+                    Icons.local_hospital_outlined,
+                    selected!.department,
+                  ),
+                  _PatientChip(
+                    Icons.medical_services_outlined,
+                    selected!.doctorName,
+                  ),
+                  _PatientChip(
+                    Icons.confirmation_number_outlined,
+                    'Hasta No ${selected!.patientNo}',
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PatientChip extends StatelessWidget {
+  const _PatientChip(this.icon, this.label);
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    if (label.trim().isEmpty || label.trim() == 'Hasta No') {
+      return const SizedBox.shrink();
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: klinotCanvas,
+        borderRadius: BorderRadius.circular(99),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 15, color: klinotTeal),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+          ),
+        ],
       ),
     );
   }

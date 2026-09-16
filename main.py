@@ -29,6 +29,7 @@ import stt
 import pdf_report
 import db
 import auth
+import comed_integration
 from api_resilience import public_error_message
 
 logger = logging.getLogger(__name__)
@@ -93,6 +94,20 @@ class MobileEpikrizPdfIn(BaseModel):
     data: dict
 
 
+class ComedWorklistSyncIn(BaseModel):
+    items: list[dict]
+
+
+class ComedTransferIn(BaseModel):
+    record_id: int
+    patient: dict
+
+
+class ComedTransferStatusIn(BaseModel):
+    status: str
+    error: str | None = None
+
+
 def mobile_auth(authorization: str | None = Header(default=None)) -> dict:
     """Mobil API Bearer token doğrulaması."""
     scheme, _, token = (authorization or "").partition(" ")
@@ -123,7 +138,7 @@ def _store_analysis(body: AnalyzeIn, text: str, result: dict) -> dict:
         kid = db.kaydet(
             transkript=text,
             hasta=result.get("hasta"), doktor=result.get("doktor"),
-            yonetim=result.get("yonetim"),
+            yonetim=result.get("yonetim"), comed=result.get("comed"),
             usage={"analiz": result.get("usage") or {}, "ses": body.stt_usage or {}},
             ses=ses, ses_mime=mime, ses_ad=ad,
             source=body.source, client_version=body.client_version,
@@ -132,6 +147,7 @@ def _store_analysis(body: AnalyzeIn, text: str, result: dict) -> dict:
         if body.audio_id and ses:
             db.bekleyen_ses_al(body.audio_id, sil=True)
         result["kayit_id"] = kid
+        result["comed_patient"] = (body.metadata or {}).get("comed_patient")
     except Exception as e:  # noqa: BLE001
         result["kayit_hatasi"] = str(e)
     return result
@@ -338,6 +354,77 @@ async def mobile_epikriz_pdf(
         )
 
 
+@app.get("/api/v1/mobile/comed/worklist")
+async def mobile_comed_worklist(_user: dict = Depends(mobile_auth)):
+    """Kurumsal ağdaki tarayıcı köprüsünün son eşitlediği doktor iş listesi."""
+    return {
+        "items": db.comed_worklist(),
+        "web_base_url": config.COMED_WEB_BASE_URL,
+    }
+
+
+@app.post("/api/v1/mobile/comed/worklist/sync")
+async def mobile_comed_worklist_sync(
+    body: ComedWorklistSyncIn,
+    user: dict = Depends(mobile_auth),
+):
+    count = db.comed_worklist_sync(body.items[:200], synced_by=user["user"])
+    return {"synced": count}
+
+
+def _create_comed_transfer(record_id: int, patient: dict, requested_by: str) -> dict:
+    record = db.getir(record_id)
+    if not record:
+        raise HTTPException(status_code=404, detail="Kayıt bulunamadı")
+    if not patient.get("visit_id") or not patient.get("clinical_card_url"):
+        raise HTTPException(status_code=422, detail="COMED hasta/protokol bilgisi eksik")
+    bundle = comed_integration.build_transfer_bundle(record, patient)
+    return db.comed_transfer_create(record_id, patient, bundle, requested_by)
+
+
+@app.post("/api/v1/mobile/comed/transfers")
+async def mobile_comed_transfer_create(
+    body: ComedTransferIn,
+    user: dict = Depends(mobile_auth),
+):
+    return _create_comed_transfer(body.record_id, body.patient, user["user"])
+
+
+@app.get("/api/v1/mobile/comed/transfers/{transfer_id}")
+async def mobile_comed_transfer_get(
+    transfer_id: int,
+    _user: dict = Depends(mobile_auth),
+):
+    transfer = db.comed_transfer_get(transfer_id)
+    if not transfer:
+        raise HTTPException(status_code=404, detail="COMED aktarımı bulunamadı")
+    return transfer
+
+
+@app.get("/api/v1/mobile/comed/bridge/transfers")
+async def mobile_comed_bridge_pending(
+    visit_id: str | None = Query(default=None),
+    _user: dict = Depends(mobile_auth),
+):
+    """Tarayıcı köprüsüne yalnız bekleyen taslakları verir; COMED tokenı almaz."""
+    return {"items": db.comed_transfer_pending(visit_id=visit_id)}
+
+
+@app.post("/api/v1/mobile/comed/bridge/transfers/{transfer_id}/status")
+async def mobile_comed_bridge_status(
+    transfer_id: int,
+    body: ComedTransferStatusIn,
+    _user: dict = Depends(mobile_auth),
+):
+    try:
+        transfer = db.comed_transfer_update(transfer_id, body.status, body.error)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    if not transfer:
+        raise HTTPException(status_code=404, detail="COMED aktarımı bulunamadı")
+    return transfer
+
+
 @app.get("/api/v1/mobile/records")
 async def mobile_records(
     limit: int = Query(default=100, ge=1, le=200),
@@ -406,6 +493,16 @@ async def admin_kayit(kid: int, request: Request):
     if not k:
         return JSONResponse({"error": "Kayıt bulunamadı."}, status_code=404)
     return k
+
+
+@app.post("/admin/comed/transfer/{kid}")
+async def admin_comed_transfer(kid: int, request: Request):
+    admin_auth(request)
+    record = db.getir(kid)
+    if not record:
+        raise HTTPException(status_code=404, detail="Kayıt bulunamadı")
+    patient = (record.get("metadata") or {}).get("comed_patient") or {}
+    return _create_comed_transfer(kid, patient, "admin")
 
 
 def _byte_range(value: str | None, size: int) -> tuple[int, int] | None:
