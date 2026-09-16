@@ -137,6 +137,16 @@ KURALLAR (ÇOK ÖNEMLİ):
 - Tanı net değilse diagnosis_type "preliminary" olsun. ICD kodu için ana semptoma
   uygun en fazla 3 öneri ver; COMED aramasında bulunmayan kod değiştirilmeyecektir.
 - "Özellik yok" ancak görüşmede açıkça yok/özellik yok denmişse true olabilir.
+- Düşme riski "exists": true ise alt maddeleri de yalnız görüşmede açıkça geçen bilgiyle
+  doldur; bilinmeyen alt maddeleri null bırak. "exists": false yalnız riskin olmadığı açıkça
+  söylendiyse kullanılabilir.
+- Ağrı niteliği yalnız şu COMED seçeneklerinden biri olabilir: Keskin, Bastırıcı, Kolik,
+  Ezici, Dolgunluk, Saplanıcı, Künt, Yanıcı, Stabilize. Ağrı ritmi yalnız Sürekli veya
+  Aralıklı olabilir.
+- treatment_plan_label yalnız şu COMED seçeneklerinden biri olabilir: Ayaktan takip ve
+  tedavi, Yatarak takip ve tedavi, Ayaktan cerrahi girişim, Yatarak cerrahi girişim,
+  Rehabilitasyon, Palyatif tedavi, Günübirlik Tedavi, Allojenik Hasta, Kemik İliği Nakli.
+- marital_status yalnız Belirtilmedi, Bekar veya Evli olabilir.
 - auto_sign her zaman false olmalıdır. Doktorun imzasını otomatikleştirme.
 - COMED alan adlarını aşağıdaki JSON şemasındaki gibi aynen kullan.
 
@@ -147,12 +157,30 @@ YANITINI SADECE şu JSON olarak ver:
   "patient_story": "şikâyetin öyküsü veya null",
   "profile": {
     "no_known_history": false,
+    "no_known_family_history": false,
     "diseases": [], "operations": [], "pharmacy_products": [],
-    "allergies": [], "addictions": [], "family_history": []
+    "allergies": [], "addictions": [], "family_history": [],
+    "special_conditions": [], "vaccines": [], "devices": [],
+    "transfusions": [], "therapies": [],
+    "occupation": null, "education": null,
+    "marital_status": "Belirtilmedi|Bekar|Evli|null"
   },
   "review_of_system_simple": "sistem sorgusu veya null",
-  "fall_risk": null,
-  "pain": {"exists": null, "score": null, "location": null, "description": null},
+  "fall_risk": {
+    "exists": null,
+    "history": null,
+    "medications": null,
+    "addiction": null,
+    "gait_balance_disorder": null,
+    "vision_disorder": null,
+    "oriented": null,
+    "general_health_normal": null
+  },
+  "pain": {
+    "exists": null, "score": null, "location": null, "description": null,
+    "qualities": [], "rhythm": null,
+    "start_date": {"value": null, "unit": null, "before": true}
+  },
   "vitals": {
     "weight": null, "height": null, "temperature_v2": null, "pulse": null,
     "pressure_systolic": null, "pressure_diastolic": null, "spo2": null

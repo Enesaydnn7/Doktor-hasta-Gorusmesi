@@ -71,6 +71,11 @@ class BrowserStateRegressionTests(unittest.TestCase):
         self.assertIn("openPendingTransferFromWorklist", content)
         self.assertIn("monitorRoute", content)
         self.assertIn("setInterval(monitorRoute, 5000)", content)
+        self.assertIn("function cardByTitle", content)
+        self.assertIn("function inputByLabel", content)
+        self.assertIn('await fillDiagnoses(f.diagnoses)', content)
+        self.assertIn('document.querySelectorAll(".autocomplete__item")', content)
+        self.assertNotIn("function inputAfterLabel", content)
         self.assertNotIn("Kaydet ve İmzala", content)
         self.assertNotIn("x-authentication-token", background.lower())
 

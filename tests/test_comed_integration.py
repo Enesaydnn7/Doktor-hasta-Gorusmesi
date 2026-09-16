@@ -24,8 +24,52 @@ class ComedIntegrationTests(unittest.TestCase):
 
         self.assertFalse(normalized["fields"]["auto_sign"])
         self.assertEqual(normalized["fields"]["diagnoses"][0]["code"], "M25.56")
-        self.assertIn("weight", normalized["missing_required"])
+        self.assertIn("pulse", normalized["missing_required"])
+        self.assertIn("profile", normalized["missing_required"])
+        self.assertIn("pain", normalized["missing_required"])
         self.assertIn("fall_risk", normalized["missing_required"])
+
+    def test_complete_fall_risk_profile_and_pain_satisfy_observed_required_groups(self):
+        normalized = comed_integration.normalize_draft({
+            "patient_complaint": "Baş dönmesi",
+            "complaint_start_date": {"value": 2, "unit": "day", "before": True},
+            "profile": {
+                "no_known_history": True,
+                "no_known_family_history": True,
+            },
+            "fall_risk": {
+                "exists": True,
+                "history": False,
+                "medications": True,
+                "addiction": False,
+                "gait_balance_disorder": False,
+                "vision_disorder": False,
+                "oriented": True,
+                "general_health_normal": True,
+            },
+            "pain": {"exists": False},
+            "vitals": {"pulse": 72},
+            "exam_simple_textarea": "Genel durum iyi.",
+            "diagnoses": [{"code": "R42", "diagnosis_type": "preliminary"}],
+            "treatment_note_v2": "Semptom takibi.",
+            "treatment_plan_label": "Ayaktan takip ve tedavi",
+            "is_surgery_will_planned": False,
+        })
+
+        self.assertNotIn("profile", normalized["missing_required"])
+        self.assertNotIn("family_history", normalized["missing_required"])
+        self.assertNotIn("fall_risk", normalized["missing_required"])
+        self.assertNotIn("pain", normalized["missing_required"])
+        self.assertNotIn("pulse", normalized["missing_required"])
+
+    def test_invalid_comed_choice_values_are_rejected(self):
+        normalized = comed_integration.normalize_draft({
+            "treatment_plan_label": "Modelin uydurduğu seçenek",
+            "profile": {"marital_status": "Bilinmiyor"},
+        })
+
+        self.assertIsNone(normalized["fields"]["treatment_plan_label"])
+        self.assertIsNone(normalized["fields"]["profile"]["marital_status"])
 
     def test_transfer_bundle_targets_verified_comed_post_groups(self):
         record = {

@@ -1,5 +1,13 @@
 # Sürüm Geçmişi
 
+## v2.4.3 — 16 Eylül 2026
+
+- COMED alanları artık ilgili muayene kartı içinde, alan etiketiyle eşleştiriliyor; Boy değerinin Kilo alanına yazılmasına yol açan genel seçici kaldırıldı.
+- ICD-10 kodu COMED arama sonuçlarıyla doğrulanıp ön/kesin tanı ve ana tanı seçimiyle forma ekleniyor.
+- Düşme riski alt skoru, ağrı ayrıntıları, özgeçmiş alışkanlıkları, medeni durum ve kontrol önerisi eşlemeleri genişletildi.
+- Göztepe muayene formunun alan, seçenek, zorunluluk ve otomasyon kapsamı `docs/COMED_FORM_MAP.md` içinde belgelendi.
+- Doktorun `Kaydet` / `Kaydet ve İmzala` kontrolü korunur; otomatik imza yoktur.
+
 ## v2.4.2 — 16 Eylül 2026
 
 - COMED'in sayfa yenilemeden yaptığı iş listesi → hasta kartı geçişi artık algılanıyor; köprü kart açıldıktan sonra bekleyen aktarımı otomatik dolduruyor.

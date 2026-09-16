@@ -158,24 +158,177 @@
     return true;
   }
 
-  function byPlaceholder(value) {
-    return [...document.querySelectorAll("input,textarea")]
+  function setTypingValue(element, value) {
+    if (!element || value === null || value === undefined || value === "") return false;
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+    setter?.call(element, String(value));
+    element.focus();
+    element.dispatchEvent(new Event("input", {bubbles: true}));
+    element.dispatchEvent(new Event("change", {bubbles: true}));
+    return true;
+  }
+
+  function byPlaceholder(value, root = document) {
+    return [...root.querySelectorAll("input,textarea")]
       .find((el) => (el.getAttribute("placeholder") || "").trim().toLocaleLowerCase("tr-TR") === value.toLocaleLowerCase("tr-TR"));
   }
 
-  function inputAfterLabel(label) {
-    const labelNode = [...document.querySelectorAll("label,span,div")]
-      .find((el) => el.children.length < 4 && textOf(el) === label);
-    const scope = labelNode?.closest("div")?.parentElement || labelNode?.parentElement;
-    return scope?.querySelector("input:not([disabled]),textarea:not([disabled])") || null;
+  function cardByTitle(title) {
+    return [...document.querySelectorAll(".hasta-detay-card")]
+      .filter((card) => [...card.querySelectorAll(".hasta-detay-card__title")]
+        .some((node) => textOf(node) === title))
+      .sort((a, b) => textOf(a).length - textOf(b).length)[0] || null;
+  }
+
+  function fieldGroupByLabel(label, root = document) {
+    return [...root.querySelectorAll(".co-input")]
+      .filter((group) => {
+        const labelNode = group.querySelector(":scope > .co-input__label, .co-input__label");
+        return textOf(labelNode) === label;
+      })
+      .sort((a, b) => textOf(a).length - textOf(b).length)[0] || null;
+  }
+
+  function inputByLabel(label, root = document) {
+    return fieldGroupByLabel(label, root)
+      ?.querySelector("input:not([disabled]),textarea:not([disabled])") || null;
   }
 
   function clickText(text, root = document) {
-    const node = [...root.querySelectorAll("button,label,[role=radio],[role=checkbox],span")]
+    const node = [...root.querySelectorAll(
+      "button,label,[role=radio],[role=checkbox],.toggle-button__item,.autocomplete__item,span",
+    )]
       .find((el) => textOf(el) === text && el.offsetParent !== null);
     if (!node) return false;
     node.click();
     return true;
+  }
+
+  function clickCardOption(cardTitle, text) {
+    const card = cardByTitle(cardTitle);
+    return card ? clickText(text, card) : false;
+  }
+
+  function clickFieldOption(label, text, root = document) {
+    const group = fieldGroupByLabel(label, root);
+    return group ? clickText(text, group) : false;
+  }
+
+  function sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  async function waitFor(getter, timeoutMs = 4500) {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      const value = getter();
+      if (value) return value;
+      await sleep(120);
+    }
+    return null;
+  }
+
+  function durationUnitLabel(unit) {
+    return ({hour: "saat", day: "gün", week: "hafta", month: "ay", year: "yıl"})[unit];
+  }
+
+  function fillDuration(root, duration) {
+    if (!root || !duration?.value) return false;
+    const input = root.querySelector(".co-date-before input.form-control, input.form-control");
+    setValue(input, duration.value);
+    const unit = durationUnitLabel(duration.unit);
+    if (unit) clickText(unit, root);
+    return Boolean(input);
+  }
+
+  async function fillFallRisk(value) {
+    const exists = typeof value === "object" ? value?.exists : value;
+    if (exists === false) return clickCardOption("Düşme Riski", "Yok");
+    if (exists !== true || typeof value !== "object") return false;
+    const detailKeys = ["history", "medications", "addiction", "gait_balance_disorder",
+      "vision_disorder", "oriented", "general_health_normal"];
+    if (!detailKeys.every((key) => typeof value[key] === "boolean")) return false;
+    if (!clickCardOption("Düşme Riski", "Var")) return false;
+    const popover = await waitFor(() => [...document.querySelectorAll(".co-popover.bottom")]
+      .find((item) => item.offsetParent !== null));
+    if (!popover) return false;
+    const choices = [
+      ["Düşme Hikayesi", value.history, "Var", "Yok"],
+      ["Kullandığı İlaçlar", value.medications, "Var", "Yok"],
+      ["Alkol / Madde Bağımlılığı", value.addiction, "Var", "Yok"],
+      ["Yürüyüş ve Denge Bozuklukları", value.gait_balance_disorder, "Var", "Yok"],
+      ["Görme Bozukluğu", value.vision_disorder, "Var", "Yok"],
+      ["Ruhsal Durum", value.oriented, "Oryante", "Oryante Değil"],
+      ["Genel Sağlık Durumu", value.general_health_normal, "Normal", "Normal Değil"],
+    ];
+    choices.forEach(([label, selected, yes, no]) => {
+      if (selected === true) clickFieldOption(label, yes, popover);
+      if (selected === false) clickFieldOption(label, no, popover);
+    });
+    return true;
+  }
+
+  function fillPain(pain) {
+    if (pain?.exists === false) return clickCardOption("Ağrı", "Yok");
+    if (pain?.exists !== true) return false;
+    const card = cardByTitle("Ağrı");
+    if (!card || !clickText("Var", card)) return false;
+    setValue(card.querySelector(".pain-score-input input:not([disabled])"), pain.score);
+    setValue(byPlaceholder("Açıklama", card), pain.description || pain.location);
+    (pain.qualities || []).forEach((quality) => clickText(quality, card));
+    if (pain.rhythm) clickText(pain.rhythm, card);
+    if (pain.start_date) fillDuration(card, pain.start_date);
+    return true;
+  }
+
+  function fillProfile(profile = {}) {
+    if (profile.no_known_history === true) clickCardOption("Özgeçmiş", "Özellik Yok");
+    if (profile.no_known_family_history === true) clickCardOption("Soygeçmiş", "Özellik Yok");
+    const history = cardByTitle("Özgeçmiş");
+    if (!history) return;
+    if ((profile.addictions || []).length || profile.marital_status || profile.occupation || profile.education) {
+      const title = [...history.querySelectorAll(".hasta-detay-card__title")]
+        .find((node) => textOf(node) === "Özgeçmiş");
+      if (title && !byPlaceholder("Meslek", history)?.offsetParent) title.click();
+    }
+    (profile.addictions || []).forEach((item) => {
+      const value = String(item).toLocaleLowerCase("tr-TR");
+      if (value.includes("sigara")) clickText("Sigara", history);
+      if (value.includes("alkol")) clickText("Alkol", history);
+      if (value.includes("madde")) clickText("Madde", history);
+    });
+    if (profile.marital_status) clickText(profile.marital_status, history);
+    setValue(byPlaceholder("Meslek", history), profile.occupation);
+    setValue(byPlaceholder("Eğitim", history), profile.education);
+  }
+
+  async function fillDiagnoses(diagnoses = []) {
+    const card = cardByTitle("Tanılar (ICD - 10)");
+    if (!card) return 0;
+    let added = 0;
+    for (const [index, diagnosis] of diagnoses.slice(0, 3).entries()) {
+      const code = String(diagnosis?.code || "").trim().toUpperCase();
+      if (!code || textOf(card.querySelector("table")).includes(code)) continue;
+      const input = card.querySelector(".autocomplete__input input");
+      if (!input) continue;
+      setTypingValue(input, code);
+      const result = await waitFor(() => [...document.querySelectorAll(".autocomplete__item")]
+        .find((item) => item.offsetParent !== null && textOf(item).startsWith(`${code} |`)));
+      if (!result) continue;
+      result.click();
+      await sleep(100);
+      clickText(diagnosis.diagnosis_type === "definitive" ? "Kesin Tanı" : "Ön Tanı", card);
+      const mainDiagnosis = card.querySelector('input[type="checkbox"]');
+      if (index === 0 && mainDiagnosis && !mainDiagnosis.checked) mainDiagnosis.click();
+      setValue(byPlaceholder("Açıklama", card), diagnosis.description);
+      const addButton = [...card.querySelectorAll("button")]
+        .find((button) => textOf(button) === "Ekle" && !button.disabled);
+      if (!addButton) continue;
+      addButton.click();
+      added += 1;
+      await sleep(180);
+    }
+    return added;
   }
 
   async function updateStatus(id, status, error = null) {
@@ -193,35 +346,32 @@
     try {
       const requestSpec = transfer.bundle.requests?.find((item) => item.section === "examination") || {};
       const f = requestSpec.fields || {};
-      setValue(byPlaceholder("Şikayeti"), f.patient_complaint);
-      setValue(byPlaceholder("Öykü"), f.patient_story);
-      setValue(byPlaceholder("Sistem Sorgusu"), f.review_of_system_simple);
-      setValue(byPlaceholder("Muayene Notu"), f.exam_simple_textarea);
-      setValue(byPlaceholder("Tedavi Notu"), f.treatment_note_v2);
+      setValue(byPlaceholder("Şikayeti", cardByTitle("Yakınması") || document), f.patient_complaint);
+      setValue(byPlaceholder("Öykü", cardByTitle("Yakınması") || document), f.patient_story);
+      setValue(byPlaceholder("Sistem Sorgusu", cardByTitle("Sistem Sorgusu") || document), f.review_of_system_simple);
+      setValue(byPlaceholder("Muayene Notu", cardByTitle("Fizik Muayene Bulguları") || document), f.exam_simple_textarea);
+      setValue(byPlaceholder("Tedavi Notu", cardByTitle("İzlem ve Plan") || document), f.treatment_note_v2);
 
       const duration = f.complaint_start_date;
       if (duration?.value) {
-        const startArea = [...document.querySelectorAll("div")].find((el) => textOf(el) === "Başlangıç Tarihi")?.parentElement;
-        setValue(startArea?.querySelector("input"), duration.value);
-        const units = {hour: "saat", day: "gün", week: "hafta", month: "ay", year: "yıl"};
-        clickText(units[duration.unit], startArea?.parentElement || document);
+        fillDuration(cardByTitle("Yakınması"), duration);
       }
 
+      const examCard = cardByTitle("Fizik Muayene Bulguları") || document;
       const vitals = f.vitals || {};
       [["Kilo (kg)", vitals.weight], ["Boy (cm)", vitals.height], ["Ateş", vitals.temperature_v2],
        ["Nabız", vitals.pulse], ["KB-S", vitals.pressure_systolic], ["KB-D", vitals.pressure_diastolic],
-       ["SPO2", vitals.spo2]].forEach(([label, value]) => setValue(inputAfterLabel(label), value));
+       ["SPO2", vitals.spo2]].forEach(([label, value]) => setValue(inputByLabel(label, examCard), value));
 
-      if (f.fall_risk === true) clickText("Var", [...document.querySelectorAll("div")].find((el) => textOf(el) === "Düşme Riski")?.parentElement?.parentElement || document);
-      if (f.fall_risk === false) clickText("Yok", [...document.querySelectorAll("div")].find((el) => textOf(el) === "Düşme Riski")?.parentElement?.parentElement || document);
-      if (f.pain?.exists === true) clickText("Var", [...document.querySelectorAll("div")].find((el) => textOf(el) === "Ağrı")?.parentElement?.parentElement || document);
-      if (f.pain?.exists === false) clickText("Yok", [...document.querySelectorAll("div")].find((el) => textOf(el) === "Ağrı")?.parentElement?.parentElement || document);
-      if (f.profile?.no_known_history === true) {
-        [...document.querySelectorAll("button")].filter((button) => textOf(button) === "Özellik Yok").forEach((button) => button.click());
-      }
-      if (f.treatment_plan_label) clickText(f.treatment_plan_label);
-      if (f.is_surgery_will_planned === true) clickText("Evet", [...document.querySelectorAll("div")].find((el) => textOf(el) === "Ameliyat Planlanacak mı?")?.parentElement || document);
-      if (f.is_surgery_will_planned === false) clickText("Hayır", [...document.querySelectorAll("div")].find((el) => textOf(el) === "Ameliyat Planlanacak mı?")?.parentElement || document);
+      fillProfile(f.profile);
+      await fillFallRisk(f.fall_risk);
+      fillPain(f.pain);
+      await fillDiagnoses(f.diagnoses);
+      if (f.treatment_plan_label) clickCardOption("İzlem ve Plan", f.treatment_plan_label);
+      if (f.is_surgery_will_planned === true) clickFieldOption("Ameliyat Planlanacak mı?", "Evet", cardByTitle("İzlem ve Plan") || document);
+      if (f.is_surgery_will_planned === false) clickFieldOption("Ameliyat Planlanacak mı?", "Hayır", cardByTitle("İzlem ve Plan") || document);
+      const notSuggested = cardByTitle("İzlem ve Plan")?.querySelector('input[type="checkbox"]');
+      if (f.is_control_suggested === false && notSuggested && !notSuggested.checked) notSuggested.click();
 
       await updateStatus(transfer.id, "ready_for_review");
       bridgeStatus("Alanlar aktarıldı · doktor kontrolü bekleniyor", "ok");
