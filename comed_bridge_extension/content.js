@@ -173,11 +173,26 @@
       .find((el) => (el.getAttribute("placeholder") || "").trim().toLocaleLowerCase("tr-TR") === value.toLocaleLowerCase("tr-TR"));
   }
 
+  function widgetByTitle(title) {
+    return document.querySelector(`[data-test="widget-${title}"]`);
+  }
+
   function cardByTitle(title) {
-    return [...document.querySelectorAll(".hasta-detay-card")]
+    return widgetByTitle(title) || [...document.querySelectorAll(".hasta-detay-card")]
       .filter((card) => [...card.querySelectorAll(".hasta-detay-card__title")]
         .some((node) => textOf(node) === title))
       .sort((a, b) => textOf(a).length - textOf(b).length)[0] || null;
+  }
+
+  function ensureCardOpen(title, visiblePlaceholder = null) {
+    const card = cardByTitle(title);
+    if (!card || (visiblePlaceholder && byPlaceholder(visiblePlaceholder, card)?.offsetParent)) {
+      return card;
+    }
+    const heading = [...card.querySelectorAll(".hasta-detay-card__title,[data-test],span,div")]
+      .find((node) => textOf(node) === title);
+    heading?.click();
+    return card;
   }
 
   function fieldGroupByLabel(label, root = document) {
@@ -228,6 +243,64 @@
     return null;
   }
 
+  function itemParts(item) {
+    if (typeof item === "string") return {name: item.trim(), description: ""};
+    return {
+      name: String(item?.name || item?.value || "").trim(),
+      description: String(item?.description || "").trim(),
+    };
+  }
+
+  function smallestFieldRow(input, root) {
+    let node = input?.parentElement;
+    while (node && node !== root) {
+      const hasDescription = Boolean(byPlaceholder("Açıklama", node));
+      const buttons = [...node.querySelectorAll("button")];
+      const hasNoButton = buttons.some((button) => textOf(button) === "Yok");
+      const hasCommit = buttons.some((button) => /warning|success|orange|add|plus/i.test(button.className)
+        || /ekle|arti/i.test(button.getAttribute("data-test") || ""));
+      if (hasDescription && hasNoButton && hasCommit) return node;
+      node = node.parentElement;
+    }
+    return input?.parentElement || root;
+  }
+
+  async function chooseAutocomplete(input, query) {
+    if (!input || !query) return false;
+    setTypingValue(input, query);
+    const normalized = query.toLocaleLowerCase("tr-TR");
+    const result = await waitFor(() => [...document.querySelectorAll(".autocomplete__item")]
+      .filter((item) => item.offsetParent !== null)
+      .find((item) => {
+        const text = textOf(item).toLocaleLowerCase("tr-TR");
+        return text === normalized || text.startsWith(`${normalized} |`) || text.includes(normalized);
+      }), 6500);
+    if (!result) return false;
+    result.click();
+    await sleep(120);
+    return true;
+  }
+
+  async function fillProfileLookup(history, placeholder, items = []) {
+    let added = 0;
+    for (const item of items) {
+      const {name, description} = itemParts(item);
+      if (!name) continue;
+      const input = byPlaceholder(placeholder, history);
+      if (!input || !await chooseAutocomplete(input, name)) continue;
+      const row = smallestFieldRow(input, history);
+      setValue(byPlaceholder("Açıklama", row), description);
+      const commit = [...row.querySelectorAll("button")]
+        .filter((button) => button.offsetParent !== null && !button.disabled && textOf(button) !== "Yok")
+        .findLast((button) => /warning|success|orange|add|plus/i.test(button.className)
+          || /ekle|arti/i.test(button.getAttribute("data-test") || ""));
+      commit?.click();
+      added += 1;
+      await sleep(120);
+    }
+    return added;
+  }
+
   function durationUnitLabel(unit) {
     return ({hour: "saat", day: "gün", week: "hafta", month: "ay", year: "yıl"})[unit];
   }
@@ -247,12 +320,14 @@
     if (exists !== true || typeof value !== "object") return false;
     const detailKeys = ["history", "medications", "addiction", "gait_balance_disorder",
       "vision_disorder", "oriented", "general_health_normal"];
-    if (!detailKeys.every((key) => typeof value[key] === "boolean")) return false;
+    if (!detailKeys.every((key) => typeof value[key] === "boolean")
+      || !["65_plus", "under_65"].includes(value.age_group)) return false;
     if (!clickCardOption("Düşme Riski", "Var")) return false;
     const popover = await waitFor(() => [...document.querySelectorAll(".co-popover.bottom")]
       .find((item) => item.offsetParent !== null));
     if (!popover) return false;
     const choices = [
+      ["Yaş", value.age_group === "65_plus", "65 yaş üstü", "65 yaş altı"],
       ["Düşme Hikayesi", value.history, "Var", "Yok"],
       ["Kullandığı İlaçlar", value.medications, "Var", "Yok"],
       ["Alkol / Madde Bağımlılığı", value.addiction, "Var", "Yok"],
@@ -268,38 +343,100 @@
     return true;
   }
 
-  function fillPain(pain) {
+  async function fillPain(pain) {
     if (pain?.exists === false) return clickCardOption("Ağrı", "Yok");
     if (pain?.exists !== true) return false;
     const card = cardByTitle("Ağrı");
     if (!card || !clickText("Var", card)) return false;
-    setValue(card.querySelector(".pain-score-input input:not([disabled])"), pain.score);
-    setValue(byPlaceholder("Açıklama", card), pain.description || pain.location);
+    await sleep(100);
+    setValue(byPlaceholder("Bölge", card), pain.location);
+    setValue(byPlaceholder("Açıklama", card), pain.description);
     (pain.qualities || []).forEach((quality) => clickText(quality, card));
     if (pain.rhythm) clickText(pain.rhythm, card);
     if (pain.start_date) fillDuration(card, pain.start_date);
     return true;
   }
 
-  function fillProfile(profile = {}) {
-    if (profile.no_known_history === true) clickCardOption("Özgeçmiş", "Özellik Yok");
-    if (profile.no_known_family_history === true) clickCardOption("Soygeçmiş", "Özellik Yok");
-    const history = cardByTitle("Özgeçmiş");
-    if (!history) return;
-    if ((profile.addictions || []).length || profile.marital_status || profile.occupation || profile.education) {
-      const title = [...history.querySelectorAll(".hasta-detay-card__title")]
-        .find((node) => textOf(node) === "Özgeçmiş");
-      if (title && !byPlaceholder("Meslek", history)?.offsetParent) title.click();
+  async function fillFamilyHistory(profile = {}) {
+    if (profile.no_known_family_history === true) {
+      return clickCardOption("Soygeçmiş", "Özellik Yok") ? 1 : 0;
     }
-    (profile.addictions || []).forEach((item) => {
-      const value = String(item).toLocaleLowerCase("tr-TR");
+    const entries = profile.family_history || [];
+    if (!entries.length && typeof profile.parents_related !== "boolean") return 0;
+    const card = ensureCardOpen("Soygeçmiş");
+    if (!card) return 0;
+    await sleep(100);
+    let added = 0;
+    for (const entry of entries) {
+      const relationship = String(entry?.relationship || "").trim();
+      const condition = String(entry?.condition || "").trim();
+      const rows = [...card.querySelectorAll("tr")];
+      const row = rows.find((candidate) => textOf(candidate.querySelector("td,th")) === relationship);
+      const headers = [...card.querySelectorAll("thead th")].map(textOf);
+      const column = headers.indexOf(condition);
+      const cells = [...(row?.querySelectorAll("td") || [])];
+      const target = column >= 0 ? cells[column] : null;
+      if (!target) continue;
+      target.click();
+      const popover = await waitFor(() => [...document.querySelectorAll(".co-popover")]
+        .find((item) => item.offsetParent !== null));
+      if (!popover) continue;
+      setValue(byPlaceholder("Açıklama Girin...", popover), entry.description);
+      const save = popover.querySelector('[data-test*="kaydet"],button[type="submit"]')
+        || [...popover.querySelectorAll("button")].findLast((button) => !button.disabled);
+      save?.click();
+      added += 1;
+      await sleep(100);
+    }
+    const related = [...card.querySelectorAll('input[type="checkbox"]')]
+      .find((input) => /anne ile baba akraba/i.test(textOf(input.closest("label") || input.parentElement)));
+    if (related && typeof profile.parents_related === "boolean"
+      && related.checked !== profile.parents_related) related.click();
+    return added;
+  }
+
+  function fillPsychologicalStatus(value = {}) {
+    const states = value.states || [];
+    if (!states.length && !value.description) return false;
+    const card = cardByTitle("Psikolojik Durum");
+    if (!card) return false;
+    states.forEach((state) => clickText(state, card));
+    setValue(byPlaceholder("Açıklama", card), value.description);
+    return true;
+  }
+
+  async function fillProfile(profile = {}) {
+    if (profile.no_known_history === true) clickCardOption("Özgeçmiş", "Özellik Yok");
+    const history = ensureCardOpen("Özgeçmiş", "Meslek");
+    if (!history) return;
+    await sleep(100);
+    for (const item of profile.addictions || []) {
+      const {name, description} = itemParts(item);
+      const value = name.toLocaleLowerCase("tr-TR");
       if (value.includes("sigara")) clickText("Sigara", history);
       if (value.includes("alkol")) clickText("Alkol", history);
       if (value.includes("madde")) clickText("Madde", history);
-    });
+      setValue(byPlaceholder("Açıklama", fieldGroupByLabel("Alışkanlık", history) || history), description);
+    }
+    const lookupMap = [
+      ["Kronik Hastalık", profile.diseases], ["İlaç", profile.pharmacy_products],
+      ["Alerji", profile.allergies], ["Ameliyat", profile.operations],
+      ["Özel Durumlar", profile.special_conditions], ["Aşı", profile.vaccines],
+      ["Cihaz (Vücuda Takılan)", profile.devices],
+      ["Kan Transfüzyon", profile.transfusions], ["Terapi", profile.therapies],
+    ];
+    for (const [placeholder, items] of lookupMap) {
+      await fillProfileLookup(history, placeholder, items || []);
+    }
     if (profile.marital_status) clickText(profile.marital_status, history);
-    setValue(byPlaceholder("Meslek", history), profile.occupation);
-    setValue(byPlaceholder("Eğitim", history), profile.education);
+    if (profile.occupation) await chooseAutocomplete(byPlaceholder("Meslek", history), profile.occupation);
+    if (profile.education) {
+      const education = byPlaceholder("Eğitim", history);
+      education?.click();
+      await sleep(80);
+      clickText(profile.education);
+    }
+    await fillFamilyHistory(profile);
   }
 
   async function fillDiagnoses(diagnoses = []) {
@@ -317,9 +454,21 @@
       if (!result) continue;
       result.click();
       await sleep(100);
-      clickText(diagnosis.diagnosis_type === "definitive" ? "Kesin Tanı" : "Ön Tanı", card);
+      const diagnosisType = {
+        differential: "Ayırıcı Tanı", definitive: "Kesin Tanı", preliminary: "Ön Tanı",
+      }[diagnosis.diagnosis_type] || "Ön Tanı";
+      clickText(diagnosisType, card);
+      const side = {none: "Ayrım Yok", left: "Sol", right: "Sağ"}[diagnosis.side] || "Ayrım Yok";
+      const sideInput = fieldGroupByLabel("Taraf Tipi", card)?.querySelector("input");
+      sideInput?.click();
+      await sleep(60);
+      clickText(side);
       const mainDiagnosis = card.querySelector('input[type="checkbox"]');
-      if (index === 0 && mainDiagnosis && !mainDiagnosis.checked) mainDiagnosis.click();
+      const shouldBePrimary = diagnosis.primary === true || (index === 0
+        && !diagnoses.some((item) => item?.primary === true));
+      if (mainDiagnosis && mainDiagnosis.checked !== shouldBePrimary) mainDiagnosis.click();
+      const firstDate = byPlaceholder("İlk Tanı Tarihi", card);
+      if (firstDate && !firstDate.disabled) setValue(firstDate, diagnosis.first_diagnosis_date);
       setValue(byPlaceholder("Açıklama", card), diagnosis.description);
       const addButton = [...card.querySelectorAll("button")]
         .find((button) => textOf(button) === "Ekle" && !button.disabled);
@@ -350,7 +499,9 @@
       setValue(byPlaceholder("Öykü", cardByTitle("Yakınması") || document), f.patient_story);
       setValue(byPlaceholder("Sistem Sorgusu", cardByTitle("Sistem Sorgusu") || document), f.review_of_system_simple);
       setValue(byPlaceholder("Muayene Notu", cardByTitle("Fizik Muayene Bulguları") || document), f.exam_simple_textarea);
-      setValue(byPlaceholder("Tedavi Notu", cardByTitle("İzlem ve Plan") || document), f.treatment_note_v2);
+      const treatmentText = [f.treatment_note_v2, f.control_note ? `Kontrol notu: ${f.control_note}` : null]
+        .filter(Boolean).join("\n");
+      setValue(byPlaceholder("Tedavi Notu", cardByTitle("İzlem ve Plan") || document), treatmentText);
 
       const duration = f.complaint_start_date;
       if (duration?.value) {
@@ -363,15 +514,18 @@
        ["Nabız", vitals.pulse], ["KB-S", vitals.pressure_systolic], ["KB-D", vitals.pressure_diastolic],
        ["SPO2", vitals.spo2]].forEach(([label, value]) => setValue(inputByLabel(label, examCard), value));
 
-      fillProfile(f.profile);
+      await fillProfile(f.profile);
+      fillPsychologicalStatus(f.psychological_status);
       await fillFallRisk(f.fall_risk);
-      fillPain(f.pain);
+      await fillPain(f.pain);
       await fillDiagnoses(f.diagnoses);
       if (f.treatment_plan_label) clickCardOption("İzlem ve Plan", f.treatment_plan_label);
       if (f.is_surgery_will_planned === true) clickFieldOption("Ameliyat Planlanacak mı?", "Evet", cardByTitle("İzlem ve Plan") || document);
       if (f.is_surgery_will_planned === false) clickFieldOption("Ameliyat Planlanacak mı?", "Hayır", cardByTitle("İzlem ve Plan") || document);
-      const notSuggested = cardByTitle("İzlem ve Plan")?.querySelector('input[type="checkbox"]');
-      if (f.is_control_suggested === false && notSuggested && !notSuggested.checked) notSuggested.click();
+      const notSuggested = cardByTitle("İzlem ve Plan")
+        ?.querySelector('[data-test="co-switch-Kontrol Önerilme Durumu"] input[type="checkbox"], input[type="checkbox"]');
+      if (typeof f.is_control_suggested === "boolean" && notSuggested
+        && notSuggested.checked === f.is_control_suggested) notSuggested.click();
 
       await updateStatus(transfer.id, "ready_for_review");
       bridgeStatus("Alanlar aktarıldı · doktor kontrolü bekleniyor", "ok");

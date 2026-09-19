@@ -1,4 +1,6 @@
 import unittest
+import json
+from pathlib import Path
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
@@ -8,7 +10,21 @@ import comed_integration
 import main
 
 
+ROOT = Path(__file__).resolve().parents[1]
+
+
 class ComedIntegrationTests(unittest.TestCase):
+    def test_documented_v3_scenario_covers_every_observed_required_field(self):
+        scenario = json.loads(
+            (ROOT / "docs" / "COMED_TRANSFER_SCHEMA.example.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        normalized = comed_integration.normalize_draft(scenario)
+
+        self.assertEqual(normalized["missing_required"], [])
+        self.assertFalse(normalized["fields"]["auto_sign"])
+
     def test_normalizer_never_invents_mandatory_clinical_values(self):
         normalized = comed_integration.normalize_draft({
             "patient_complaint": "Bacak ağrısı",
@@ -39,6 +55,7 @@ class ComedIntegrationTests(unittest.TestCase):
             },
             "fall_risk": {
                 "exists": True,
+                "age_group": "65_plus",
                 "history": False,
                 "medications": True,
                 "addiction": False,
@@ -48,7 +65,7 @@ class ComedIntegrationTests(unittest.TestCase):
                 "general_health_normal": True,
             },
             "pain": {"exists": False},
-            "vitals": {"pulse": 72},
+            "vitals": {"weight": 70, "height": 170, "pulse": 72},
             "exam_simple_textarea": "Genel durum iyi.",
             "diagnoses": [{"code": "R42", "diagnosis_type": "preliminary"}],
             "treatment_note_v2": "Semptom takibi.",
@@ -61,6 +78,44 @@ class ComedIntegrationTests(unittest.TestCase):
         self.assertNotIn("fall_risk", normalized["missing_required"])
         self.assertNotIn("pain", normalized["missing_required"])
         self.assertNotIn("pulse", normalized["missing_required"])
+
+    def test_normalizes_every_lookup_family_psychology_and_diagnosis_option(self):
+        normalized = comed_integration.normalize_draft({
+            "profile": {
+                "diseases": ["Hipertansiyon"],
+                "pharmacy_products": [{"name": "PAROL", "description": "Gerektikçe"}],
+                "family_history": ["Babada hipertansiyon"],
+                "parents_related": False,
+                "education": "Lisans",
+            },
+            "psychological_status": {
+                "states": ["Sakin", "Model seçeneği"],
+                "description": "Koopere",
+            },
+            "pain": {
+                "exists": True,
+                "qualities": ["Keskin", "Uydurma"],
+                "rhythm": "Sürekli",
+            },
+            "diagnoses": [{
+                "code": "r52",
+                "diagnosis_type": "differential",
+                "side": "left",
+                "primary": True,
+                "first_diagnosis_date": "20.09.2026",
+            }],
+        })
+        fields = normalized["fields"]
+
+        self.assertEqual(fields["profile"]["diseases"][0]["name"], "Hipertansiyon")
+        self.assertEqual(fields["profile"]["pharmacy_products"][0]["description"], "Gerektikçe")
+        self.assertEqual(fields["profile"]["family_history"][0]["relationship"], "Babası")
+        self.assertEqual(fields["psychological_status"]["states"], ["Sakin"])
+        self.assertEqual(fields["pain"]["qualities"], ["Keskin"])
+        self.assertEqual(fields["diagnoses"][0]["diagnosis_type"], "differential")
+        self.assertEqual(fields["diagnoses"][0]["side"], "left")
+        self.assertTrue(fields["diagnoses"][0]["primary"])
+        self.assertEqual(fields["diagnoses"][0]["first_diagnosis_date"], "20.09.2026")
 
     def test_invalid_comed_choice_values_are_rejected(self):
         normalized = comed_integration.normalize_draft({
@@ -88,6 +143,7 @@ class ComedIntegrationTests(unittest.TestCase):
 
         self.assertFalse(bundle["auto_sign"])
         self.assertTrue(bundle["doctor_review_required"])
+        self.assertEqual(bundle["schema_version"], 3)
         self.assertEqual(
             [request.get("endpoint") or request.get("endpoint_group") for request in bundle["requests"]],
             [

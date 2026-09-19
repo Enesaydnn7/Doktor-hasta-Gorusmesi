@@ -137,6 +137,13 @@ KURALLAR (ÇOK ÖNEMLİ):
 - Tanı net değilse diagnosis_type "preliminary" olsun. ICD kodu için ana semptoma
   uygun en fazla 3 öneri ver; COMED aramasında bulunmayan kod değiştirilmeyecektir.
 - "Özellik yok" ancak görüşmede açıkça yok/özellik yok denmişse true olabilir.
+- Özgeçmiş lookup listelerinde her kayıt {"name": "COMED'de aranacak ad", "description":
+  "görüşmedeki ek bilgi veya null"} biçimindedir. Hastalık, ilaç, alerji, ameliyat ve diğer
+  kayıtları ilgili listelere ayrı ayrı koy; bir bilgiyi yanlış kategoriye taşıma.
+- Soygeçmiş yalnız COMED matrisindeki akraba ve hastalık seçeneklerine eşlenebilir. Akraba
+  yalnız Erkek Kardeşi|Babası|Annesi|Kız Kardeşi|Diğer; hastalık yalnız Diyabet|Guatr|
+  Hipertansiyon|Kan Hastalığı|Koroner arter hastalığı (KAH)|Malignite|Diğer olabilir.
+- Psikolojik durum yalnız Sakin, Üzgün, Ajite, Kaygılı veya Agresif seçeneklerinden oluşur.
 - Düşme riski "exists": true ise alt maddeleri de yalnız görüşmede açıkça geçen bilgiyle
   doldur; bilinmeyen alt maddeleri null bırak. "exists": false yalnız riskin olmadığı açıkça
   söylendiyse kullanılabilir.
@@ -147,6 +154,8 @@ KURALLAR (ÇOK ÖNEMLİ):
   tedavi, Yatarak takip ve tedavi, Ayaktan cerrahi girişim, Yatarak cerrahi girişim,
   Rehabilitasyon, Palyatif tedavi, Günübirlik Tedavi, Allojenik Hasta, Kemik İliği Nakli.
 - marital_status yalnız Belirtilmedi, Bekar veya Evli olabilir.
+- education yalnız Eğitim, Yok, Önlisans, İlköğretim, Lise, Lisans veya Lisans Üstü olabilir.
+- Tanı tarafı yalnız none|left|right; türü differential|definitive|preliminary olabilir.
 - auto_sign her zaman false olmalıdır. Doktorun imzasını otomatikleştirme.
 - COMED alan adlarını aşağıdaki JSON şemasındaki gibi aynen kullan.
 
@@ -158,16 +167,24 @@ YANITINI SADECE şu JSON olarak ver:
   "profile": {
     "no_known_history": false,
     "no_known_family_history": false,
-    "diseases": [], "operations": [], "pharmacy_products": [],
-    "allergies": [], "addictions": [], "family_history": [],
+    "diseases": [{"name": "Hipertansiyon", "description": null}],
+    "operations": [], "pharmacy_products": [], "allergies": [], "addictions": [],
     "special_conditions": [], "vaccines": [], "devices": [],
     "transfusions": [], "therapies": [],
+    "family_history": [
+      {"relationship": "Babası", "condition": "Hipertansiyon", "description": null}
+    ],
+    "parents_related": null,
     "occupation": null, "education": null,
     "marital_status": "Belirtilmedi|Bekar|Evli|null"
   },
   "review_of_system_simple": "sistem sorgusu veya null",
+  "psychological_status": {
+    "states": ["Sakin"], "description": "görüşmedeki açıklama veya null"
+  },
   "fall_risk": {
     "exists": null,
+    "age_group": "65_plus|under_65|null",
     "history": null,
     "medications": null,
     "addiction": null,
@@ -187,7 +204,10 @@ YANITINI SADECE şu JSON olarak ver:
   },
   "exam_simple_textarea": "muayene bulgusu veya null",
   "diagnoses": [
-    {"code": "R52", "description": "Ağrı", "diagnosis_type": "preliminary"}
+    {
+      "code": "R52", "description": "Ağrı", "diagnosis_type": "preliminary",
+      "side": "none", "primary": true, "first_diagnosis_date": null
+    }
   ],
   "treatment_note_v2": "tedavi/öneri notu veya null",
   "treatment_plan_label": "görüşmede açıkça seçilebiliyorsa plan veya null",

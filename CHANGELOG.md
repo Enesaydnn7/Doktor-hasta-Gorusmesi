@@ -1,5 +1,13 @@
 # Sürüm Geçmişi
 
+## v2.5.0 — 20 Eylül 2026
+
+- COMED Özgeçmiş aktarımı kronik hastalık, ilaç, alerji, ameliyat, özel durum, aşı, cihaz, kan transfüzyonu ve terapi lookup alanlarının gerçek sonuç seçimi ve alt kayıt ekleme akışıyla genişletildi.
+- Soygeçmiş akraba–hastalık matrisi, anne-baba akrabalığı, psikolojik durum ve düşme riski yaş grubu şemaya ve tarayıcı köprüsüne eklendi.
+- Ağrı bölgesi ile açıklaması ayrıldı; tanılarda ayırıcı/kesin/ön tanı, taraf, ana tanı ve ilk tanı tarihi desteklendi.
+- Göztepe COMED test panelinin ana muayene alanları yeniden doğrulandı; eksiksiz v3 örnek JSON ve güncel alan haritası eklendi.
+- Test ortamında COMED lookup seçimi ve profil alt kaydı gerçek “Kayıt başarılı” yanıtıyla doğrulandı; otomatik imza kapalı kalmaya devam ediyor.
+
 ## v2.4.3 — 16 Eylül 2026
 
 - COMED alanları artık ilgili muayene kartı içinde, alan etiketiyle eşleştiriliyor; Boy değerinin Kilo alanına yazılmasına yol açan genel seçici kaldırıldı.
