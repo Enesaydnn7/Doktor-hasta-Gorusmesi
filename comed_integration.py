@@ -11,6 +11,7 @@ import config
 REQUIRED_FIELDS = (
     "patient_complaint",
     "complaint_start_date",
+    "patient_story",
     "exam_simple_textarea",
     "treatment_note_v2",
     "treatment_plan_label",
@@ -30,6 +31,7 @@ TREATMENT_PLANS = {
 }
 
 FALL_RISK_DETAIL_FIELDS = (
+    "age_group",
     "history",
     "medications",
     "addiction",
@@ -37,6 +39,28 @@ FALL_RISK_DETAIL_FIELDS = (
     "vision_disorder",
     "oriented",
     "general_health_normal",
+)
+
+EDUCATION_LEVELS = {
+    "Eğitim", "Yok", "Önlisans", "İlköğretim", "Lise", "Lisans", "Lisans Üstü",
+}
+MARITAL_STATUSES = {"Belirtilmedi", "Bekar", "Evli"}
+PSYCHOLOGICAL_STATES = {"Sakin", "Üzgün", "Ajite", "Kaygılı", "Agresif"}
+PAIN_QUALITIES = {
+    "Keskin", "Bastırıcı", "Kolik", "Ezici", "Dolgunluk", "Saplanıcı", "Künt",
+    "Yanıcı", "Stabilize",
+}
+PAIN_RHYTHMS = {"Sürekli", "Aralıklı"}
+FAMILY_RELATIONSHIPS = {"Erkek Kardeşi", "Babası", "Annesi", "Kız Kardeşi", "Diğer"}
+FAMILY_CONDITIONS = {
+    "Diyabet", "Guatr", "Hipertansiyon", "Kan Hastalığı",
+    "Koroner arter hastalığı (KAH)", "Malignite", "Diğer",
+}
+DIAGNOSIS_TYPES = {"differential", "definitive", "preliminary"}
+DIAGNOSIS_SIDES = {"none", "left", "right"}
+PROFILE_LIST_FIELDS = (
+    "diseases", "operations", "pharmacy_products", "allergies", "addictions",
+    "special_conditions", "vaccines", "devices", "transfusions", "therapies",
 )
 
 
@@ -55,6 +79,56 @@ def _present(value: Any) -> bool:
     if isinstance(value, (list, tuple, set, dict)):
         return bool(value)
     return True
+
+
+def _named_items(value: Any) -> list[dict[str, str | None]]:
+    """Normalize lookup-backed profile values without inventing COMED records."""
+    items: list[dict[str, str | None]] = []
+    for item in value if isinstance(value, list) else []:
+        if isinstance(item, str):
+            name = item.strip()
+            description = None
+        elif isinstance(item, dict):
+            name = str(item.get("name") or item.get("value") or "").strip()
+            raw_description = item.get("description")
+            description = str(raw_description).strip() if _present(raw_description) else None
+        else:
+            continue
+        if name:
+            items.append({"name": name, "description": description})
+    return items
+
+
+def _family_items(value: Any) -> list[dict[str, str | None]]:
+    items: list[dict[str, str | None]] = []
+    for item in value if isinstance(value, list) else []:
+        if isinstance(item, str):
+            folded = item.casefold()
+            relationship = next((label for needle, label in (
+                ("erkek karde", "Erkek Kardeşi"), ("kız karde", "Kız Kardeşi"),
+                ("baba", "Babası"), ("anne", "Annesi"),
+            ) if needle in folded), "")
+            condition = next((label for needle, label in (
+                ("diyabet", "Diyabet"), ("şeker", "Diyabet"), ("guatr", "Guatr"),
+                ("hipertans", "Hipertansiyon"), ("kan hast", "Kan Hastalığı"),
+                ("koroner", "Koroner arter hastalığı (KAH)"), ("kah", "Koroner arter hastalığı (KAH)"),
+                ("malign", "Malignite"), ("kanser", "Malignite"),
+            ) if needle in folded), "")
+            raw_description = item
+        elif isinstance(item, dict):
+            relationship = str(item.get("relationship") or "").strip()
+            condition = str(item.get("condition") or "").strip()
+            raw_description = item.get("description")
+        else:
+            continue
+        if relationship not in FAMILY_RELATIONSHIPS or condition not in FAMILY_CONDITIONS:
+            continue
+        items.append({
+            "relationship": relationship,
+            "condition": condition,
+            "description": str(raw_description).strip() if _present(raw_description) else None,
+        })
+    return items
 
 
 def _profile_present(profile: dict[str, Any]) -> bool:
@@ -82,7 +156,14 @@ def _fall_risk_present(value: Any) -> bool:
         return True
     if not isinstance(value, dict) or value.get("exists") is not True:
         return False
-    return all(isinstance(value.get(field), bool) for field in FALL_RISK_DETAIL_FIELDS)
+    return (
+        value.get("age_group") in {"65_plus", "under_65"}
+        and all(
+            isinstance(value.get(field), bool)
+            for field in FALL_RISK_DETAIL_FIELDS
+            if field != "age_group"
+        )
+    )
 
 
 def _pain_present(value: Any) -> bool:
@@ -99,14 +180,34 @@ def normalize_draft(draft: dict[str, Any] | None) -> dict[str, Any]:
         data["pain"] = {}
     if not isinstance(data.get("vitals"), dict):
         data["vitals"] = {}
+    if not isinstance(data.get("psychological_status"), dict):
+        data["psychological_status"] = {}
     data.setdefault("diagnoses", [])
+
+    for field in PROFILE_LIST_FIELDS:
+        data["profile"][field] = _named_items(data["profile"].get(field))
+    data["profile"]["family_history"] = _family_items(
+        data["profile"].get("family_history")
+    )
+    if not isinstance(data["profile"].get("parents_related"), bool):
+        data["profile"]["parents_related"] = None
 
     if data.get("treatment_plan_label") not in TREATMENT_PLANS:
         data["treatment_plan_label"] = None
 
     marital_status = data["profile"].get("marital_status")
-    if marital_status not in {"Belirtilmedi", "Bekar", "Evli"}:
+    if marital_status not in MARITAL_STATUSES:
         data["profile"]["marital_status"] = None
+    if data["profile"].get("education") not in EDUCATION_LEVELS:
+        data["profile"]["education"] = None
+
+    psychological = data["psychological_status"]
+    psychological["states"] = [
+        state for state in psychological.get("states") or []
+        if state in PSYCHOLOGICAL_STATES
+    ]
+    if not _present(psychological.get("description")):
+        psychological["description"] = None
 
     duration = data.get("complaint_start_date")
     if not isinstance(duration, dict) or duration.get("unit") not in {
@@ -124,12 +225,29 @@ def normalize_draft(draft: dict[str, Any] | None) -> dict[str, Any]:
         diagnoses.append({
             "code": code,
             "description": str(item.get("description") or "").strip(),
-            "diagnosis_type": (
-                "definitive" if item.get("diagnosis_type") == "definitive"
-                else "preliminary"
+            "diagnosis_type": item.get("diagnosis_type")
+            if item.get("diagnosis_type") in DIAGNOSIS_TYPES else "preliminary",
+            "side": item.get("side") if item.get("side") in DIAGNOSIS_SIDES else "none",
+            "primary": item.get("primary") is True,
+            "first_diagnosis_date": (
+                str(item.get("first_diagnosis_date")).strip()
+                if _present(item.get("first_diagnosis_date")) else None
             ),
         })
     data["diagnoses"] = diagnoses[:3]
+
+    pain = data["pain"]
+    pain["qualities"] = [
+        value for value in pain.get("qualities") or [] if value in PAIN_QUALITIES
+    ]
+    if pain.get("rhythm") not in PAIN_RHYTHMS:
+        pain["rhythm"] = None
+
+    fall_risk = data.get("fall_risk")
+    if isinstance(fall_risk, dict) and fall_risk.get("age_group") not in {
+        "65_plus", "under_65",
+    }:
+        fall_risk["age_group"] = None
 
     missing = [field for field in REQUIRED_FIELDS if not _present(data.get(field))]
     if not _profile_present(data["profile"]):
@@ -141,8 +259,9 @@ def normalize_draft(draft: dict[str, Any] | None) -> dict[str, Any]:
     if not _pain_present(data["pain"]):
         missing.append("pain")
     vitals = data.get("vitals") or {}
-    if not _present(vitals.get("pulse")):
-        missing.append("pulse")
+    for vital in ("weight", "height", "pulse"):
+        if not _present(vitals.get(vital)):
+            missing.append(vital)
     if not diagnoses:
         missing.append("diagnosis")
 
@@ -157,7 +276,7 @@ def build_transfer_bundle(record: dict[str, Any], patient: dict[str, Any]) -> di
         clinical_card_url(visit_id, card_id) if visit_id and card_id else None
     )
     return {
-        "schema_version": 2,
+        "schema_version": 3,
         "record_id": record.get("id"),
         "patient": {**patient, "clinical_card_url": url},
         "doctor_review_required": True,

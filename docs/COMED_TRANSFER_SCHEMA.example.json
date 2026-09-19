@@ -1,0 +1,75 @@
+{
+  "schema_version": 3,
+  "patient_complaint": "Baş ağrısı",
+  "complaint_start_date": {"value": 2, "unit": "day", "before": true},
+  "patient_story": "İki gündür aralıklı baş ağrısı tarifliyor.",
+  "profile": {
+    "no_known_history": false,
+    "no_known_family_history": false,
+    "diseases": [{"name": "Hipertansiyon", "description": "Beş yıldır"}],
+    "operations": [],
+    "pharmacy_products": [{"name": "PAROL", "description": "Gerektikçe"}],
+    "allergies": [],
+    "addictions": [{"name": "Sigara", "description": "Günde 5 adet"}],
+    "special_conditions": [],
+    "vaccines": [],
+    "devices": [],
+    "transfusions": [],
+    "therapies": [],
+    "family_history": [
+      {"relationship": "Babası", "condition": "Hipertansiyon", "description": null}
+    ],
+    "parents_related": false,
+    "occupation": "Mühendis",
+    "education": "Lisans",
+    "marital_status": "Evli"
+  },
+  "review_of_system_simple": "Bulantı ve kusma yok.",
+  "psychological_status": {"states": ["Sakin"], "description": "Koopere"},
+  "fall_risk": {
+    "exists": false,
+    "age_group": null,
+    "history": null,
+    "medications": null,
+    "addiction": null,
+    "gait_balance_disorder": null,
+    "vision_disorder": null,
+    "oriented": null,
+    "general_health_normal": null
+  },
+  "pain": {
+    "exists": true,
+    "score": 6,
+    "location": "Baş",
+    "description": "Akşam artıyor",
+    "qualities": ["Bastırıcı"],
+    "rhythm": "Aralıklı",
+    "start_date": {"value": 2, "unit": "day", "before": true}
+  },
+  "vitals": {
+    "weight": 70,
+    "height": 170,
+    "temperature_v2": 36.6,
+    "pulse": 72,
+    "pressure_systolic": 120,
+    "pressure_diastolic": 80,
+    "spo2": 98
+  },
+  "exam_simple_textarea": "Genel durum iyi, nörolojik defisit saptanmadı.",
+  "diagnoses": [
+    {
+      "code": "R51",
+      "description": "Baş ağrısı",
+      "diagnosis_type": "preliminary",
+      "side": "none",
+      "primary": true,
+      "first_diagnosis_date": null
+    }
+  ],
+  "treatment_note_v2": "Semptom takibi ve hidrasyon önerildi.",
+  "treatment_plan_label": "Ayaktan takip ve tedavi",
+  "is_surgery_will_planned": false,
+  "is_control_suggested": true,
+  "control_note": "Bir hafta sonra kontrol.",
+  "auto_sign": false
+}
