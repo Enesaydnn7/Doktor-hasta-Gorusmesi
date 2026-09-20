@@ -1,5 +1,9 @@
 # Sürüm Geçmişi
 
+## v2.6.2 — 20 Eylül 2026
+
+- Yakalanan COMED test isteklerini mevcut yönetici oturumuyla görüntüleyen, normal admin tasarımını değiştirmeyen korumalı HTML doğrulama görünümü eklendi.
+
 ## v2.6.1 — 20 Eylül 2026
 
 - COMED tanı kayıt uçları, istemci filtrelerinin `traces` yolunu engellemesini önlemek için `request-log` olarak adlandırıldı.
