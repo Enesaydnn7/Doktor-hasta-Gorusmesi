@@ -21,6 +21,15 @@ kurumsal-ağ köprüsüdür.
    eşitlendi” bildirimi görünmelidir.
 10. Telefonda Klinot iş listesindeki yenile simgesine basın.
 
+## Test isteği izleme
+
+Eklenti açılır penceresindeki **COMED test isteği izleme** seçeneği, yalnız
+`goztepe.comedtestapi.mlpcare.com` alan adına giden GET/POST isteklerinin URL,
+JSON gövdesi, yanıt durumu ve JSON yanıtını Klinot tanı kaydına gönderir. İstek
+başlıkları, çerezler, COMED parolası ve oturum/token alanları okunmaz veya
+saklanmaz. Bu seçenek gerçek COMED payload haritası çıkarılırken açık tutulur;
+test tamamlandıktan sonra kapatılabilir.
+
 COMED'deki **Göreve Git** düğmesi normal bir bağlantı olmadığı için köprü tablo
 satırını doğrudan okur. Göreve ilk kez girildiğinde hasta kartı kimliği de otomatik
 tamamlanır. Liste ve kart bilgileri yalnız aynı Klinot kullanıcısına gösterilir.

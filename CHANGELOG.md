@@ -1,5 +1,12 @@
 # Sürüm Geçmişi
 
+## v2.6.0 — 20 Eylül 2026
+
+- Göztepe COMED test API'sinin gerçek GET/POST URL, JSON gövde ve yanıt durumlarını yakalayan tanı katmanı eklendi.
+- İzleme yalnız test API alan adına sınırlandı; parola, çerez, yetkilendirme başlığı ve oturum/token alanları kaydedilmez.
+- Yakalanan istekler kullanıcı bazında ve sınırlı saklama politikasıyla yönetici inceleme ucuna aktarılıyor.
+- Bu tanı sürümü, DOM doldurma akışını gerçek COMED payload haritasına dönüştürmek için temel oluşturur; otomatik imza hâlâ kapalıdır.
+
 ## v2.5.0 — 20 Eylül 2026
 
 - COMED Özgeçmiş aktarımı kronik hastalık, ilaç, alerji, ameliyat, özel durum, aşı, cihaz, kan transfüzyonu ve terapi lookup alanlarının gerçek sonuç seçimi ve alt kayıt ekleme akışıyla genişletildi.

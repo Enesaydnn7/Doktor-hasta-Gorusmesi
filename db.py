@@ -128,6 +128,23 @@ def init():
             "CREATE INDEX IF NOT EXISTS ix_comed_transfer_status "
             "ON comed_transfers(status, visit_id, id DESC)"
         )
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS comed_trace_events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                captured_at TEXT NOT NULL,
+                captured_by TEXT NOT NULL,
+                method TEXT NOT NULL,
+                url TEXT NOT NULL,
+                status INTEGER,
+                duration_ms INTEGER,
+                request_body TEXT,
+                response_body TEXT
+            )
+        """)
+        c.execute(
+            "CREATE INDEX IF NOT EXISTS ix_comed_trace_events_captured "
+            "ON comed_trace_events(captured_by, captured_at DESC, id DESC)"
+        )
         _ensure_demo_record(c)
 
 
@@ -424,6 +441,94 @@ def comed_transfer_update(transfer_id: int, status_value: str,
             (status_value, (error or "")[:1000] or None, now, transfer_id),
         )
     return comed_transfer_get(transfer_id)
+
+
+def comed_trace_add(events: list[dict], captured_by: str,
+                    retention: int = 2000) -> int:
+    """Persist sanitized COMED test API traces without request headers or cookies."""
+    now = datetime.now().isoformat(timespec="milliseconds")
+
+    def encode(value):
+        if value is None:
+            return None
+        return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
+
+    rows = []
+    for event in events[:100]:
+        method = str(event.get("method") or "GET").strip().upper()[:12]
+        url = str(event.get("url") or "").strip()[:3000]
+        if not url or method not in {"GET", "POST", "PUT", "PATCH", "DELETE"}:
+            continue
+        status_value = event.get("status")
+        duration_value = event.get("duration_ms")
+        try:
+            status_value = int(status_value) if status_value is not None else None
+        except (TypeError, ValueError):
+            status_value = None
+        try:
+            duration_value = int(duration_value) if duration_value is not None else None
+        except (TypeError, ValueError):
+            duration_value = None
+        rows.append((
+            str(event.get("captured_at") or now)[:40], captured_by[:120], method,
+            url, status_value, duration_value,
+            encode(event.get("request_body")), encode(event.get("response_body")),
+        ))
+
+    if not rows:
+        return 0
+    keep = max(100, min(int(retention), 10000))
+    with _lock, _conn() as c:
+        c.executemany(
+            """INSERT INTO comed_trace_events
+               (captured_at, captured_by, method, url, status, duration_ms,
+                request_body, response_body)
+               VALUES (?,?,?,?,?,?,?,?)""",
+            rows,
+        )
+        c.execute(
+            """DELETE FROM comed_trace_events
+               WHERE captured_by=? AND id NOT IN (
+                   SELECT id FROM comed_trace_events
+                   WHERE captured_by=? ORDER BY id DESC LIMIT ?
+               )""",
+            (captured_by, captured_by, keep),
+        )
+    return len(rows)
+
+
+def comed_trace_list(limit: int = 200, captured_by: str | None = None,
+                     method: str | None = None,
+                     path_contains: str | None = None) -> list[dict]:
+    clauses = []
+    params: list = []
+    if captured_by:
+        clauses.append("captured_by=?")
+        params.append(captured_by)
+    if method:
+        clauses.append("method=?")
+        params.append(method.strip().upper())
+    if path_contains:
+        clauses.append("url LIKE ?")
+        params.append(f"%{path_contains[:200]}%")
+    where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+    params.append(max(1, min(int(limit), 2000)))
+    with _lock, _conn() as c:
+        rows = c.execute(
+            f"""SELECT * FROM comed_trace_events {where}
+                ORDER BY id DESC LIMIT ?""",
+            params,
+        ).fetchall()
+    result = []
+    for row in rows:
+        item = dict(row)
+        for key in ("request_body", "response_body"):
+            try:
+                item[key] = json.loads(item.get(key)) if item.get(key) else None
+            except (TypeError, json.JSONDecodeError):
+                pass
+        result.append(item)
+    return result
 
 
 def bekleyen_ses_kaydet(kimlik: str, ses: bytes, ses_mime: str,

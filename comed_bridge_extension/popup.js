@@ -3,11 +3,17 @@ const user = document.getElementById("user");
 const password = document.getElementById("password");
 const button = document.getElementById("connect");
 const status = document.getElementById("status");
+const traceEnabled = document.getElementById("trace-enabled");
 
-chrome.storage.local.get(["apiBase", "username", "token"], (saved) => {
+chrome.storage.local.get(["apiBase", "username", "token", "traceEnabled"], (saved) => {
   if (saved.apiBase) api.value = saved.apiBase;
   if (saved.username) user.value = saved.username;
+  traceEnabled.checked = saved.traceEnabled !== false;
   if (saved.token) show("Köprü bağlı. COMED iş listesi eşitleniyor.", true);
+});
+
+traceEnabled.addEventListener("change", async () => {
+  await chrome.storage.local.set({traceEnabled: traceEnabled.checked});
 });
 
 function show(text, ok = false) {

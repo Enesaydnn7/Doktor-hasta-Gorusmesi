@@ -16,6 +16,10 @@
     <label>Klinot şifresi<input id="password" type="password" autocomplete="current-password"></label>
     <button id="connect">Köprüyü bağla</button>
     <p id="status">Bağlantı bekleniyor.</p>
+    <label class="trace-toggle">
+      <input id="trace-enabled" type="checkbox" checked>
+      <span><b>COMED test isteği izleme</b><small>GET/POST gövdesini yakalar; parola, çerez ve oturum başlıklarını kaydetmez.</small></span>
+    </label>
     <div class="note">Bağlandıktan sonra COMED iş listesi sayfasını bir kez yenileyin. Köprü açık oturumdaki doktorun satırlarını Klinot'a yollar; COMED oturum anahtarı ve parolası okunmaz.</div>
   </main>
   <script src="popup.js"></script>
