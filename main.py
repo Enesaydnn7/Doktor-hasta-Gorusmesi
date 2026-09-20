@@ -474,7 +474,7 @@ async def mobile_comed_bridge_status(
     return transfer
 
 
-@app.post("/api/v1/mobile/comed/traces")
+@app.post("/api/v1/mobile/comed/request-log")
 async def mobile_comed_trace_capture(
     body: ComedTraceBatchIn,
     user: dict = Depends(mobile_auth),
@@ -583,7 +583,7 @@ async def admin_comed_transfer(kid: int, request: Request):
     return _create_comed_transfer(kid, patient, "admin")
 
 
-@app.get("/admin/comed/traces")
+@app.get("/admin/comed/request-log")
 async def admin_comed_traces(
     request: Request,
     limit: int = Query(default=250, ge=1, le=2000),

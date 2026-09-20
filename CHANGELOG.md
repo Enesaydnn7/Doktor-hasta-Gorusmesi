@@ -1,5 +1,9 @@
 # Sürüm Geçmişi
 
+## v2.6.1 — 20 Eylül 2026
+
+- COMED tanı kayıt uçları, istemci filtrelerinin `traces` yolunu engellemesini önlemek için `request-log` olarak adlandırıldı.
+
 ## v2.6.0 — 20 Eylül 2026
 
 - Göztepe COMED test API'sinin gerçek GET/POST URL, JSON gövde ve yanıt durumlarını yakalayan tanı katmanı eklendi.
