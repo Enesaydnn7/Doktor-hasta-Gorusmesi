@@ -13,6 +13,7 @@ import logging
 import re
 import uuid
 from contextlib import suppress
+from html import escape
 from typing import Any
 from urllib.parse import quote, urlsplit
 
@@ -598,6 +599,26 @@ async def admin_comed_traces(
             path_contains=path_contains,
         )
     }
+
+
+@app.get("/admin/comed-view", response_class=HTMLResponse)
+async def admin_comed_trace_view(
+    request: Request,
+    limit: int = Query(default=200, ge=1, le=500),
+):
+    """Protected HTML view used to verify test request shapes in Chrome."""
+    admin_auth(request)
+    payload = json.dumps(
+        {"items": db.comed_trace_list(limit=limit)},
+        ensure_ascii=False,
+        indent=2,
+    )
+    return HTMLResponse(
+        "<!doctype html><html lang='tr'><meta charset='utf-8'>"
+        "<title>COMED API kayıtları</title>"
+        "<body><pre id='comed-request-log'>" + escape(payload) + "</pre></body></html>",
+        headers={"Cache-Control": "no-store"},
+    )
 
 
 def _byte_range(value: str | None, size: int) -> tuple[int, int] | None:
