@@ -213,7 +213,7 @@ class ComedIntegrationTests(unittest.TestCase):
             TestClient(main.app) as client,
         ):
             response = client.post(
-                "/api/v1/mobile/comed/traces",
+                "/api/v1/mobile/comed/request-log",
                 headers=headers,
                 json={"events": [
                     {

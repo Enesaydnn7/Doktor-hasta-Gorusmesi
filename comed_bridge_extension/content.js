@@ -32,7 +32,7 @@
     if (!traceEnabled || !traceQueue.length) return;
     const events = traceQueue.splice(0, 25);
     try {
-      await request("/api/v1/mobile/comed/traces", {
+      await request("/api/v1/mobile/comed/request-log", {
         method: "POST", body: JSON.stringify({events}),
       });
     } catch (_) {
