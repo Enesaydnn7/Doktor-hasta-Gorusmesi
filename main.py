@@ -10,9 +10,11 @@ Admin paneli     : http://127.0.0.1:8000/admin   (kullanıcı: admin / şifre: a
 import asyncio
 import json
 import logging
+import re
 import uuid
 from contextlib import suppress
-from urllib.parse import quote
+from typing import Any
+from urllib.parse import quote, urlsplit
 
 from fastapi import (
     FastAPI, Request, UploadFile, File, Depends, HTTPException, status, Form,
@@ -109,6 +111,20 @@ class ComedTransferStatusIn(BaseModel):
     error: str | None = None
 
 
+class ComedTraceEventIn(BaseModel):
+    method: str
+    url: str
+    status: int | None = None
+    duration_ms: int | None = None
+    request_body: Any = None
+    response_body: Any = None
+    captured_at: str | None = None
+
+
+class ComedTraceBatchIn(BaseModel):
+    events: list[ComedTraceEventIn]
+
+
 def mobile_auth(authorization: str | None = Header(default=None)) -> dict:
     """Mobil API Bearer token doğrulaması."""
     scheme, _, token = (authorization or "").partition(" ")
@@ -126,6 +142,32 @@ def mobile_admin(user: dict = Depends(mobile_auth)) -> dict:
     if user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Yönetici yetkisi gerekli")
     return user
+
+
+_TRACE_SECRET_KEY = re.compile(
+    r"authorization|cookie|password|passwd|secret|token|session",
+    re.IGNORECASE,
+)
+
+
+def _sanitize_trace_value(value: Any, depth: int = 0) -> Any:
+    if depth >= 12:
+        return "[MAX_DEPTH]"
+    if isinstance(value, dict):
+        return {
+            str(key)[:200]: (
+                "[REDACTED]" if _TRACE_SECRET_KEY.search(str(key))
+                else _sanitize_trace_value(item, depth + 1)
+            )
+            for key, item in list(value.items())[:500]
+        }
+    if isinstance(value, list):
+        return [_sanitize_trace_value(item, depth + 1) for item in value[:1000]]
+    if isinstance(value, str):
+        return value[:300000]
+    if value is None or isinstance(value, (bool, int, float)):
+        return value
+    return str(value)[:300000]
 
 
 def _store_analysis(body: AnalyzeIn, text: str, result: dict) -> dict:
@@ -432,6 +474,35 @@ async def mobile_comed_bridge_status(
     return transfer
 
 
+@app.post("/api/v1/mobile/comed/traces")
+async def mobile_comed_trace_capture(
+    body: ComedTraceBatchIn,
+    user: dict = Depends(mobile_auth),
+):
+    """Capture sanitized API shapes from the authorized COMED test host only."""
+    events = []
+    for event in body.events[:100]:
+        parsed = urlsplit(event.url)
+        if parsed.scheme != "http" or parsed.hostname != "goztepe.comedtestapi.mlpcare.com":
+            continue
+        safe_query = "&".join(
+            part for part in parsed.query.split("&")
+            if part and not _TRACE_SECRET_KEY.search(part.split("=", 1)[0])
+        )
+        safe_url = parsed._replace(query=safe_query, fragment="").geturl()
+        events.append({
+            "method": event.method,
+            "url": safe_url,
+            "status": event.status,
+            "duration_ms": event.duration_ms,
+            "request_body": _sanitize_trace_value(event.request_body),
+            "response_body": _sanitize_trace_value(event.response_body),
+            "captured_at": event.captured_at,
+        })
+    accepted = db.comed_trace_add(events, captured_by=user["user"])
+    return {"accepted": accepted}
+
+
 @app.get("/api/v1/mobile/records")
 async def mobile_records(
     limit: int = Query(default=100, ge=1, le=200),
@@ -510,6 +581,23 @@ async def admin_comed_transfer(kid: int, request: Request):
         raise HTTPException(status_code=404, detail="Kayıt bulunamadı")
     patient = (record.get("metadata") or {}).get("comed_patient") or {}
     return _create_comed_transfer(kid, patient, "admin")
+
+
+@app.get("/admin/comed/traces")
+async def admin_comed_traces(
+    request: Request,
+    limit: int = Query(default=250, ge=1, le=2000),
+    method: str | None = Query(default=None),
+    path_contains: str | None = Query(default=None),
+):
+    admin_auth(request)
+    return {
+        "items": db.comed_trace_list(
+            limit=limit,
+            method=method,
+            path_contains=path_contains,
+        )
+    }
 
 
 def _byte_range(value: str | None, size: int) -> tuple[int, int] | None:

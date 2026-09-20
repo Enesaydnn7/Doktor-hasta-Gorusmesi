@@ -62,6 +62,9 @@ class BrowserStateRegressionTests(unittest.TestCase):
         background = (ROOT / "comed_bridge_extension" / "background.js").read_text(
             encoding="utf-8"
         )
+        trace = (ROOT / "comed_bridge_extension" / "page_trace.js").read_text(
+            encoding="utf-8"
+        )
 
         self.assertIn("goztepe.comedtest.mlpcare.com", manifest)
         self.assertIn("ready_for_review", content)
@@ -83,6 +86,11 @@ class BrowserStateRegressionTests(unittest.TestCase):
         self.assertNotIn("function inputAfterLabel", content)
         self.assertNotIn("Kaydet ve İmzala", content)
         self.assertNotIn("x-authentication-token", background.lower())
+        self.assertIn('"world": "MAIN"', manifest)
+        self.assertIn("klinot-comed-trace-v1", trace)
+        self.assertIn("goztepe.comedtestapi.mlpcare.com", trace)
+        self.assertNotIn("getAllCookieStores", trace)
+        self.assertNotIn("document.cookie", trace)
 
     def test_session_fallback_secret_is_stable(self):
         expected = hashlib.sha256(

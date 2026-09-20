@@ -198,6 +198,47 @@ class ComedIntegrationTests(unittest.TestCase):
         self.assertEqual(bridge_queue.status_code, 200)
         pending.assert_called_once_with(visit_id=None, requested_by="dr-enes")
 
+    def test_comed_trace_capture_accepts_only_test_api_and_redacts_secrets(self):
+        token = auth.api_token_uret("dr-enes", "doctor")
+        headers = {"Authorization": f"Bearer {token}"}
+        captured = []
+
+        def save(events, captured_by):
+            captured.extend(events)
+            self.assertEqual(captured_by, "dr-enes")
+            return len(events)
+
+        with (
+            patch.object(main.db, "comed_trace_add", side_effect=save),
+            TestClient(main.app) as client,
+        ):
+            response = client.post(
+                "/api/v1/mobile/comed/traces",
+                headers=headers,
+                json={"events": [
+                    {
+                        "method": "POST",
+                        "url": "http://goztepe.comedtestapi.mlpcare.com/tr-tr/api/json/forms/document/saveDocumentProcesses?visit=1&token=hidden",
+                        "status": 200,
+                        "request_body": {"password": "hidden", "documentProcesses": [{"id": 7}]},
+                        "response_body": {"access_token": "hidden", "success": True},
+                    },
+                    {
+                        "method": "POST",
+                        "url": "https://example.com/not-comed",
+                        "status": 200,
+                    },
+                ]},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["accepted"], 1)
+        self.assertEqual(len(captured), 1)
+        self.assertNotIn("token=", captured[0]["url"])
+        self.assertEqual(captured[0]["request_body"]["password"], "[REDACTED]")
+        self.assertEqual(captured[0]["response_body"]["access_token"], "[REDACTED]")
+        self.assertEqual(captured[0]["request_body"]["documentProcesses"][0]["id"], 7)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -8,6 +8,9 @@
   let lastPath = "";
   let lastWorklistSyncAt = 0;
   let openingVisitId = null;
+  let traceEnabled = true;
+  let traceFlushTimer = null;
+  const traceQueue = [];
 
   function request(path, options = {}) {
     return new Promise((resolve, reject) => {
@@ -18,6 +21,56 @@
       });
     });
   }
+
+  function scheduleTraceFlush(delay = 900) {
+    if (traceFlushTimer) return;
+    traceFlushTimer = setTimeout(flushTraceQueue, delay);
+  }
+
+  async function flushTraceQueue() {
+    traceFlushTimer = null;
+    if (!traceEnabled || !traceQueue.length) return;
+    const events = traceQueue.splice(0, 25);
+    try {
+      await request("/api/v1/mobile/comed/traces", {
+        method: "POST", body: JSON.stringify({events}),
+      });
+    } catch (_) {
+      traceQueue.unshift(...events);
+      if (traceQueue.length > 250) traceQueue.splice(0, traceQueue.length - 250);
+      scheduleTraceFlush(10000);
+      return;
+    }
+    if (traceQueue.length) scheduleTraceFlush(300);
+  }
+
+  function validTraceEvent(value) {
+    if (!value || typeof value !== "object") return false;
+    try {
+      const url = new URL(value.url);
+      return url.protocol === "http:"
+        && url.hostname === "goztepe.comedtestapi.mlpcare.com"
+        && /^(GET|POST|PUT|PATCH|DELETE)$/i.test(value.method || "GET");
+    } catch (_) {
+      return false;
+    }
+  }
+
+  chrome.storage.local.get(["traceEnabled"], (value) => {
+    traceEnabled = value.traceEnabled !== false;
+  });
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area !== "local" || !changes.traceEnabled) return;
+    traceEnabled = changes.traceEnabled.newValue !== false;
+    if (traceEnabled && traceQueue.length) scheduleTraceFlush(100);
+  });
+  window.addEventListener("message", (event) => {
+    if (!traceEnabled || event.source !== window || event.origin !== location.origin) return;
+    if (event.data?.source !== "klinot-comed-trace-v1" || !validTraceEvent(event.data.event)) return;
+    traceQueue.push(event.data.event);
+    if (traceQueue.length > 250) traceQueue.shift();
+    scheduleTraceFlush();
+  });
 
   function bridgeStatus(text, state = "idle") {
     let box = document.getElementById("klinot-comed-bridge");

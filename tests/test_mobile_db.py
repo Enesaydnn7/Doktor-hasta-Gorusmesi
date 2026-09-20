@@ -65,6 +65,43 @@ class MobileDatabaseTests(unittest.TestCase):
             "http://goztepe.comedtest.mlpcare.com/card",
         )
 
+    def test_comed_trace_events_are_scoped_filtered_and_json_decoded(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "trace.db"
+            with (
+                patch.object(db, "DB_PATH", str(path)),
+                patch.dict("os.environ", {"SEED_MANAGER_DEMO": "false"}),
+            ):
+                db.init()
+                accepted = db.comed_trace_add([
+                    {
+                        "method": "POST",
+                        "url": "http://goztepe.comedtestapi.mlpcare.com/tr-tr/api/json/forms/document/saveDocumentProcesses",
+                        "status": 200,
+                        "request_body": {"documentProcesses": [{"id": 9}]},
+                        "response_body": {"success": True},
+                    },
+                    {
+                        "method": "GET",
+                        "url": "http://goztepe.comedtestapi.mlpcare.com/tr-tr/api/json/lookup",
+                        "status": 200,
+                    },
+                ], captured_by="doctor-a")
+                db.comed_trace_add([{
+                    "method": "POST",
+                    "url": "http://goztepe.comedtestapi.mlpcare.com/other",
+                    "status": 204,
+                }], captured_by="doctor-b")
+
+                items = db.comed_trace_list(
+                    captured_by="doctor-a", method="POST", path_contains="saveDocument"
+                )
+
+        self.assertEqual(accepted, 2)
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0]["request_body"]["documentProcesses"][0]["id"], 9)
+        self.assertTrue(items[0]["response_body"]["success"])
+
     def test_pending_audio_survives_between_requests_and_moves_to_record(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "mobile.db"
