@@ -1,6 +1,6 @@
 # Klinot COMED Köprüsü kurulumu
 
-Kurulacak dosya: `klinot-comed-bridge-v2.6.2.zip`
+Kurulacak dosya: `klinot-comed-bridge-v2.7.0.zip`
 
 1. ZIP dosyasını bilgisayarda bir klasöre çıkarın.
 2. Chrome adres çubuğunda `chrome://extensions` sayfasını açın.

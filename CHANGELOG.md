@@ -1,5 +1,12 @@
 # Sürüm Geçmişi
 
+## v2.7.0 — 21 Eylül 2026
+
+- Muayene aktarımında DOM alanı doldurma kaldırıldı; köprü artık yalnız doğrulanmış, aynı protokole ait ve izin listesindeki COMED kayıt POST gövdelerini kullanıyor.
+- COMED oturum başlıkları sadece sayfa belleğindeki kapalı yürütücüde tutuluyor; parola, çerez ve token Klinot sunucusuna gönderilmiyor veya kaydedilmiyor.
+- İmza/silme uçları açıkça engellendi, POST zaman aşımı eklendi ve sonsuz yüklenme yerine anlaşılır hata durumu getirildi.
+- Kullanıcıya ait sterilize COMED izleri mobil API üzerinden yalnız aynı oturuma kapsamlı biçimde okunabilir hale getirildi.
+
 ## v2.6.2 — 20 Eylül 2026
 
 - Yakalanan COMED test isteklerini mevcut yönetici oturumuyla görüntüleyen, normal admin tasarımını değiştirmeyen korumalı HTML doğrulama görünümü eklendi.

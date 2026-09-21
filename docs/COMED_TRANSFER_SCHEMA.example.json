@@ -1,5 +1,5 @@
 {
-  "schema_version": 3,
+  "schema_version": 4,
   "patient_complaint": "Baş ağrısı",
   "complaint_start_date": {"value": 2, "unit": "day", "before": true},
   "patient_story": "İki gündür aralıklı baş ağrısı tarifliyor.",

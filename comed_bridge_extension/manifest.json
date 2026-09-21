@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Klinot COMED Köprüsü",
-  "version": "2.6.2",
-  "description": "Klinot taslaklarını açık Göztepe COMED test oturumuna taşır.",
+  "version": "2.7.0",
+  "description": "Klinot taslaklarını doğrulanmış COMED test POST istekleriyle aktarır.",
   "permissions": ["storage"],
   "host_permissions": [
     "http://goztepe.comedtest.mlpcare.com/*",

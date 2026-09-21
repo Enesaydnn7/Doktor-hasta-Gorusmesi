@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class ComedIntegrationTests(unittest.TestCase):
-    def test_documented_v3_scenario_covers_every_observed_required_field(self):
+    def test_documented_v4_scenario_covers_every_observed_required_field(self):
         scenario = json.loads(
             (ROOT / "docs" / "COMED_TRANSFER_SCHEMA.example.json").read_text(
                 encoding="utf-8"
@@ -143,7 +143,9 @@ class ComedIntegrationTests(unittest.TestCase):
 
         self.assertFalse(bundle["auto_sign"])
         self.assertTrue(bundle["doctor_review_required"])
-        self.assertEqual(bundle["schema_version"], 3)
+        self.assertEqual(bundle["schema_version"], 4)
+        self.assertEqual(bundle["execution_mode"], "native_api_post")
+        self.assertEqual(bundle["native_requests"], [])
         self.assertEqual(
             [request.get("endpoint") or request.get("endpoint_group") for request in bundle["requests"]],
             [
@@ -152,6 +154,61 @@ class ComedIntegrationTests(unittest.TestCase):
                 "medical/treatment/savevisitdiagnoses",
             ],
         )
+
+    def test_native_document_post_is_built_only_from_same_visit_success_template(self):
+        record = {
+            "id": 42,
+            "comed": {
+                "patient_complaint": "Yeni baş ağrısı",
+                "patient_story": "İki gündür sürüyor.",
+                "vitals": {"weight": 74, "height": 168, "pulse": 76},
+            },
+        }
+        patient = {"visit_id": "22207357", "clinical_card_id": "30416836"}
+        template = {
+            "method": "POST",
+            "status": 200,
+            "url": (
+                "http://goztepe.comedtestapi.mlpcare.com/tr-tr/api/json/"
+                "forms/document/saveDocumentProcesses"
+            ),
+            "request_body": {
+                "documentProcesses": [{
+                    "document": "examination_v2",
+                    "contextId": {"referenceId": 22207357},
+                    "values": {
+                        "patient_complaint": [{"values": ["eski"]}],
+                        "patient_story": [{"values": ["eski öykü"]}],
+                        "weight": [{"values": [60]}],
+                        "height": [{"values": [160]}],
+                        "pulse": [{"values": [70]}],
+                    },
+                }],
+            },
+        }
+        bundle = comed_integration.build_transfer_bundle(
+            record, patient, trace_templates=[template]
+        )
+
+        self.assertEqual(len(bundle["native_requests"]), 1)
+        native = bundle["native_requests"][0]
+        values = native["body"]["documentProcesses"][0]["values"]
+        self.assertEqual(values["patient_complaint"][0]["values"], ["Yeni baş ağrısı"])
+        self.assertEqual(values["patient_story"][0]["values"], ["İki gündür sürüyor."])
+        self.assertEqual(values["weight"][0]["values"], [74])
+        self.assertIn("patient_complaint", native["patched_fields"])
+
+        wrong_visit = {**template, "request_body": {
+            **template["request_body"],
+            "documentProcesses": [{
+                **template["request_body"]["documentProcesses"][0],
+                "contextId": {"referenceId": 99999999},
+            }],
+        }}
+        rejected = comed_integration.build_transfer_bundle(
+            record, patient, trace_templates=[wrong_visit]
+        )
+        self.assertEqual(rejected["native_requests"], [])
 
     def test_mobile_worklist_and_transfer_require_authenticated_user(self):
         token = auth.api_token_uret("dr-enes", "doctor")
@@ -174,6 +231,7 @@ class ComedIntegrationTests(unittest.TestCase):
         with (
             patch.object(main.db, "comed_worklist", return_value=[patient]),
             patch.object(main.db, "getir", return_value={"id": 55, "comed": {}}),
+            patch.object(main.db, "comed_trace_list", return_value=[]),
             patch.object(main.comed_integration, "build_transfer_bundle", return_value={"auto_sign": False}),
             patch.object(main.db, "comed_transfer_create", return_value=transfer),
             patch.object(main.db, "comed_transfer_pending", return_value=[transfer]) as pending,
@@ -238,6 +296,31 @@ class ComedIntegrationTests(unittest.TestCase):
         self.assertEqual(captured[0]["request_body"]["password"], "[REDACTED]")
         self.assertEqual(captured[0]["response_body"]["access_token"], "[REDACTED]")
         self.assertEqual(captured[0]["request_body"]["documentProcesses"][0]["id"], 7)
+
+    def test_mobile_trace_list_is_scoped_to_authenticated_user(self):
+        token = auth.api_token_uret("dr-enes", "doctor")
+        headers = {"Authorization": f"Bearer {token}"}
+        items = [{"id": 9, "captured_by": "dr-enes", "method": "POST"}]
+
+        with (
+            patch.object(main.db, "comed_trace_list", return_value=items) as trace_list,
+            TestClient(main.app) as client,
+        ):
+            unauthorized = client.get("/api/v1/mobile/comed/request-log")
+            response = client.get(
+                "/api/v1/mobile/comed/request-log?limit=30&method=POST&path_contains=save",
+                headers=headers,
+            )
+
+        self.assertEqual(unauthorized.status_code, 401)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["items"], items)
+        trace_list.assert_called_once_with(
+            limit=30,
+            captured_by="dr-enes",
+            method="POST",
+            path_contains="save",
+        )
 
 
 if __name__ == "__main__":
