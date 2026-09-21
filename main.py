@@ -424,7 +424,16 @@ def _create_comed_transfer(record_id: int, patient: dict, requested_by: str) -> 
         raise HTTPException(status_code=404, detail="Kayıt bulunamadı")
     if not patient.get("visit_id"):
         raise HTTPException(status_code=422, detail="COMED hasta/protokol bilgisi eksik")
-    bundle = comed_integration.build_transfer_bundle(record, patient)
+    trace_templates = db.comed_trace_list(
+        limit=2000,
+        captured_by=requested_by,
+        method="POST",
+    )
+    bundle = comed_integration.build_transfer_bundle(
+        record,
+        patient,
+        trace_templates=trace_templates,
+    )
     return db.comed_transfer_create(record_id, patient, bundle, requested_by)
 
 
@@ -502,6 +511,24 @@ async def mobile_comed_trace_capture(
         })
     accepted = db.comed_trace_add(events, captured_by=user["user"])
     return {"accepted": accepted}
+
+
+@app.get("/api/v1/mobile/comed/request-log")
+async def mobile_comed_trace_list(
+    limit: int = Query(default=250, ge=1, le=2000),
+    method: str | None = Query(default=None),
+    path_contains: str | None = Query(default=None),
+    user: dict = Depends(mobile_auth),
+):
+    """Return only the signed-in Klinot user's sanitized COMED test traces."""
+    return {
+        "items": db.comed_trace_list(
+            limit=limit,
+            captured_by=user["user"],
+            method=method,
+            path_contains=path_contains,
+        )
+    }
 
 
 @app.get("/api/v1/mobile/records")

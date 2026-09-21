@@ -35,13 +35,19 @@ satırını doğrudan okur. Göreve ilk kez girildiğinde hasta kartı kimliği 
 tamamlanır. Liste ve kart bilgileri yalnız aynı Klinot kullanıcısına gösterilir.
 
 Köprü iş listesini mobil uygulamaya eşitler. Mobilde **COMED'e aktar** denince
-bekleyen taslak için doğru protokolün **Göreve Git** düğmesini açar ve yalnız aynı
-protokole ait tıbbi kartta alanları doldurur. COMED'in sayfa yenilemeden yaptığı
-ekran geçişleri de köprü tarafından izlenir. Doktorun
-`Kaydet` düğmesine basması COMED'in kendi `forms/document/saveDocumentProcesses`
-POST akışını çalıştırır. Köprü COMED oturum tokenını okumaz, saklamaz veya Klinot
-sunucusuna göndermez; otomatik imza da atmaz.
+bekleyen taslak için doğru protokolün **Göreve Git** düğmesini açar. v2.7.0 ile
+muayene alanlarına DOM/klavye üzerinden yazma kaldırılmıştır. Yalnız daha önce aynı
+protokolde başarılı olduğu doğrulanan `saveDocumentProcesses` ve gerektiğinde
+`savevisitdiagnoses` gövdeleri, seçili protokol kimliği yeniden doğrulanarak doğrudan
+COMED test API'sine POST edilir. Sonuç başarılıysa kart yenilenir ve doktor veriyi
+COMED'in kendi ekranında kontrol eder.
 
-ICD seçimi ve COMED'in kırmızı noktalı zorunlu alanlarından görüşmede bulunmayanlar
-doktor kontrolünde tamamlanır. Durum mobil uygulama ve admin panelinde
-`sırada → alanlar dolduruluyor → kontrol bekliyor → tamamlandı` şeklinde izlenir.
+POST yürütücüsü yalnız izin listesindeki kayıt uçlarını kabul eder; imza, silme ve
+başka hasta/protokol gövdelerini reddeder. COMED'in uygulama/oturum başlıkları yalnız
+sayfa belleğindeki kapalı yürütücüde kullanılır; değerleri DOM'a, eklenti deposuna veya
+Klinot sunucusuna çıkarılmaz. Otomatik imza yoktur.
+
+ICD ve lookup kimliği gerektiren profil kayıtlarında doğrulanmış eşleşme yoksa veri
+uydurulmaz; bunlar ve görüşmede bulunmayan kırmızı noktalı alanlar doktor kontrolünde
+tamamlanır. Durum mobil uygulama ve admin panelinde
+`sırada → COMED POST gönderiliyor → kontrol bekliyor → tamamlandı` şeklinde izlenir.
