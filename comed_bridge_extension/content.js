@@ -326,6 +326,18 @@
     return group ? clickText(text, group) : false;
   }
 
+  function setCheckboxByLabel(root, label, checked = true) {
+    const wanted = label.toLocaleLowerCase("tr-TR");
+    const candidates = [...root.querySelectorAll('label,[role="checkbox"]')];
+    const labelNode = candidates.find((node) => textOf(node).toLocaleLowerCase("tr-TR") === wanted);
+    if (!labelNode) return false;
+    const input = labelNode.matches('input[type="checkbox"]')
+      ? labelNode : labelNode.querySelector('input[type="checkbox"]');
+    if (input && input.checked === checked) return true;
+    labelNode.click();
+    return true;
+  }
+
   function sleep(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
@@ -446,6 +458,7 @@
     const card = cardByTitle("Ağrı");
     if (!card || !clickText("Var", card)) return false;
     await sleep(100);
+    setValue(inputByLabel("Skor", card), pain.score);
     setValue(byPlaceholder("Bölge", card), pain.location);
     setValue(byPlaceholder("Açıklama", card), pain.description);
     (pain.qualities || []).forEach((quality) => clickText(quality, card));
@@ -459,7 +472,9 @@
       return clickCardOption("Soygeçmiş", "Özellik Yok") ? 1 : 0;
     }
     const entries = profile.family_history || [];
-    if (!entries.length && typeof profile.parents_related !== "boolean") return 0;
+    if (!entries.length && typeof profile.parents_related !== "boolean") {
+      return clickCardOption("Soygeçmiş", "Görüldü") ? 1 : 0;
+    }
     const card = ensureCardOpen("Soygeçmiş");
     if (!card) return 0;
     await waitFor(() => [...card.querySelectorAll("input,textarea,table")]
@@ -491,6 +506,7 @@
       .find((input) => /anne ile baba akraba/i.test(textOf(input.closest("label") || input.parentElement)));
     if (related && typeof profile.parents_related === "boolean"
       && related.checked !== profile.parents_related) related.click();
+    clickText("Görüldü", card);
     return added;
   }
 
@@ -536,8 +552,41 @@
       await sleep(80);
       if (clickText(profile.education)) filled += 1;
     }
+    if (clickText("Görüldü", history)) filled += 1;
     filled += await fillFamilyHistory(profile);
     return filled;
+  }
+
+  async function fillSystemInquiry(review = {}) {
+    const opener = [...document.querySelectorAll("button")]
+      .find((button) => textOf(button) === "Sistem Sorgulama" && button.offsetParent !== null);
+    if (!opener) return {filled: 0, saved: false, fields: []};
+    opener.click();
+    const modal = await waitFor(() => [...document.querySelectorAll(".co-modal.co-document-popup")]
+      .find((item) => item.offsetParent !== null), 5000);
+    if (!modal) return {filled: 0, saved: false, fields: []};
+
+    const fields = [];
+    let filled = 0;
+    for (const [group, rawOptions] of Object.entries(review || {})) {
+      const card = [...modal.querySelectorAll(".hasta-detay-card")]
+        .find((item) => textOf(item.querySelector(".hasta-detay-card__title")) === group);
+      if (!card) continue;
+      const options = Array.isArray(rawOptions) ? rawOptions : [rawOptions];
+      for (const option of options.filter(Boolean)) {
+        if (setCheckboxByLabel(card, String(option), true)) {
+          filled += 1;
+          fields.push(`review_of_system.${group}.${option}`);
+        }
+      }
+    }
+
+    const save = [...modal.querySelectorAll("button")]
+      .find((button) => textOf(button) === "Kaydet" && button.offsetParent !== null && !button.disabled);
+    if (!save) return {filled, saved: false, fields};
+    save.click();
+    const closed = await waitFor(() => !modal.isConnected || modal.offsetParent === null, 5000);
+    return {filled, saved: Boolean(closed), fields};
   }
 
   async function fillDiagnoses(diagnoses = []) {
@@ -584,54 +633,96 @@
   async function fillFormDraft(transfer, {skipDiagnoses = false} = {}) {
     const requestSpec = transfer.bundle.requests?.find((item) => item.section === "examination") || {};
     const fields = requestSpec.fields || {};
+    const fallbackFields = new Set(transfer.bundle.fallback_fields || []);
+    const fieldResults = [];
     let filled = 0;
-    const write = (element, value) => {
-      if (setValue(element, value)) filled += 1;
+    const record = (field, ok, detail = null) => {
+      fieldResults.push({
+        field,
+        channel: "extension",
+        status: ok ? "filled" : "not_found",
+        source: fallbackFields.has(field) ? "operational_default" : "analysis",
+        detail,
+      });
+      if (ok) filled += 1;
+      return ok;
+    };
+    const write = (field, element, value) => {
+      record(field, setValue(element, value));
     };
 
     const complaintCard = cardByTitle("Yakınması") || document;
-    write(byPlaceholder("Şikayeti", complaintCard), fields.patient_complaint);
-    write(byPlaceholder("Öykü", complaintCard), fields.patient_story);
-    if (fillDuration(complaintCard, fields.complaint_start_date)) filled += 1;
-    write(byPlaceholder("Sistem Sorgusu", cardByTitle("Sistem Sorgusu") || document), fields.review_of_system_simple);
+    write("patient_complaint", byPlaceholder("Şikayeti", complaintCard), fields.patient_complaint);
+    write("patient_story", byPlaceholder("Öykü", complaintCard), fields.patient_story);
+    record("complaint_start_date", fillDuration(complaintCard, fields.complaint_start_date));
+    write("review_of_system_simple", byPlaceholder("Sistem Sorgusu", cardByTitle("Sistem Sorgusu") || document), fields.review_of_system_simple);
+    const systemResult = await fillSystemInquiry(fields.review_of_system || {});
+    systemResult.fields.forEach((field) => fieldResults.push({
+      field, channel: "extension", status: "filled",
+      source: fallbackFields.has(field.split(".").slice(0, 2).join("."))
+        ? "operational_default" : "analysis",
+    }));
+    filled += systemResult.filled;
+    fieldResults.push({
+      field: "review_of_system.document",
+      channel: "extension",
+      status: systemResult.saved ? "saved" : "not_saved",
+      source: "form",
+    });
 
     const examCard = cardByTitle("Fizik Muayene Bulguları") || document;
-    write(byPlaceholder("Muayene Notu", examCard), fields.exam_simple_textarea);
+    write("exam_simple_textarea", byPlaceholder("Muayene Notu", examCard), fields.exam_simple_textarea);
     const vitals = fields.vitals || {};
-    [["Kilo (kg)", vitals.weight], ["Boy (cm)", vitals.height], ["Ateş", vitals.temperature_v2],
-      ["Nabız", vitals.pulse], ["KB-S", vitals.pressure_systolic], ["KB-D", vitals.pressure_diastolic],
-      ["SPO2", vitals.spo2]].forEach(([label, value]) => write(inputByLabel(label, examCard), value));
+    [["weight", "Kilo (kg)", vitals.weight], ["height", "Boy (cm)", vitals.height],
+      ["temperature_v2", "Ateş", vitals.temperature_v2], ["pulse", "Nabız", vitals.pulse],
+      ["pressure_systolic", "KB-S", vitals.pressure_systolic],
+      ["pressure_diastolic", "KB-D", vitals.pressure_diastolic], ["spo2", "SPO2", vitals.spo2]]
+      .forEach(([field, label, value]) => {
+        if (value !== null && value !== undefined && value !== "") {
+          write(`vitals.${field}`, inputByLabel(label, examCard), value);
+        }
+      });
 
     const planCard = cardByTitle("İzlem ve Plan") || document;
     const treatmentText = [fields.treatment_note_v2,
       fields.control_note ? `Kontrol notu: ${fields.control_note}` : null]
       .filter(Boolean).join("\n");
-    write(byPlaceholder("Tedavi Notu", planCard), treatmentText);
+    write("treatment_note_v2", byPlaceholder("Tedavi Notu", planCard), treatmentText);
 
-    filled += await fillProfile(fields.profile || {});
-    if (fillPsychologicalStatus(fields.psychological_status || {})) filled += 1;
-    if (await fillFallRisk(fields.fall_risk)) filled += 1;
-    if (await fillPain(fields.pain)) filled += 1;
-    if (!skipDiagnoses) filled += await fillDiagnoses(fields.diagnoses || []);
-    if (fields.treatment_plan_label && clickCardOption("İzlem ve Plan", fields.treatment_plan_label)) filled += 1;
-    if (fields.is_surgery_will_planned === true
-      && clickFieldOption("Ameliyat Planlanacak mı?", "Evet", planCard)) filled += 1;
-    if (fields.is_surgery_will_planned === false
-      && clickFieldOption("Ameliyat Planlanacak mı?", "Hayır", planCard)) filled += 1;
+    const profileCount = await fillProfile(fields.profile || {});
+    record("profile_and_family_history", profileCount > 0, `${profileCount} seçim`);
+    const psychological = fields.psychological_status || {};
+    if ((psychological.states || []).length || psychological.description) {
+      record("psychological_status", fillPsychologicalStatus(psychological));
+    }
+    record("fall_risk", await fillFallRisk(fields.fall_risk));
+    record("pain", await fillPain(fields.pain));
+    if (!skipDiagnoses) {
+      const diagnosisCount = await fillDiagnoses(fields.diagnoses || []);
+      record("diagnoses", diagnosisCount > 0, `${diagnosisCount} tanı`);
+    }
+    record("treatment_plan_label", Boolean(fields.treatment_plan_label)
+      && clickCardOption("İzlem ve Plan", fields.treatment_plan_label));
+    if (fields.is_surgery_will_planned === true) {
+      record("is_surgery_will_planned", clickFieldOption("Ameliyat Planlanacak mı?", "Evet", planCard));
+    }
+    if (fields.is_surgery_will_planned === false) {
+      record("is_surgery_will_planned", clickFieldOption("Ameliyat Planlanacak mı?", "Hayır", planCard));
+    }
     const controlSwitch = planCard.querySelector(
       '[data-test="co-switch-Kontrol Önerilme Durumu"] input[type="checkbox"], input[type="checkbox"]',
     );
     if (typeof fields.is_control_suggested === "boolean" && controlSwitch
       && controlSwitch.checked !== fields.is_control_suggested) {
       controlSwitch.click();
-      filled += 1;
+      record("is_control_suggested", true);
     }
-    return {filled};
+    return {filled, fieldResults, systemSaved: systemResult.saved};
   }
 
-  async function updateStatus(id, status, error = null) {
+  async function updateStatus(id, status, error = null, debug = null) {
     return request(`/api/v1/mobile/comed/bridge/transfers/${id}/status`, {
-      method: "POST", body: JSON.stringify({status, error}),
+      method: "POST", body: JSON.stringify({status, error, debug}),
     });
   }
 
@@ -640,8 +731,12 @@
     busy = true;
     activeTransferId = transfer.id;
     bridgeStatus("COMED taslağı hazırlanıyor");
+    const startedAt = new Date().toISOString();
     try {
-      await updateStatus(transfer.id, "filling");
+      await updateStatus(transfer.id, "filling", null, {
+        started_at: startedAt,
+        stage: "starting",
+      });
       const nativeRequests = transfer.bundle.native_requests || [];
       const hasMainPost = nativeRequests.some(
         (item) => item.endpoint === "forms/document/saveDocumentProcesses",
@@ -672,11 +767,36 @@
         ? "POST + form tamamlama"
         : postError ? "POST fallback + eklenti form doldurma" : "eklenti form doldurma";
       const note = `${mode}; ${formResult.filled} alan hazırlandı. Doktor Kaydet/İmzala kontrolünü yapmalıdır.`;
-      await updateStatus(transfer.id, "ready_for_review", note);
+      const debug = {
+        started_at: startedAt,
+        finished_at: new Date().toISOString(),
+        mode,
+        post: {
+          attempted: hasMainPost,
+          error: postError?.message || null,
+          requests: postResults,
+          fields: postResults.flatMap((item) => item.patched_fields || []),
+        },
+        extension: {
+          filled_count: formResult.filled,
+          system_inquiry_saved: formResult.systemSaved,
+          fields: formResult.fieldResults,
+        },
+        fallback_fields: transfer.bundle.fallback_fields || [],
+        remaining_required: transfer.bundle.missing_required || [],
+        auto_sign: false,
+      };
+      await updateStatus(transfer.id, "ready_for_review", note, debug);
       sessionStorage.setItem(ACTIVE_TRANSFER_KEY, String(transfer.id));
       bridgeStatus(`${formResult.filled} alan hazırlandı · doktor kontrolü bekleniyor`, "ok");
     } catch (error) {
-      await updateStatus(transfer.id, "failed", error.message).catch(() => {});
+      await updateStatus(transfer.id, "failed", error.message, {
+        started_at: startedAt,
+        finished_at: new Date().toISOString(),
+        stage: "failed",
+        message: error.message,
+        auto_sign: false,
+      }).catch(() => {});
       sessionStorage.removeItem(ACTIVE_TRANSFER_KEY);
       activeTransferId = null;
       bridgeStatus(`Aktarım hatası: ${error.message}`, "bad");
@@ -729,7 +849,7 @@
       const selected = parseRow(button.closest("tr,[role=row]"));
       if (selected) sessionStorage.setItem(SELECTED_PATIENT_KEY, JSON.stringify(selected));
     }
-    if (!activeTransferId || !button || textOf(button) !== "Kaydet") return;
+    if (!activeTransferId || !button || !/^Kaydet(?: ve İmzala)?$/.test(textOf(button))) return;
     const id = activeTransferId;
     setTimeout(() => {
       const success = /Kayıt başarılı/i.test(document.body.innerText);

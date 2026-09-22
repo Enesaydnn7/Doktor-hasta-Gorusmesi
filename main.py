@@ -110,6 +110,7 @@ class ComedTransferIn(BaseModel):
 class ComedTransferStatusIn(BaseModel):
     status: str
     error: str | None = None
+    debug: dict | None = None
 
 
 class ComedTraceEventIn(BaseModel):
@@ -473,10 +474,18 @@ async def mobile_comed_bridge_pending(
 async def mobile_comed_bridge_status(
     transfer_id: int,
     body: ComedTransferStatusIn,
-    _user: dict = Depends(mobile_auth),
+    user: dict = Depends(mobile_auth),
 ):
+    existing = db.comed_transfer_get(transfer_id)
+    if not existing or (
+        existing.get("requested_by")
+        and existing.get("requested_by") != user["user"]
+    ):
+        raise HTTPException(status_code=404, detail="COMED aktarımı bulunamadı")
     try:
-        transfer = db.comed_transfer_update(transfer_id, body.status, body.error)
+        transfer = db.comed_transfer_update(
+            transfer_id, body.status, body.error, body.debug
+        )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     if not transfer:

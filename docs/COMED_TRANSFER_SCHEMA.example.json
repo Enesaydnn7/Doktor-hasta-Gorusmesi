@@ -1,5 +1,5 @@
 {
-  "schema_version": 4,
+  "schema_version": 5,
   "patient_complaint": "Baş ağrısı",
   "complaint_start_date": {"value": 2, "unit": "day", "before": true},
   "patient_story": "İki gündür aralıklı baş ağrısı tarifliyor.",
@@ -25,6 +25,17 @@
     "marital_status": "Evli"
   },
   "review_of_system_simple": "Bulantı ve kusma yok.",
+  "review_of_system": {
+    "Genel Sistem Sorgusu": ["Özellik Yok"],
+    "Genitoüriner Sistem": ["Özellik Yok"],
+    "Deri": ["Özellik Yok"],
+    "Solunum Sistemi": ["Özellik Yok"],
+    "Sinir Sistemi": ["Özellik Yok"],
+    "Kas - İskelet Sistemi": ["Özellik Yok"],
+    "Dolaşım Sistemi": ["Özellik Yok"],
+    "Gastrointestinal Sistem": ["Bulantı"],
+    "Komplikasyon": ["Komplikasyon Yok"]
+  },
   "psychological_status": {"states": ["Sakin"], "description": "Koopere"},
   "fall_risk": {
     "exists": false,
