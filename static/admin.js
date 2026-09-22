@@ -175,6 +175,7 @@ function comedHTML(k) {
   const hasDraft = Object.keys(d).length > 0;
   const patient = (k.metadata || {}).comed_patient || {};
   const transfer = k.comed_transfer || {};
+  const debug = transfer.debug || {};
   const required = (transfer.bundle || {}).missing_required || [];
   const diagnoses = d.diagnoses || [];
   const line = (label, value) => `<div class="comed-field"><span>${label}</span><b>${val(value)}</b></div>`;
@@ -185,11 +186,33 @@ function comedHTML(k) {
       ${comedStatusHTML(transfer.status)}
     </div>
     ${!hasDraft ? `<div class="comed-warning"><i class="bi bi-info-circle"></i><div><b>COMED taslağı bulunmuyor</b><p>Bu kayıt COMED entegrasyonundan önce hazırlanmış. Yeni görüşmelerde alan taslağı analizle birlikte oluşturulur.</p></div></div>` : required.length ? `<div class="comed-warning"><i class="bi bi-exclamation-triangle"></i><div><b>${required.length} zorunlu alan eksik</b><p>Bu alanlar doktor tarafından COMED'de tamamlanmalıdır: ${required.map(esc).join(", ")}</p></div></div>` : `<div class="comed-ok"><i class="bi bi-check-circle"></i> Zorunlu taslak alanları hazır.</div>`}
+    ${comedDebugHTML(debug)}
     <div class="sec"><div class="sec-title"><i class="bi bi-card-text"></i> Muayene formu taslağı</div>
       <div class="comed-field-grid">${line("Şikâyet", d.patient_complaint)}${line("Öykü", d.patient_story)}${line("Muayene notu", d.exam_simple_textarea)}${line("Tedavi notu", d.treatment_note_v2)}</div></div>
     <div class="sec"><div class="sec-title"><i class="bi bi-activity"></i> Tanı önerileri</div>
       <div class="comed-diagnoses">${diagnoses.map(x => `<span><b>${esc(x.code)}</b>${esc(x.description)}</span>`).join("") || '<div class="empty-mut">Tanı önerisi yok.</div>'}</div></div>
     <div class="comed-review-note"><i class="bi bi-shield-check"></i><span>Otomatik imza kapalıdır. Alanlar COMED'e taşındıktan sonra doktor kontrol edip kaydeder.</span></div>
+  </div>`;
+}
+
+function comedDebugHTML(debug) {
+  if (!debug || !Object.keys(debug).length) return "";
+  const postFields = debug.post?.fields || [];
+  const extensionFields = (debug.extension?.fields || []).filter(x => x.status === "filled" || x.status === "saved");
+  const notFound = (debug.extension?.fields || []).filter(x => x.status === "not_found" || x.status === "not_saved");
+  const defaults = debug.fallback_fields || [];
+  const chips = (items, cls) => items.length
+    ? items.map(item => `<span class="comed-debug-chip ${cls}">${esc(typeof item === "string" ? item : item.field)}</span>`).join("")
+    : '<span class="empty-mut">Yok</span>';
+  return `<div class="comed-debug">
+    <div class="comed-debug-head"><span><i class="bi bi-bug"></i> Aktarım debug</span><b>${esc(debug.mode || debug.stage || "hazırlanıyor")}</b></div>
+    <div class="comed-debug-grid">
+      <section><h4>POST ile giden</h4><div>${chips(postFields, "post")}</div></section>
+      <section><h4>Eklentinin doldurduğu</h4><div>${chips(extensionFields, "extension")}</div></section>
+      <section><h4>Operasyonel varsayılan</h4><div>${chips(defaults, "default")}</div></section>
+      <section><h4>Bulunamayan / kaydedilemeyen</h4><div>${chips(notFound, "missing")}</div></section>
+    </div>
+    <p class="comed-debug-note">Sistem sorgusu alt belgesi: <b>${debug.extension?.system_inquiry_saved ? "kaydedildi" : "kaydedilmedi"}</b> · Otomatik imza: <b>kapalı</b></p>
   </div>`;
 }
 

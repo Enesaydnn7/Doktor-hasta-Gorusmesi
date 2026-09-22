@@ -179,6 +179,17 @@ YANITINI SADECE şu JSON olarak ver:
     "marital_status": "Belirtilmedi|Bekar|Evli|null"
   },
   "review_of_system_simple": "sistem sorgusu veya null",
+  "review_of_system": {
+    "Genel Sistem Sorgusu": ["Özellik Yok"],
+    "Genitoüriner Sistem": ["Özellik Yok"],
+    "Deri": ["Özellik Yok"],
+    "Solunum Sistemi": ["Özellik Yok"],
+    "Sinir Sistemi": ["Özellik Yok"],
+    "Kas - İskelet Sistemi": ["Özellik Yok"],
+    "Dolaşım Sistemi": ["Özellik Yok"],
+    "Gastrointestinal Sistem": ["Özellik Yok"],
+    "Komplikasyon": ["Komplikasyon Yok"]
+  },
   "psychological_status": {
     "states": ["Sakin"], "description": "görüşmedeki açıklama veya null"
   },

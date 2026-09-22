@@ -54,7 +54,7 @@ formundan ayrı yetki ve iş akışlarıdır. Ses kaydından otomatik tetiklenme
 
 ## POST davranışı
 
-v2.7.1 hibrit çalışır. Klinot aynı protokol için daha önce başarıyla yakalanmış COMED
+v2.8.0 hibrit çalışır. Klinot aynı protokol için daha önce başarıyla yakalanmış COMED
 gövde şemasını güncel klinik taslakla eşleyebiliyorsa izin listesindeki
 `saveDocumentProcesses` ve doğrulanabildiğinde `savevisitdiagnoses` uçlarına POST
 eder. Ana POST şablonu yoksa seçili açık hasta kartını eklenti üzerinden doldurur;
@@ -65,8 +65,14 @@ COMED parola, çerez ve oturum başlıkları Klinot sunucusuna gönderilmez. Ba�
 yalnız açık COMED sayfasının kapalı belleğinde kullanılır; imza ve silme uçları
 yürütücü izin listesinin dışındadır.
 
+Sistem Sorgulama ayrı bir COMED belgesidir. Sekiz sistem grubu ile komplikasyon seçimi
+bu belgenin kendi `Kaydet` düğmesiyle tamamlanır; ana muayene `Kaydet ve İmzala`
+düğmesine otomatik basılmaz.
+
 ## Veri bütünlüğü
 
 “Boş alan kalmasın” hedefi, görüşmede bulunan bütün verinin doğru yere taşınmasıdır.
-Görüşmede bulunmayan vital bulgu, muayene, düşme riski veya özgeçmiş bilgisi uydurulmaz;
-bu alanlar `missing_required` listesinde doktorun tamamlaması için açıkça gösterilir.
+Görüşmede bulunmayan klinik bilgiler uydurulmaz. MVP'nin zorunlu kontrol alanlarında
+kullanılan operasyonel varsayılanlar `fallback_fields` ve aktarım debug kaydında açıkça
+gösterilir; doktor imzadan önce bunları kontrol eder. Tanı, kilo ve boy gibi klinik olarak
+uydurulamayacak değerler ancak görüşmeden ya da mevcut COMED kaydından gelebilir.

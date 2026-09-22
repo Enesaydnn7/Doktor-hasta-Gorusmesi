@@ -1,6 +1,11 @@
 (() => {
-  if (window.__klinotComedTraceInstalled) return;
-  window.__klinotComedTraceInstalled = true;
+  // COMED freezes the global Window object.  Adding ad-hoc properties to it
+  // therefore throws before the tracer can install.  Keep the idempotency
+  // marker on the DOM and all trace state inside this closure instead.
+  const TRACE_MARKER = "data-klinot-comed-trace-installed";
+  const markerHost = document.documentElement || document;
+  if (markerHost.getAttribute?.(TRACE_MARKER) === "1") return;
+  markerHost.setAttribute?.(TRACE_MARKER, "1");
 
   const TRACE_SOURCE = "klinot-comed-trace-v1";
   const NATIVE_COMMAND_SOURCE = "klinot-comed-native-command-v1";
@@ -22,6 +27,7 @@
   const SECRET_KEY = /authorization|cookie|password|passwd|secret|token|session/i;
   const MAX_TEXT = 300000;
   const sessionHeaders = new Map();
+  const traceEvents = [];
   let nativeFetch = null;
 
   function clip(value) {
@@ -181,7 +187,12 @@
         const detail = responseBody?.message || responseBody?.detail || `HTTP ${response.status}`;
         throw new Error(`COMED ${endpoint}: ${String(detail).slice(0, 400)}`);
       }
-      results.push({endpoint, status: response.status});
+      results.push({
+        endpoint,
+        status: response.status,
+        patched_fields: Array.isArray(request?.patched_fields)
+          ? request.patched_fields.slice(0, 100) : [],
+      });
     }
     return results;
   }
@@ -203,11 +214,8 @@
       // şekilleri yalnız test/doğrulama amacıyla aynı sayfa belleğinde tutmak,
       // oturum başlıklarını DOM'a veya Klinot sunucusuna taşımadan doğrulamayı
       // mümkün kılar.
-      const traceEvents = Array.isArray(window.__klinotComedTraceEvents)
-        ? window.__klinotComedTraceEvents : [];
       traceEvents.push(safeEvent);
       if (traceEvents.length > 250) traceEvents.splice(0, traceEvents.length - 250);
-      window.__klinotComedTraceEvents = traceEvents;
       window.postMessage({
         source: TRACE_SOURCE,
         event: safeEvent,

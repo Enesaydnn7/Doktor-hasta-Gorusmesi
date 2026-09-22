@@ -25,7 +25,7 @@ class ComedIntegrationTests(unittest.TestCase):
         self.assertEqual(normalized["missing_required"], [])
         self.assertFalse(normalized["fields"]["auto_sign"])
 
-    def test_normalizer_never_invents_mandatory_clinical_values(self):
+    def test_normalizer_marks_operational_defaults_for_doctor_review(self):
         normalized = comed_integration.normalize_draft({
             "patient_complaint": "Bacak ağrısı",
             "complaint_start_date": {"value": 1, "unit": "week", "before": True},
@@ -40,10 +40,12 @@ class ComedIntegrationTests(unittest.TestCase):
 
         self.assertFalse(normalized["fields"]["auto_sign"])
         self.assertEqual(normalized["fields"]["diagnoses"][0]["code"], "M25.56")
-        self.assertIn("pulse", normalized["missing_required"])
-        self.assertIn("profile", normalized["missing_required"])
-        self.assertIn("pain", normalized["missing_required"])
-        self.assertIn("fall_risk", normalized["missing_required"])
+        self.assertEqual(normalized["fields"]["vitals"]["pulse"], 100)
+        self.assertFalse(normalized["fields"]["pain"]["exists"])
+        self.assertFalse(normalized["fields"]["fall_risk"]["exists"])
+        self.assertTrue(normalized["fields"]["profile"]["reviewed"])
+        self.assertIn("vitals.pulse", normalized["fallback_fields"])
+        self.assertIn("profile.reviewed", normalized["fallback_fields"])
 
     def test_complete_fall_risk_profile_and_pain_satisfy_observed_required_groups(self):
         normalized = comed_integration.normalize_draft({
@@ -123,7 +125,11 @@ class ComedIntegrationTests(unittest.TestCase):
             "profile": {"marital_status": "Bilinmiyor"},
         })
 
-        self.assertIsNone(normalized["fields"]["treatment_plan_label"])
+        self.assertEqual(
+            normalized["fields"]["treatment_plan_label"],
+            "Ayaktan takip ve tedavi",
+        )
+        self.assertIn("treatment_plan_label", normalized["fallback_fields"])
         self.assertIsNone(normalized["fields"]["profile"]["marital_status"])
 
     def test_transfer_bundle_targets_verified_comed_post_groups(self):
@@ -143,7 +149,8 @@ class ComedIntegrationTests(unittest.TestCase):
 
         self.assertFalse(bundle["auto_sign"])
         self.assertTrue(bundle["doctor_review_required"])
-        self.assertEqual(bundle["schema_version"], 4)
+        self.assertEqual(bundle["schema_version"], 5)
+        self.assertIn("fallback_fields", bundle)
         self.assertEqual(bundle["execution_mode"], "native_api_post")
         self.assertEqual(bundle["native_requests"], [])
         self.assertEqual(

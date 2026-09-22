@@ -22,6 +22,9 @@ class ComedExtensionTests(unittest.TestCase):
         self.assertIn("await fillFormDraft(transfer", source)
         self.assertIn("const editorAlreadyVisible", source)
         self.assertIn("controlSwitch.checked !== fields.is_control_suggested", source)
+        self.assertIn("async function fillSystemInquiry", source)
+        self.assertIn("system_inquiry_saved", source)
+        self.assertIn("fieldResults", source)
         self.assertNotIn('textOf(button) === "Kaydet ve İmzala"', source)
         self.assertNotIn('textOf(button) === "Kaydet" && button.click', source)
 
@@ -32,11 +35,14 @@ class ComedExtensionTests(unittest.TestCase):
         self.assertIn('"medical/treatment/savevisitdiagnoses"', source)
         self.assertIn('"x-authentication-token"', source)
         self.assertIn('/delete|remove|sign|unsign/i', source)
+        self.assertIn('data-klinot-comed-trace-installed', source)
+        self.assertNotIn('window.__klinotComedTraceInstalled', source)
+        self.assertNotIn('window.__klinotComedTraceEvents', source)
         self.assertNotIn("saveAndSign", source)
 
-    def test_manifest_declares_v271(self):
+    def test_manifest_declares_v280(self):
         manifest = json.loads((EXTENSION / "manifest.json").read_text(encoding="utf-8"))
-        self.assertEqual(manifest["version"], "2.7.1")
+        self.assertEqual(manifest["version"], "2.8.0")
 
 
 if __name__ == "__main__":

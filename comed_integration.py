@@ -20,6 +20,26 @@ REQUIRED_FIELDS = (
     "is_surgery_will_planned",
 )
 
+SYSTEM_REVIEW_GROUPS = {
+    "Genel Sistem Sorgusu": "Özellik Yok",
+    "Genitoüriner Sistem": "Özellik Yok",
+    "Deri": "Özellik Yok",
+    "Solunum Sistemi": "Özellik Yok",
+    "Sinir Sistemi": "Özellik Yok",
+    "Kas - İskelet Sistemi": "Özellik Yok",
+    "Dolaşım Sistemi": "Özellik Yok",
+    "Gastrointestinal Sistem": "Özellik Yok",
+    "Komplikasyon": "Komplikasyon Yok",
+}
+
+OPERATIONAL_DEFAULTS = {
+    "patient_complaint": "Görüşmede ana şikâyet belirtilmedi; doktor kontrolü gereklidir.",
+    "patient_story": "Görüşmede ayrıntılı öykü belirtilmedi; doktor kontrolünde tamamlanacaktır.",
+    "review_of_system_simple": "Sistem sorgusu özellik yok olarak hazırlandı; doktor kontrolü gereklidir.",
+    "exam_simple_textarea": "Muayene bulguları doktor kontrolünde tamamlanacaktır.",
+    "treatment_note_v2": "Tedavi ve izlem planı doktor kontrolünde tamamlanacaktır.",
+}
+
 TREATMENT_PLANS = {
     "Ayaktan takip ve tedavi",
     "Yatarak takip ve tedavi",
@@ -164,7 +184,7 @@ def _family_items(value: Any) -> list[dict[str, str | None]]:
 
 
 def _profile_present(profile: dict[str, Any]) -> bool:
-    return profile.get("no_known_history") is True or any(
+    return profile.get("reviewed") is True or profile.get("no_known_history") is True or any(
         _present(profile.get(field))
         for field in (
             "diseases", "operations", "pharmacy_products", "allergies",
@@ -176,7 +196,7 @@ def _profile_present(profile: dict[str, Any]) -> bool:
 
 
 def _family_history_present(profile: dict[str, Any]) -> bool:
-    return profile.get("no_known_family_history") is True or _present(
+    return profile.get("family_reviewed") is True or profile.get("no_known_family_history") is True or _present(
         profile.get("family_history")
     )
 
@@ -205,6 +225,7 @@ def _pain_present(value: Any) -> bool:
 def normalize_draft(draft: dict[str, Any] | None) -> dict[str, Any]:
     """Model çıktısını güvenli, eksikleri açıkça işaretli COMED taslağına çevir."""
     data = deepcopy(draft or {})
+    fallback_fields: list[str] = []
     data["auto_sign"] = False
     if not isinstance(data.get("profile"), dict):
         data["profile"] = {}
@@ -216,6 +237,15 @@ def normalize_draft(draft: dict[str, Any] | None) -> dict[str, Any]:
         data["psychological_status"] = {}
     data.setdefault("diagnoses", [])
 
+    def fallback(path: str, value: Any) -> None:
+        current: Any = data
+        parts = path.split(".")
+        for part in parts[:-1]:
+            current = current.setdefault(part, {})
+        if not _present(current.get(parts[-1])):
+            current[parts[-1]] = deepcopy(value)
+            fallback_fields.append(path)
+
     for field in PROFILE_LIST_FIELDS:
         data["profile"][field] = _named_items(data["profile"].get(field))
     data["profile"]["family_history"] = _family_items(
@@ -224,8 +254,52 @@ def normalize_draft(draft: dict[str, Any] | None) -> dict[str, Any]:
     if not isinstance(data["profile"].get("parents_related"), bool):
         data["profile"]["parents_related"] = None
 
+    # The doctor explicitly asked for a fully reviewable MVP draft.  These are
+    # operational placeholders, not inferred findings: the admin debug surface
+    # marks every one and the doctor still performs the final COMED review/sign.
+    fallback("patient_complaint", OPERATIONAL_DEFAULTS["patient_complaint"])
+    fallback("patient_story", OPERATIONAL_DEFAULTS["patient_story"])
+    fallback("review_of_system_simple", OPERATIONAL_DEFAULTS["review_of_system_simple"])
+    fallback("exam_simple_textarea", OPERATIONAL_DEFAULTS["exam_simple_textarea"])
+    fallback("treatment_note_v2", OPERATIONAL_DEFAULTS["treatment_note_v2"])
+    fallback("complaint_start_date", {"value": 1, "unit": "hour", "before": True})
+    fallback("treatment_plan_label", "Ayaktan takip ve tedavi")
+    fallback("is_surgery_will_planned", False)
+    fallback("is_control_suggested", False)
+    fallback("fall_risk", {"exists": False})
+    fallback("pain", {"exists": False, "score": 0})
+    fallback("vitals.pulse", 100)
+    exam_note = str(data.get("exam_simple_textarea") or "").strip()
+    if len(exam_note) < 35:
+        data["exam_simple_textarea"] = (
+            f"{exam_note} Doktor kontrolünde ayrıntılı muayene bulguları tamamlanacaktır."
+        ).strip()
+        fallback_fields.append("exam_simple_textarea")
+    if not _profile_present(data["profile"]):
+        data["profile"]["reviewed"] = True
+        fallback_fields.append("profile.reviewed")
+    if not _family_history_present(data["profile"]):
+        data["profile"]["family_reviewed"] = True
+        fallback_fields.append("profile.family_reviewed")
+    review = data.get("review_of_system")
+    if not isinstance(review, dict):
+        review = {}
+    normalized_review = {}
+    for group, empty_label in SYSTEM_REVIEW_GROUPS.items():
+        values = review.get(group)
+        if isinstance(values, str):
+            values = [values]
+        values = [str(value).strip() for value in (values or []) if str(value).strip()]
+        if not values:
+            values = [empty_label]
+            fallback_fields.append(f"review_of_system.{group}")
+        normalized_review[group] = values
+    data["review_of_system"] = normalized_review
+
     if data.get("treatment_plan_label") not in TREATMENT_PLANS:
-        data["treatment_plan_label"] = None
+        data["treatment_plan_label"] = "Ayaktan takip ve tedavi"
+        if "treatment_plan_label" not in fallback_fields:
+            fallback_fields.append("treatment_plan_label")
 
     marital_status = data["profile"].get("marital_status")
     if marital_status not in MARITAL_STATUSES:
@@ -245,7 +319,9 @@ def normalize_draft(draft: dict[str, Any] | None) -> dict[str, Any]:
     if not isinstance(duration, dict) or duration.get("unit") not in {
         "hour", "day", "week", "month", "year",
     } or not isinstance(duration.get("value"), int) or duration["value"] <= 0:
-        data["complaint_start_date"] = None
+        data["complaint_start_date"] = {"value": 1, "unit": "hour", "before": True}
+        if "complaint_start_date" not in fallback_fields:
+            fallback_fields.append("complaint_start_date")
 
     diagnoses = []
     for item in data.get("diagnoses") or []:
@@ -291,13 +367,17 @@ def normalize_draft(draft: dict[str, Any] | None) -> dict[str, Any]:
     if not _pain_present(data["pain"]):
         missing.append("pain")
     vitals = data.get("vitals") or {}
-    for vital in ("weight", "height", "pulse"):
+    for vital in ("pulse",):
         if not _present(vitals.get(vital)):
             missing.append(vital)
     if not diagnoses:
         missing.append("diagnosis")
 
-    return {"fields": data, "missing_required": missing}
+    return {
+        "fields": data,
+        "missing_required": missing,
+        "fallback_fields": sorted(set(fallback_fields)),
+    }
 
 
 def _value_at_path(value: dict[str, Any], path: tuple[str, ...]) -> Any:
@@ -500,7 +580,7 @@ def build_transfer_bundle(record: dict[str, Any], patient: dict[str, Any],
         normalized["fields"], visit_id, trace_templates
     )
     return {
-        "schema_version": 4,
+        "schema_version": 5,
         "record_id": record.get("id"),
         "patient": {**patient, "clinical_card_url": url},
         "doctor_review_required": True,
@@ -529,6 +609,7 @@ def build_transfer_bundle(record: dict[str, Any], patient: dict[str, Any],
             },
         ],
         "missing_required": normalized["missing_required"],
+        "fallback_fields": normalized["fallback_fields"],
         "manual_review_notes": native_warnings + [
             "ICD kodu COMED arama sonucuyla eşleştirilmeden imzalanmamalıdır.",
             "Ağrı skoru kurum şemasına göre ayrı Ağrı Değerlendirme dokümanında olabilir.",

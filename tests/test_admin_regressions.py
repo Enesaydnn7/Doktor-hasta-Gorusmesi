@@ -48,6 +48,9 @@ class BrowserStateRegressionTests(unittest.TestCase):
         self.assertIn("/admin/comed/transfer/", js)
         self.assertIn("Otomatik imza kapalıdır", js)
         self.assertIn("COMED taslağı bulunmuyor", js)
+        self.assertIn("POST ile giden", js)
+        self.assertIn("Eklentinin doldurduğu", js)
+        self.assertIn("Operasyonel varsayılan", js)
         self.assertIn('["doktor", "hasta", "yonetim"].includes(sekme)', js)
         self.assertIn("COMED aktarımı", html)
         self.assertIn("comed-action-bar", css)
@@ -81,6 +84,8 @@ class BrowserStateRegressionTests(unittest.TestCase):
         self.assertIn("klinot-comed-trace-v1", trace)
         self.assertIn("klinot-comed-native-command-v1", trace)
         self.assertIn("NATIVE_ENDPOINTS", trace)
+        self.assertIn("data-klinot-comed-trace-installed", trace)
+        self.assertNotIn("window.__klinotComedTrace", trace)
         self.assertNotIn("getAllCookieStores", trace)
         self.assertNotIn("document.cookie", trace)
 

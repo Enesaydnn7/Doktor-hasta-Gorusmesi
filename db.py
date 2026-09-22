@@ -118,12 +118,18 @@ def init():
                 status TEXT NOT NULL,
                 bundle TEXT NOT NULL,
                 error TEXT,
+                debug TEXT,
                 requested_by TEXT,
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL,
                 FOREIGN KEY(record_id) REFERENCES kayitlar(id)
             )
         """)
+        transfer_columns = {
+            row[1] for row in c.execute("PRAGMA table_info(comed_transfers)")
+        }
+        if "debug" not in transfer_columns:
+            c.execute("ALTER TABLE comed_transfers ADD COLUMN debug TEXT")
         c.execute(
             "CREATE INDEX IF NOT EXISTS ix_comed_transfer_status "
             "ON comed_transfers(status, visit_id, id DESC)"
@@ -389,6 +395,10 @@ def _transfer_dict(row) -> dict | None:
         data["bundle"] = json.loads(data.get("bundle") or "{}")
     except Exception:
         data["bundle"] = {}
+    try:
+        data["debug"] = json.loads(data.get("debug") or "{}")
+    except Exception:
+        data["debug"] = {}
     return data
 
 
@@ -430,15 +440,24 @@ def comed_transfer_pending(visit_id: str | None = None,
 
 
 def comed_transfer_update(transfer_id: int, status_value: str,
-                          error: str | None = None) -> dict | None:
+                           error: str | None = None,
+                           debug: dict | None = None) -> dict | None:
     allowed = {"queued", "filling", "ready_for_review", "completed", "failed"}
     if status_value not in allowed:
         raise ValueError("Geçersiz COMED aktarım durumu")
     now = datetime.now().isoformat(timespec="seconds")
     with _lock, _conn() as c:
         c.execute(
-            "UPDATE comed_transfers SET status=?, error=?, updated_at=? WHERE id=?",
-            (status_value, (error or "")[:1000] or None, now, transfer_id),
+            """UPDATE comed_transfers
+               SET status=?, error=?, debug=COALESCE(?, debug), updated_at=?
+               WHERE id=?""",
+            (
+                status_value,
+                (error or "")[:1000] or None,
+                json.dumps(debug, ensure_ascii=False) if debug is not None else None,
+                now,
+                transfer_id,
+            ),
         )
     return comed_transfer_get(transfer_id)
 

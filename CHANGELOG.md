@@ -1,5 +1,13 @@
 # Sürüm Geçmişi
 
+## v2.8.0 — 22 Eylül 2026
+
+- COMED'in genişletilemeyen `window` nesnesinde izleyiciyi durduran hata giderildi; gerçek GET/POST şablonları yeniden yakalanabilir hale geldi.
+- Ayrı Sistem Sorgulama belgesindeki sekiz sistem grubu ve komplikasyon alanı doldurulup kendi kaydı tamamlanıyor; ana muayene kaydı ve imza hâlâ doktora bırakılıyor.
+- Eksik zorunlu MVP kontrolleri doktor tarafından görülebilen operasyonel varsayılanlarla hazırlanıyor; nabız 100, düşme/ağrı yok, ayaktan takip ve ameliyat hayır seçimleri debug kaydında açıkça işaretleniyor.
+- Admin paneline POST ile giden, eklentiyle doldurulan, operasyonel varsayılan ve bulunamayan alanları ayrı gösteren aktarım debug görünümü eklendi.
+- Aktarım debug verisi kullanıcı kapsamlı olarak veritabanında saklanıyor ve mobil/administrator kayıt yanıtlarında gösteriliyor.
+
 ## v2.7.1 — 22 Eylül 2026
 
 - Aynı protokole ait doğrulanmış ana POST şablonu bulunmadığında aktarımı durduran regresyon giderildi.

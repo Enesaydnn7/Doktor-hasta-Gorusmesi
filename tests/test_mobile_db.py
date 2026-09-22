@@ -65,6 +65,30 @@ class MobileDatabaseTests(unittest.TestCase):
             "http://goztepe.comedtest.mlpcare.com/card",
         )
 
+    def test_comed_transfer_persists_channel_debug(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "debug.db"
+            with (
+                patch.object(db, "DB_PATH", str(path)),
+                patch.dict("os.environ", {"SEED_MANAGER_DEMO": "false"}),
+            ):
+                db.init()
+                transfer = db.comed_transfer_create(
+                    41,
+                    {"visit_id": "22207357", "clinical_card_url": "http://comed/card"},
+                    {"requests": []},
+                    requested_by="doctor-a",
+                )
+                updated = db.comed_transfer_update(
+                    transfer["id"],
+                    "ready_for_review",
+                    "doktor kontrolü",
+                    {"mode": "POST + form", "post": {"fields": ["patient_story"]}},
+                )
+
+        self.assertEqual(updated["debug"]["mode"], "POST + form")
+        self.assertEqual(updated["debug"]["post"]["fields"], ["patient_story"])
+
     def test_comed_trace_events_are_scoped_filtered_and_json_decoded(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "trace.db"
