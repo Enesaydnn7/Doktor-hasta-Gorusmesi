@@ -8,14 +8,22 @@ EXTENSION = ROOT / "comed_bridge_extension"
 
 
 class ComedExtensionTests(unittest.TestCase):
-    def test_transfer_path_uses_native_post_without_dom_form_fill(self):
+    def test_transfer_path_prefers_native_post_and_has_form_fallback(self):
         source = (EXTENSION / "content.js").read_text(encoding="utf-8")
 
         self.assertIn("klinot-comed-native-command-v1", source)
         self.assertIn("executeNativePosts(transfer.visit_id, nativeRequests)", source)
-        self.assertNotIn("function setValue", source)
-        self.assertNotIn("function fillTransfer", source)
-        self.assertNotIn("dispatchEvent(new Event(\"input\"", source)
+        self.assertIn("function setValue", source)
+        self.assertIn("async function fillFormDraft", source)
+        self.assertIn("POST şablonu yok · alanlar eklentiyle dolduruluyor", source)
+        self.assertIn("const hasMainPost", source)
+        self.assertIn("POST tamamlanamadı · alanlar eklentiyle dolduruluyor", source)
+        self.assertIn("throw postError || new Error", source)
+        self.assertIn("await fillFormDraft(transfer", source)
+        self.assertIn("const editorAlreadyVisible", source)
+        self.assertIn("controlSwitch.checked !== fields.is_control_suggested", source)
+        self.assertNotIn('textOf(button) === "Kaydet ve İmzala"', source)
+        self.assertNotIn('textOf(button) === "Kaydet" && button.click', source)
 
     def test_page_executor_has_strict_save_allowlist_and_no_sign_endpoint(self):
         source = (EXTENSION / "page_trace.js").read_text(encoding="utf-8")
@@ -26,9 +34,9 @@ class ComedExtensionTests(unittest.TestCase):
         self.assertIn('/delete|remove|sign|unsign/i', source)
         self.assertNotIn("saveAndSign", source)
 
-    def test_manifest_declares_v270(self):
+    def test_manifest_declares_v271(self):
         manifest = json.loads((EXTENSION / "manifest.json").read_text(encoding="utf-8"))
-        self.assertEqual(manifest["version"], "2.7.0")
+        self.assertEqual(manifest["version"], "2.7.1")
 
 
 if __name__ == "__main__":
