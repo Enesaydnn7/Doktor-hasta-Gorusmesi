@@ -35,19 +35,19 @@ satırını doğrudan okur. Göreve ilk kez girildiğinde hasta kartı kimliği 
 tamamlanır. Liste ve kart bilgileri yalnız aynı Klinot kullanıcısına gösterilir.
 
 Köprü iş listesini mobil uygulamaya eşitler. Mobilde **COMED'e aktar** denince
-bekleyen taslak için doğru protokolün **Göreve Git** düğmesini açar. v2.7.0 ile
-muayene alanlarına DOM/klavye üzerinden yazma kaldırılmıştır. Yalnız daha önce aynı
-protokolde başarılı olduğu doğrulanan `saveDocumentProcesses` ve gerektiğinde
-`savevisitdiagnoses` gövdeleri, seçili protokol kimliği yeniden doğrulanarak doğrudan
-COMED test API'sine POST edilir. Sonuç başarılıysa kart yenilenir ve doktor veriyi
-COMED'in kendi ekranında kontrol eder.
+bekleyen taslak için doğru protokolün **Göreve Git** düğmesini açar. v2.7.1 hibrit
+çalışır: aynı protokol için başarılı olduğu doğrulanan `saveDocumentProcesses`
+gövdesi varsa seçili protokol kimliği tekrar doğrulanarak COMED test API'sine POST
+edilir. Böyle bir öğrenilmiş şablon yoksa aktarım durmaz; açık hasta kartındaki
+muayene, profil, soygeçmiş, düşme riski, ağrı, tanı ve izlem-plan alanları eklenti
+tarafından taslak olarak doldurulur.
 
 POST yürütücüsü yalnız izin listesindeki kayıt uçlarını kabul eder; imza, silme ve
 başka hasta/protokol gövdelerini reddeder. COMED'in uygulama/oturum başlıkları yalnız
 sayfa belleğindeki kapalı yürütücüde kullanılır; değerleri DOM'a, eklenti deposuna veya
 Klinot sunucusuna çıkarılmaz. Otomatik imza yoktur.
 
-ICD ve lookup kimliği gerektiren profil kayıtlarında doğrulanmış eşleşme yoksa veri
-uydurulmaz; bunlar ve görüşmede bulunmayan kırmızı noktalı alanlar doktor kontrolünde
-tamamlanır. Durum mobil uygulama ve admin panelinde
-`sırada → COMED POST gönderiliyor → kontrol bekliyor → tamamlandı` şeklinde izlenir.
+Lookup/ICD seçimi yalnız COMED'in ekranda sunduğu gerçek sonuç eşleşirse yapılır;
+eşleşme yoksa veri uydurulmaz. Görüşmede bulunmayan kırmızı noktalı alanlar doktor
+kontrolünde tamamlanır. Durum mobil uygulama ve admin panelinde
+`sırada → POST/form hazırlanıyor → kontrol bekliyor → tamamlandı` şeklinde izlenir.

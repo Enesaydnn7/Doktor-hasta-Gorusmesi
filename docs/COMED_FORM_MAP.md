@@ -54,11 +54,12 @@ formundan ayrı yetki ve iş akışlarıdır. Ses kaydından otomatik tetiklenme
 
 ## POST davranışı
 
-v2.7.0'da DOM/klavye doldurma kaldırıldı. Klinot yalnız aynı protokol için daha önce
-başarıyla yakalanmış COMED gövde şemasını güncel klinik taslakla eşleyip izin
-listesindeki `saveDocumentProcesses` ve doğrulanabildiğinde `savevisitdiagnoses`
-uçlarına doğrudan POST eder. Başarılı aktarımdan sonra hasta kartı yenilenir; son
-kontrol ve imza doktora aittir. Lookup kimliği doğrulanamayan kayıtlar uydurulmaz.
+v2.7.1 hibrit çalışır. Klinot aynı protokol için daha önce başarıyla yakalanmış COMED
+gövde şemasını güncel klinik taslakla eşleyebiliyorsa izin listesindeki
+`saveDocumentProcesses` ve doğrulanabildiğinde `savevisitdiagnoses` uçlarına POST
+eder. Ana POST şablonu yoksa seçili açık hasta kartını eklenti üzerinden doldurur;
+böylece yeni protokoller öğrenme kaydı olmadan da MVP'de hazırlanabilir. Son kontrol,
+kaydetme ve imza doktora aittir. Lookup kimliği doğrulanamayan kayıtlar uydurulmaz.
 
 COMED parola, çerez ve oturum başlıkları Klinot sunucusuna gönderilmez. Başlıklar
 yalnız açık COMED sayfasının kapalı belleğinde kullanılır; imza ve silme uçları

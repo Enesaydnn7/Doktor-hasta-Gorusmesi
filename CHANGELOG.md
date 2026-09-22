@@ -1,5 +1,12 @@
 # Sürüm Geçmişi
 
+## v2.7.1 — 22 Eylül 2026
+
+- Aynı protokole ait doğrulanmış ana POST şablonu bulunmadığında aktarımı durduran regresyon giderildi.
+- Köprü hibrit hale getirildi: doğrulanmış POST varsa onu kullanır, yoksa seçili açık hasta kartını eklenti üzerinden doldurur.
+- Hibrit akış ana muayene, yaşamsal bulgular, profil/soygeçmiş, psikolojik durum, düşme riski, ağrı, ICD ve izlem-plan alanlarını hazırlar; otomatik kaydetme veya imza atma yapmaz.
+- Aktarım durumunda kullanılan yöntem ve hazırlanan alan sayısı gösterilir.
+
 ## v2.7.0 — 21 Eylül 2026
 
 - Muayene aktarımında DOM alanı doldurma kaldırıldı; köprü artık yalnız doğrulanmış, aynı protokole ait ve izin listesindeki COMED kayıt POST gövdelerini kullanıyor.
