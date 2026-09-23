@@ -132,6 +132,50 @@ class ComedIntegrationTests(unittest.TestCase):
         self.assertIn("treatment_plan_label", normalized["fallback_fields"])
         self.assertIsNone(normalized["fields"]["profile"]["marital_status"])
 
+    def test_height_in_metres_is_normalized_for_comed_centimetre_field(self):
+        for raw in (1.72, "1,72", "1.72 m"):
+            with self.subTest(raw=raw):
+                normalized = comed_integration.normalize_draft({
+                    "vitals": {"height": raw},
+                })
+                self.assertEqual(normalized["fields"]["vitals"]["height"], 172)
+
+        normalized = comed_integration.normalize_draft({
+            "vitals": {"height": 168},
+        })
+        self.assertEqual(normalized["fields"]["vitals"]["height"], 168)
+
+    def test_system_review_summary_uses_detailed_positive_findings(self):
+        normalized = comed_integration.normalize_draft({
+            "review_of_system": {
+                "Genel Sistem Sorgusu": ["Halsizlik"],
+                "Solunum Sistemi": ["Nefes darlığı"],
+            },
+        })
+        summary = normalized["fields"]["review_of_system_simple"]
+
+        self.assertIn("Genel Sistem Sorgusu: Halsizlik", summary)
+        self.assertIn("Solunum Sistemi: Nefes darlığı", summary)
+        self.assertNotIn("özellik yok olarak hazırlandı", summary.casefold())
+
+    def test_real_profile_data_wins_over_conflicting_no_known_flags(self):
+        normalized = comed_integration.normalize_draft({
+            "profile": {
+                "no_known_history": True,
+                "no_known_family_history": True,
+                "addictions": [{"name": "Sigara", "description": "Günde 10 adet"}],
+                "family_history": [{
+                    "relationship": "Annesi",
+                    "condition": "Diyabet",
+                    "description": "Annede diyabet",
+                }],
+            },
+        })
+
+        profile = normalized["fields"]["profile"]
+        self.assertFalse(profile["no_known_history"])
+        self.assertFalse(profile["no_known_family_history"])
+
     def test_transfer_bundle_targets_verified_comed_post_groups(self):
         record = {
             "id": 42,

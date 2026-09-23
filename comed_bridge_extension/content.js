@@ -289,7 +289,7 @@
       .sort((a, b) => textOf(a).length - textOf(b).length)[0] || null;
   }
 
-  function ensureCardOpen(title, visiblePlaceholder = null) {
+  async function ensureCardOpen(title, visiblePlaceholder = null) {
     const card = cardByTitle(title);
     if (!card || (visiblePlaceholder && byPlaceholder(visiblePlaceholder, card)?.offsetParent)) {
       return card;
@@ -298,9 +298,16 @@
       "input,textarea,table,.autocomplete__input",
     )].some((element) => element.offsetParent !== null);
     if (editorAlreadyVisible) return card;
+    card.querySelector(".hasta-detay-card__icon")?.click();
+    await sleep(100);
+    const editorOpened = [...card.querySelectorAll(
+      "input,textarea,table,.autocomplete__input",
+    )].some((element) => element.offsetParent !== null);
+    if (editorOpened) return card;
     const heading = [...card.querySelectorAll(".hasta-detay-card__title,[data-test],span,div")]
       .find((node) => textOf(node) === title);
     heading?.click();
+    await sleep(120);
     return card;
   }
 
@@ -318,13 +325,29 @@
       ?.querySelector("input:not([disabled]),textarea:not([disabled])") || null;
   }
 
+  function activateNode(node) {
+    if (!node) return false;
+    const target = node.matches("button,label,input,[role=radio],[role=checkbox],.toggle-button__item,.autocomplete__item")
+      ? node
+      : node.closest("button,label,[role=radio],[role=checkbox],.toggle-button__item,.autocomplete__item") || node;
+    if (target.matches("label")) {
+      const control = target.control
+        || (target.htmlFor ? document.getElementById(target.htmlFor) : null);
+      if (control && !control.disabled) {
+        control.click();
+        return true;
+      }
+    }
+    if (target.disabled) return false;
+    target.click();
+    return true;
+  }
+
   function clickText(text, root = document) {
     const node = [...root.querySelectorAll(
       "button,label,[role=radio],[role=checkbox],.toggle-button__item,.autocomplete__item,span",
     )].find((element) => textOf(element) === text && element.offsetParent !== null);
-    if (!node) return false;
-    node.click();
-    return true;
+    return activateNode(node);
   }
 
   function clickCardOption(cardTitle, text) {
@@ -526,8 +549,9 @@
     });
     if (!["65_plus", "under_65"].includes(normalized.age_group)) return false;
     if (!clickCardOption("Düşme Riski", "Var")) return false;
-    const popover = await waitFor(() => [...document.querySelectorAll(".co-popover.bottom,.co-popover")]
-      .find((item) => item.offsetParent !== null));
+    const popover = await waitFor(() => [...document.querySelectorAll(
+      ".co-menu__content .co-popover,.co-menu__content,.co-popover.bottom,.co-popover",
+    )].find((item) => item.offsetParent !== null && textOf(item).includes("Düşme Hikayesi")));
     if (!popover) return false;
     const choices = [
       ["Yaş", normalized.age_group === "65_plus", "65 yaş üstü", "65 yaş altı"],
@@ -545,19 +569,46 @@
     return true;
   }
 
+  async function fillPainScore(card, score) {
+    const numeric = Number(score);
+    if (!Number.isFinite(numeric) || numeric < 0 || numeric > 10) return false;
+    const opener = card.querySelector('[data-test="co-button-icon-external-link"]');
+    if (!opener) return false;
+    opener.click();
+    const typeMenu = await waitFor(() => [...document.querySelectorAll(".co-popover")]
+      .find((item) => item.offsetParent !== null && textOf(item).includes("NRS")));
+    if (!typeMenu || !clickText("NRS", typeMenu)) return false;
+    const range = await waitFor(() => [...document.querySelectorAll('.co-popover input[type="range"]')]
+      .find((input) => input.offsetParent !== null));
+    if (!range || !setValue(range, Math.round(numeric))) return false;
+    document.dispatchEvent(new KeyboardEvent("keydown", {
+      key: "Escape", code: "Escape", bubbles: true,
+    }));
+    await sleep(80);
+    const openScorePopover = [...document.querySelectorAll(".co-popover")]
+      .find((item) => item.offsetParent !== null && item.contains(range));
+    if (openScorePopover) opener.click();
+    await sleep(80);
+    return Number(card.querySelector("input[disabled]")?.value) === Math.round(numeric);
+  }
+
   async function fillPain(pain) {
     if (pain?.exists === false) return clickCardOption("Ağrı", "Yok");
     if (pain?.exists !== true) return false;
     const card = cardByTitle("Ağrı");
     if (!card || !clickText("Var", card)) return false;
     await sleep(100);
-    setValue(inputByLabel("Skor", card), pain.score);
+    const scoreFilled = await fillPainScore(card, pain.score);
     setValue(byPlaceholder("Bölge", card), pain.location);
     setValue(byPlaceholder("Açıklama", card), pain.description);
     (pain.qualities || []).forEach((quality) => clickText(quality, card));
     if (pain.rhythm) clickText(pain.rhythm, card);
-    if (pain.start_date) fillDuration(card, pain.start_date, "Ağrı Başlangıcı");
-    return true;
+    // COMED'in Ağrı Başlangıcı bileşeni yalnızca gün cinsini kabul ediyor.
+    // Saat bilgisini "2 gün" diye yanlış yazmak yerine ana yakınma süresinde koru.
+    if (pain.start_date?.unit === "day") {
+      fillDuration(card, pain.start_date, "Ağrı Başlangıcı");
+    }
+    return scoreFilled;
   }
 
   async function fillFamilyHistory(profile = {}) {
@@ -568,7 +619,7 @@
     if (!entries.length && typeof profile.parents_related !== "boolean") {
       return clickCardOption("Soygeçmiş", "Görüldü") ? 1 : 0;
     }
-    const card = ensureCardOpen("Soygeçmiş");
+    const card = await ensureCardOpen("Soygeçmiş");
     if (!card) return 0;
     await waitFor(() => [...card.querySelectorAll("input,textarea,table")]
       .find((element) => element.offsetParent !== null), 1800);
@@ -578,10 +629,8 @@
       const condition = String(entry?.condition || "").trim();
       const row = [...card.querySelectorAll("tr")]
         .find((candidate) => textOf(candidate.querySelector("td,th")) === relationship);
-      const headers = [...card.querySelectorAll("thead th")].map(textOf);
-      const column = headers.indexOf(condition);
       const cells = [...(row?.querySelectorAll("td") || [])];
-      const target = column >= 0 ? cells[column] : null;
+      const target = cells.slice(1).find((cell) => textOf(cell) === condition);
       if (!target) continue;
       target.click();
       const popover = await waitFor(() => [...document.querySelectorAll(".co-popover")]
@@ -616,16 +665,27 @@
   async function fillProfile(profile = {}) {
     let filled = 0;
     if (profile.no_known_history === true && clickCardOption("Özgeçmiş", "Özellik Yok")) filled += 1;
-    const history = ensureCardOpen("Özgeçmiş", "Meslek");
+    const history = await ensureCardOpen("Özgeçmiş", "Meslek");
     if (!history) return filled;
     await sleep(100);
     for (const item of profile.addictions || []) {
       const {name, description} = itemParts(item);
       const value = name.toLocaleLowerCase("tr-TR");
-      if (value.includes("sigara") && clickText("Sigara", history)) filled += 1;
-      if (value.includes("alkol") && clickText("Alkol", history)) filled += 1;
-      if (value.includes("madde") && clickText("Madde", history)) filled += 1;
-      if (setValue(byPlaceholder("Açıklama", fieldGroupByLabel("Alışkanlık", history) || history), description)) filled += 1;
+      const option = value.includes("sigara") ? "Sigara"
+        : value.includes("alkol") ? "Alkol"
+          : value.includes("madde") ? "Madde" : null;
+      if (!option) continue;
+      const optionLabel = [...history.querySelectorAll("label")]
+        .find((label) => textOf(label) === option && label.offsetParent !== null);
+      const row = optionLabel?.closest(".d-flex.align-items-center.position-relative");
+      if (!row || !activateNode(optionLabel)) continue;
+      await sleep(60);
+      setValue(byPlaceholder("Açıklama", row), description);
+      const commit = row.querySelector('[data-test="co-button-icon-arti"]');
+      if (!commit || commit.disabled) continue;
+      commit.click();
+      filled += 1;
+      await sleep(120);
     }
     const lookupMap = [
       ["Kronik Hastalık", profile.diseases], ["İlaç", profile.pharmacy_products],
@@ -672,6 +732,29 @@
 
   async function fillSystemInquiry(review = {}) {
     const expectedGroups = Object.keys(SYSTEM_REVIEW_DEFAULTS);
+    const existingCard = cardByTitle("Sistem Sorgusu");
+    const existingText = normalizedText(textOf(existingCard));
+    const alreadyPresent = Boolean(existingCard) && expectedGroups.every((group) => {
+      const requested = (Array.isArray(review?.[group]) ? review[group] : [review?.[group]])
+        .filter(Boolean).map((value) => String(value));
+      const selected = requested.length ? requested : [SYSTEM_REVIEW_DEFAULTS[group]];
+      return existingText.includes(normalizedText(group))
+        && selected.every((option) => existingText.includes(normalizedText(option)));
+    });
+    if (alreadyPresent) {
+      return {
+        filled: 0,
+        saved: true,
+        reused: true,
+        fields: expectedGroups.flatMap((group) => {
+          const requested = (Array.isArray(review?.[group]) ? review[group] : [review?.[group]])
+            .filter(Boolean).map((value) => String(value));
+          return (requested.length ? requested : [SYSTEM_REVIEW_DEFAULTS[group]])
+            .map((option) => `review_of_system.${group}.${option}`);
+        }),
+        error: null,
+      };
+    }
     let modal = visibleSystemInquiryModal();
     if (!modal) {
       const opener = [...document.querySelectorAll("button")]
