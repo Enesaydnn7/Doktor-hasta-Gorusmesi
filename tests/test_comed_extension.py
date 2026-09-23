@@ -23,8 +23,15 @@ class ComedExtensionTests(unittest.TestCase):
         self.assertIn("const editorAlreadyVisible", source)
         self.assertIn("controlSwitch.checked !== fields.is_control_suggested", source)
         self.assertIn("async function fillSystemInquiry", source)
+        self.assertIn("SYSTEM_REVIEW_DEFAULTS", source)
+        self.assertIn('labelNode.control', source)
+        self.assertIn('input.click()', source)
+        self.assertIn('.document-fill__footer button[data-test=\"co-button-Kaydet\"]', source)
+        self.assertIn("if (!formResult.systemSaved)", source)
         self.assertIn("system_inquiry_saved", source)
         self.assertIn("fieldResults", source)
+        self.assertLess(source.index("const systemResult = await fillSystemInquiry"),
+                        source.index('const complaintCard = cardByTitle("Yakınması")'))
         self.assertNotIn('textOf(button) === "Kaydet ve İmzala"', source)
         self.assertNotIn('textOf(button) === "Kaydet" && button.click', source)
 
@@ -40,9 +47,9 @@ class ComedExtensionTests(unittest.TestCase):
         self.assertNotIn('window.__klinotComedTraceEvents', source)
         self.assertNotIn("saveAndSign", source)
 
-    def test_manifest_declares_v280(self):
+    def test_manifest_declares_v281(self):
         manifest = json.loads((EXTENSION / "manifest.json").read_text(encoding="utf-8"))
-        self.assertEqual(manifest["version"], "2.8.0")
+        self.assertEqual(manifest["version"], "2.8.1")
 
 
 if __name__ == "__main__":

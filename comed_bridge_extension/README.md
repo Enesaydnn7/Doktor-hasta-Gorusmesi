@@ -35,13 +35,15 @@ satırını doğrudan okur. Göreve ilk kez girildiğinde hasta kartı kimliği 
 tamamlanır. Liste ve kart bilgileri yalnız aynı Klinot kullanıcısına gösterilir.
 
 Köprü iş listesini mobil uygulamaya eşitler. Mobilde **COMED'e aktar** denince
-bekleyen taslak için doğru protokolün **Göreve Git** düğmesini açar. v2.8.0 hibrit
+bekleyen taslak için doğru protokolün **Göreve Git** düğmesini açar. v2.8.1 hibrit
 çalışır: aynı protokol için başarılı olduğu doğrulanan `saveDocumentProcesses`
 gövdesi varsa seçili protokol kimliği tekrar doğrulanarak COMED test API'sine POST
 edilir. Böyle bir öğrenilmiş şablon yoksa aktarım durmaz; açık hasta kartındaki
 muayene, profil, soygeçmiş, düşme riski, ağrı, tanı ve izlem-plan alanları eklenti
 tarafından taslak olarak doldurulur. Ayrı Sistem Sorgulama belgesi de kendi içinde
-doldurulup kaydedilir; ana muayene kaydı ve imza doktora bırakılır.
+doldurulup sağ alttaki kendi `Kaydet` düğmesiyle kapatılır; dokuz zorunlu gruptan biri
+işaretlenemezse ana muayeneye geçilmez ve hata admin debug kaydına yazılır. Ana muayene
+kaydı ve imza doktora bırakılır.
 
 POST yürütücüsü yalnız izin listesindeki kayıt uçlarını kabul eder; imza, silme ve
 başka hasta/protokol gövdelerini reddeder. COMED'in uygulama/oturum başlıkları yalnız
