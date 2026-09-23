@@ -24,10 +24,38 @@ class ReportsScreen extends StatefulWidget {
   State<ReportsScreen> createState() => _ReportsScreenState();
 }
 
-class _ReportsScreenState extends State<ReportsScreen> {
+class _ReportsScreenState extends State<ReportsScreen>
+    with WidgetsBindingObserver {
   var _downloading = false;
   var _transferring = false;
+  var _transferPollInFlight = false;
+  var _transferPollAttempts = 0;
+  String? _notifiedTerminalStatus;
+  Timer? _transferPollTimer;
   ComedTransfer? _transfer;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _transferPollTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) return;
+    final transfer = _transfer;
+    if (transfer != null && {'queued', 'filling'}.contains(transfer.status)) {
+      unawaited(_refreshTransferStatus(transfer.id));
+      _startTransferPolling(transfer.id, resetAttempts: false);
+    }
+  }
 
   Future<void> _downloadPdf() async {
     if (_downloading) return;
@@ -68,13 +96,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
     try {
       final existing = _transfer;
       if (existing != null && {'queued', 'filling'}.contains(existing.status)) {
-        final completed = await _pollTransfer(existing.id);
-        if (!completed && mounted) {
-          _notice(
-            'COMED yanıtı bekleniyor. Bilgisayarda COMED iş listesini açık tutup tekrar kontrol edin.',
-            error: true,
-          );
-        }
+        await _refreshTransferStatus(existing.id, notifyOnError: true);
+        _startTransferPolling(existing.id, resetAttempts: false);
         return;
       }
       final transfer = await widget.api.createComedTransfer(
@@ -87,13 +110,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
       _notice(
         'COMED aktarımı kuyruğa alındı. Açık COMED ekranına gönderiliyor.',
       );
-      final completed = await _pollTransfer(transfer.id);
-      if (!completed && mounted) {
-        _notice(
-          'COMED yanıtı bekleniyor. Bilgisayarda COMED iş listesini açık tutup tekrar kontrol edin.',
-          error: true,
-        );
-      }
+      _startTransferPolling(transfer.id);
     } catch (error) {
       if (mounted) _notice('COMED aktarımı başlatılamadı: $error', error: true);
     } finally {
@@ -101,29 +118,62 @@ class _ReportsScreenState extends State<ReportsScreen> {
     }
   }
 
-  Future<bool> _pollTransfer(int transferId) async {
-    for (var attempt = 0; attempt < 15 && mounted; attempt++) {
-      await Future<void>.delayed(const Duration(seconds: 2));
-      if (!mounted) return false;
-      try {
-        final current = await widget.api.getComedTransfer(
-          widget.session.token,
-          transferId,
-        );
-        if (!mounted) return false;
-        setState(() => _transfer = current);
-        if ({
-          'ready_for_review',
-          'completed',
-          'failed',
-        }.contains(current.status)) {
-          return true;
-        }
-      } catch (_) {
-        return false;
+  void _startTransferPolling(int transferId, {bool resetAttempts = true}) {
+    _transferPollTimer?.cancel();
+    if (resetAttempts) _transferPollAttempts = 0;
+    unawaited(_refreshTransferStatus(transferId));
+    _transferPollTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
+      if (!mounted || _transferPollAttempts >= 200) {
+        timer.cancel();
+        return;
       }
+      _transferPollAttempts += 1;
+      unawaited(_refreshTransferStatus(transferId));
+    });
+  }
+
+  Future<void> _refreshTransferStatus(
+    int transferId, {
+    bool notifyOnError = false,
+  }) async {
+    if (!mounted || _transferPollInFlight) return;
+    _transferPollInFlight = true;
+    try {
+      final current = await widget.api.getComedTransfer(
+        widget.session.token,
+        transferId,
+      );
+      if (!mounted) return;
+      setState(() => _transfer = current);
+      if ({
+        'ready_for_review',
+        'completed',
+        'failed',
+      }.contains(current.status)) {
+        _transferPollTimer?.cancel();
+        if (_notifiedTerminalStatus != current.status) {
+          _notifiedTerminalStatus = current.status;
+          if (current.status == 'ready_for_review') {
+            _notice('COMED alanları hazırlandı. Doktor kontrolü bekleniyor.');
+          } else if (current.status == 'completed') {
+            _notice('COMED kaydı tamamlandı.');
+          } else {
+            _notice(
+              'COMED aktarımı tamamlanamadı: ${current.error ?? 'Bilinmeyen hata'}',
+              error: true,
+            );
+          }
+        }
+      }
+    } catch (error) {
+      // Geçici telefon/ağ kesintisi durum takibini bitirmesin. Periyodik takip
+      // yeniden deneyecek; yalnız doktor elle kontrol ettiyse hatayı göster.
+      if (notifyOnError && mounted) {
+        _notice('COMED durumu alınamadı: $error', error: true);
+      }
+    } finally {
+      _transferPollInFlight = false;
     }
-    return false;
   }
 
   Future<void> _openComed() async {

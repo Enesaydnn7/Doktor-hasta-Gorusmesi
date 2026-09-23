@@ -1,5 +1,15 @@
 # Sürüm Geçmişi
 
+## v2.8.3 — 23 Eylül 2026
+
+- COMED özgeçmişinde aynı protokolde zaten bulunan hastalık yeniden eklenmiyor; yalnız bilinen tekrar-kayıt uyarısı güvenli biçimde kapatılıyor.
+- Ağrı başlangıç süresi artık skor kutusunu ezmiyor; epikrizdeki `X/10` skoru COMED taslağıyla çapraz doğrulanıyor ve baskı tipi ağrı `Bastırıcı` olarak eşleniyor.
+- Açık düşme öyküsü/risk beyanı COMED düşme riskine taşınıyor; hasta yaşı açık kart başlığından alınarak 65 yaş grubu doğru seçiliyor.
+- Epikrizde yapılandırılmış kronik hastalık, ameliyat, ilaç, alerji, alışkanlık ve soygeçmiş bilgileri COMED paralel çıktısıyla uzlaştırılıyor; engellilik alanı da aktarım kapsamına eklendi.
+- Mobil uygulama COMED aktarım durumunu eski 30 saniyelik pencere yerine arka planda 10 dakikaya kadar izliyor ve uygulamaya dönüldüğünde hemen yeniliyor.
+- Başarılı analizden sonra yerel ses kaydı silinmiyor; doktor aynı kayıt için `Tekrar analiz et` seçeneğini kullanabiliyor.
+- Ses ve transkript yönetim panelindeki analiz kaydında kalıcı olarak tutulmaya devam ediyor.
+
 ## v2.8.2 — 23 Eylül 2026
 
 - Mobil transkripsiyon tek uzun bağlantı yerine kalıcı sunucu işi ve durum sorgulama akışına taşındı.

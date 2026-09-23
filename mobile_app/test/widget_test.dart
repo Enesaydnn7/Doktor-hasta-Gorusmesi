@@ -126,6 +126,31 @@ class QueuedTransferApi extends FakeApi {
       const ComedTransfer(id: 17, status: 'queued', clinicalCardUrl: '');
 }
 
+class SlowReadyTransferApi extends FakeApi {
+  var statusCalls = 0;
+
+  @override
+  Future<ComedTransfer> createComedTransfer(
+    String token,
+    int recordId,
+    ComedPatient patient,
+  ) async => const ComedTransfer(
+    id: 23,
+    status: 'queued',
+    clinicalCardUrl: 'http://goztepe.comedtest.mlpcare.com/test',
+  );
+
+  @override
+  Future<ComedTransfer> getComedTransfer(String token, int transferId) async {
+    statusCalls++;
+    return ComedTransfer(
+      id: transferId,
+      status: statusCalls >= 12 ? 'ready_for_review' : 'filling',
+      clinicalCardUrl: 'http://goztepe.comedtest.mlpcare.com/test',
+    );
+  }
+}
+
 class FakeRecorder extends AudioRecorderService {
   FakeRecorder(this.file);
 
@@ -183,7 +208,7 @@ void main() {
     );
 
     expect(find.text('Klinot'), findsOneWidget);
-    expect(find.textContaining('v2.8.2'), findsOneWidget);
+    expect(find.textContaining('v2.8.3'), findsOneWidget);
     await tester.enterText(find.byKey(const Key('usernameField')), 'admin');
     await tester.enterText(find.byKey(const Key('passwordField')), 'secret');
     await tester.tap(find.byKey(const Key('loginButton')));
@@ -336,6 +361,47 @@ void main() {
   );
 
   testWidgets(
+    'COMED status keeps polling beyond the old thirty second window',
+    (tester) async {
+      final api = SlowReadyTransferApi();
+      const result = AnalysisResult(
+        doctor: {'epikriz': 'Kontrol notu'},
+        comedPatient: ComedPatient(
+          visitId: '22207357',
+          clinicalCardId: '30416836',
+          patientName: 'Test Hasta',
+          protocolNo: 'V-22207357',
+          clinicalCardUrl: 'http://goztepe.comedtest.mlpcare.com/test',
+        ),
+        recordId: 42,
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: buildKlinotTheme(),
+          home: ReportsScreen(
+            api: api,
+            session: UserSession(
+              token: 'doctor-token',
+              username: 'doctor',
+              role: 'doctor',
+            ),
+            result: result,
+          ),
+        ),
+      );
+
+      await tester.tap(find.byKey(const Key('transferToComedButton')));
+      await tester.pump();
+      for (var i = 0; i < 13; i++) {
+        await tester.pump(const Duration(seconds: 3));
+      }
+      expect(api.statusCalls, greaterThanOrEqualTo(12));
+      expect(find.text('COMED’e aktarıldı · Kontrol bekliyor'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
+
+  testWidgets(
     'recording is analyzed without exposing transcript or progress UI',
     (tester) async {
       final directory = Directory.systemTemp.createTempSync('klinot_test_');
@@ -401,6 +467,12 @@ void main() {
 
       await tester.pageBack();
       await tester.pumpAndSettle();
+      expect(audio.existsSync(), isTrue);
+      expect(find.text('Tekrar analiz et'), findsOneWidget);
+      expect(
+        find.textContaining('Ses kaydı cihazda korunuyor'),
+        findsOneWidget,
+      );
       directory.deleteSync(recursive: true);
     },
   );

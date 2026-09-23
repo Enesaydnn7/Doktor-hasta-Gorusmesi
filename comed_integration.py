@@ -82,7 +82,7 @@ DIAGNOSIS_TYPES = {"differential", "definitive", "preliminary"}
 DIAGNOSIS_SIDES = {"none", "left", "right"}
 PROFILE_LIST_FIELDS = (
     "diseases", "operations", "pharmacy_products", "allergies", "addictions",
-    "special_conditions", "vaccines", "devices", "transfusions", "therapies",
+    "special_conditions", "vaccines", "devices", "disabilities", "transfusions", "therapies",
 )
 
 COMED_NATIVE_POST_ENDPOINTS = {
@@ -189,7 +189,7 @@ def _profile_present(profile: dict[str, Any]) -> bool:
         for field in (
             "diseases", "operations", "pharmacy_products", "allergies",
             "addictions", "special_conditions", "vaccines", "devices",
-            "transfusions", "therapies", "occupation", "education",
+            "disabilities", "transfusions", "therapies", "occupation", "education",
             "marital_status",
         )
     )

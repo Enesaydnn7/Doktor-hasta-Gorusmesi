@@ -39,6 +39,7 @@ class _RecorderScreenState extends State<RecorderScreen> {
   var _consent = false;
   File? _recordedFile;
   var _recoveredRecording = false;
+  var _analysisCompleted = false;
   String? _error;
   List<ComedPatient> _worklist = const [];
   ComedPatient? _selectedPatient;
@@ -66,6 +67,7 @@ class _RecorderScreenState extends State<RecorderScreen> {
       _recordedFile = recovered.file;
       _elapsed = recovered.elapsed ?? Duration.zero;
       _recoveredRecording = true;
+      _analysisCompleted = false;
       _state = RecordingState.ready;
       _error = null;
     });
@@ -121,6 +123,7 @@ class _RecorderScreenState extends State<RecorderScreen> {
       _timer?.cancel();
       _elapsed = Duration.zero;
       _recoveredRecording = false;
+      _analysisCompleted = false;
       _timer = Timer.periodic(const Duration(seconds: 1), (_) {
         if (mounted && _state == RecordingState.recording) {
           setState(() => _elapsed += const Duration(seconds: 1));
@@ -168,6 +171,7 @@ class _RecorderScreenState extends State<RecorderScreen> {
       setState(() {
         _recordedFile = file;
         _recoveredRecording = false;
+        _analysisCompleted = false;
         _state = RecordingState.ready;
         _level = 0;
         _error = null;
@@ -190,6 +194,7 @@ class _RecorderScreenState extends State<RecorderScreen> {
     setState(() {
       _recordedFile = null;
       _recoveredRecording = false;
+      _analysisCompleted = false;
       _state = RecordingState.idle;
       _elapsed = Duration.zero;
       _level = 0;
@@ -251,7 +256,14 @@ class _RecorderScreenState extends State<RecorderScreen> {
           ),
         ),
       );
-      await _discardRecordedFile();
+      if (!mounted) return;
+      setState(() {
+        // Doktor aynı sesi yeniden analiz edebilsin. Dosya yalnız açıkça
+        // "Kaydı sil" seçildiğinde veya yeni kayıt başlatıldığında kaldırılır.
+        _state = RecordingState.ready;
+        _analysisCompleted = true;
+        _error = null;
+      });
     } catch (error) {
       if (!mounted) return;
       if (error is ApiException &&
@@ -349,6 +361,7 @@ class _RecorderScreenState extends State<RecorderScreen> {
                             key: const ValueKey('ready'),
                             elapsed: _time,
                             recovered: _recoveredRecording,
+                            analyzed: _analysisCompleted,
                             onAnalyze: _analyze,
                             onDiscard: _discardRecordedFile,
                           )
@@ -786,12 +799,14 @@ class _ReadyRecording extends StatelessWidget {
     super.key,
     required this.elapsed,
     required this.recovered,
+    required this.analyzed,
     required this.onAnalyze,
     required this.onDiscard,
   });
 
   final String elapsed;
   final bool recovered;
+  final bool analyzed;
   final VoidCallback onAnalyze;
   final VoidCallback onDiscard;
 
@@ -817,8 +832,10 @@ class _ReadyRecording extends StatelessWidget {
         style: const TextStyle(color: Color(0xFF60777D)),
       ),
       const SizedBox(height: 8),
-      const Text(
-        'Analiz başladığında görüşme metni ve işlem adımları gösterilmez. Epikriz hazır olunca doktor ekranı otomatik açılır.',
+      Text(
+        analyzed
+            ? 'Ses kaydı cihazda korunuyor. Aynı görüşmeyi yeniden analiz edebilir veya kaydı silip yeni görüşmeye başlayabilirsiniz.'
+            : 'Analiz başladığında görüşme metni ve işlem adımları gösterilmez. Epikriz hazır olunca doktor ekranı otomatik açılır.',
         textAlign: TextAlign.center,
         style: TextStyle(color: Color(0xFF60777D), height: 1.45),
       ),
@@ -829,7 +846,7 @@ class _ReadyRecording extends StatelessWidget {
           key: const Key('analyzeButton'),
           onPressed: onAnalyze,
           icon: const Icon(Icons.auto_awesome_rounded),
-          label: const Text('Analiz et'),
+          label: Text(analyzed ? 'Tekrar analiz et' : 'Analiz et'),
         ),
       ),
       const SizedBox(height: 8),
