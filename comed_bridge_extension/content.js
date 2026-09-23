@@ -7,6 +7,17 @@
   const NATIVE_COMMAND_SOURCE = "klinot-comed-native-command-v1";
   const NATIVE_RESULT_SOURCE = "klinot-comed-native-result-v1";
   const NATIVE_TIMEOUT_MS = 45000;
+  const SYSTEM_REVIEW_DEFAULTS = {
+    "Genel Sistem Sorgusu": "Özellik Yok",
+    "Genitoüriner Sistem": "Özellik Yok",
+    "Deri": "Özellik Yok",
+    "Solunum Sistemi": "Özellik Yok",
+    "Sinir Sistemi": "Özellik Yok",
+    "Kas - İskelet Sistemi": "Özellik Yok",
+    "Dolaşım Sistemi": "Özellik Yok",
+    "Gastrointestinal Sistem": "Özellik Yok",
+    "Komplikasyon": "Komplikasyon Yok",
+  };
 
   let activeTransferId = Number(sessionStorage.getItem(ACTIVE_TRANSFER_KEY) || 0) || null;
   let busy = false;
@@ -326,16 +337,31 @@
     return group ? clickText(text, group) : false;
   }
 
-  function setCheckboxByLabel(root, label, checked = true) {
+  function checkboxByLabel(root, label) {
     const wanted = label.toLocaleLowerCase("tr-TR");
     const candidates = [...root.querySelectorAll('label,[role="checkbox"]')];
     const labelNode = candidates.find((node) => textOf(node).toLocaleLowerCase("tr-TR") === wanted);
-    if (!labelNode) return false;
+    if (!labelNode) return null;
     const input = labelNode.matches('input[type="checkbox"]')
-      ? labelNode : labelNode.querySelector('input[type="checkbox"]');
-    if (input && input.checked === checked) return true;
-    labelNode.click();
-    return true;
+      ? labelNode
+      : labelNode.control
+        || (labelNode.htmlFor ? document.getElementById(labelNode.htmlFor) : null)
+        || labelNode.querySelector('input[type="checkbox"]');
+    return {input, labelNode};
+  }
+
+  function setCheckboxByLabel(root, label, checked = true) {
+    const match = checkboxByLabel(root, label);
+    if (!match) return false;
+    const {input, labelNode} = match;
+    if (input) {
+      if (input.disabled) return false;
+      if (input.checked !== checked) input.click();
+      return input.checked === checked;
+    }
+    const current = labelNode.getAttribute("aria-checked") === "true";
+    if (current !== checked) labelNode.click();
+    return (labelNode.getAttribute("aria-checked") === "true") === checked;
   }
 
   function sleep(ms) {
@@ -557,36 +583,106 @@
     return filled;
   }
 
+  function visibleSystemInquiryModal() {
+    return [...document.querySelectorAll(".co-modal.co-document-popup")].find((modal) => {
+      if (modal.offsetParent === null) return false;
+      return [...modal.querySelectorAll(".hasta-detay-card__title")]
+        .some((title) => textOf(title) === "Genel Sistem Sorgusu");
+    }) || null;
+  }
+
+  function systemInquiryCards(modal) {
+    return new Map([...modal.querySelectorAll(
+      ".hasta-detay-card.document-panel-parameters-container",
+    )].map((card) => [textOf(card.querySelector(".hasta-detay-card__title")), card]));
+  }
+
+  function checkboxLabel(input, root) {
+    return [...root.querySelectorAll("label")]
+      .find((label) => label.htmlFor === input.id) || null;
+  }
+
   async function fillSystemInquiry(review = {}) {
-    const opener = [...document.querySelectorAll("button")]
-      .find((button) => textOf(button) === "Sistem Sorgulama" && button.offsetParent !== null);
-    if (!opener) return {filled: 0, saved: false, fields: []};
-    opener.click();
-    const modal = await waitFor(() => [...document.querySelectorAll(".co-modal.co-document-popup")]
-      .find((item) => item.offsetParent !== null), 5000);
-    if (!modal) return {filled: 0, saved: false, fields: []};
+    const expectedGroups = Object.keys(SYSTEM_REVIEW_DEFAULTS);
+    let modal = visibleSystemInquiryModal();
+    if (!modal) {
+      const opener = [...document.querySelectorAll("button")]
+        .find((button) => textOf(button) === "Sistem Sorgulama" && button.offsetParent !== null);
+      if (!opener) return {filled: 0, saved: false, fields: [], error: "Sistem Sorgulama düğmesi bulunamadı"};
+      opener.click();
+    }
+
+    modal = await waitFor(() => {
+      const candidate = visibleSystemInquiryModal();
+      if (!candidate) return null;
+      const cards = systemInquiryCards(candidate);
+      const ready = expectedGroups.every((group) => {
+        const card = cards.get(group);
+        return card && card.querySelector('input[type="checkbox"]');
+      });
+      return ready ? candidate : null;
+    }, 10000);
+    if (!modal) {
+      return {filled: 0, saved: false, fields: [], error: "Sistem Sorgulama alanları yüklenemedi"};
+    }
 
     const fields = [];
     let filled = 0;
-    for (const [group, rawOptions] of Object.entries(review || {})) {
-      const card = [...modal.querySelectorAll(".hasta-detay-card")]
-        .find((item) => textOf(item.querySelector(".hasta-detay-card__title")) === group);
+    const cards = systemInquiryCards(modal);
+    for (const group of expectedGroups) {
+      const card = cards.get(group);
       if (!card) continue;
-      const options = Array.isArray(rawOptions) ? rawOptions : [rawOptions];
-      for (const option of options.filter(Boolean)) {
-        if (setCheckboxByLabel(card, String(option), true)) {
+      const rawOptions = review?.[group];
+      const requested = (Array.isArray(rawOptions) ? rawOptions : [rawOptions])
+        .filter(Boolean).map((value) => String(value));
+      const available = requested.filter((option) => checkboxByLabel(card, option)?.input);
+      const selectedOptions = available.length ? available : [SYSTEM_REVIEW_DEFAULTS[group]];
+      const selectedSet = new Set(selectedOptions.map((option) => option.toLocaleLowerCase("tr-TR")));
+
+      for (const input of card.querySelectorAll('input[type="checkbox"]:checked')) {
+        const label = checkboxLabel(input, card);
+        if (label && !selectedSet.has(textOf(label).toLocaleLowerCase("tr-TR"))) input.click();
+      }
+      for (const option of selectedOptions) {
+        if (setCheckboxByLabel(card, option, true)) {
           filled += 1;
           fields.push(`review_of_system.${group}.${option}`);
         }
       }
+      if (!card.querySelector('input[type="checkbox"]:checked')) {
+        const fallback = SYSTEM_REVIEW_DEFAULTS[group];
+        if (setCheckboxByLabel(card, fallback, true)) {
+          filled += 1;
+          fields.push(`review_of_system.${group}.${fallback}`);
+        }
+      }
     }
 
-    const save = [...modal.querySelectorAll("button")]
-      .find((button) => textOf(button) === "Kaydet" && button.offsetParent !== null && !button.disabled);
-    if (!save) return {filled, saved: false, fields};
+    const missingGroups = expectedGroups.filter((group) => {
+      const card = cards.get(group);
+      return !card?.querySelector('input[type="checkbox"]:checked');
+    });
+    if (missingGroups.length) {
+      return {
+        filled, saved: false, fields, missingGroups,
+        error: `Zorunlu Sistem Sorgulama grupları seçilemedi: ${missingGroups.join(", ")}`,
+      };
+    }
+
+    const save = modal.querySelector(
+      '.document-fill__footer button[data-test="co-button-Kaydet"]',
+    );
+    if (!save || save.offsetParent === null || save.disabled) {
+      return {filled, saved: false, fields, error: "Sistem Sorgulama Kaydet düğmesi bulunamadı"};
+    }
     save.click();
-    const closed = await waitFor(() => !modal.isConnected || modal.offsetParent === null, 5000);
-    return {filled, saved: Boolean(closed), fields};
+    const closed = await waitFor(() => !modal.isConnected || modal.offsetParent === null, 12000);
+    return {
+      filled,
+      saved: Boolean(closed),
+      fields,
+      error: closed ? null : "Sistem Sorgulama kaydı tamamlanmadı; pencere açık kaldı",
+    };
   }
 
   async function fillDiagnoses(diagnoses = []) {
@@ -651,11 +747,6 @@
       record(field, setValue(element, value));
     };
 
-    const complaintCard = cardByTitle("Yakınması") || document;
-    write("patient_complaint", byPlaceholder("Şikayeti", complaintCard), fields.patient_complaint);
-    write("patient_story", byPlaceholder("Öykü", complaintCard), fields.patient_story);
-    record("complaint_start_date", fillDuration(complaintCard, fields.complaint_start_date));
-    write("review_of_system_simple", byPlaceholder("Sistem Sorgusu", cardByTitle("Sistem Sorgusu") || document), fields.review_of_system_simple);
     const systemResult = await fillSystemInquiry(fields.review_of_system || {});
     systemResult.fields.forEach((field) => fieldResults.push({
       field, channel: "extension", status: "filled",
@@ -668,7 +759,22 @@
       channel: "extension",
       status: systemResult.saved ? "saved" : "not_saved",
       source: "form",
+      detail: systemResult.error || null,
     });
+    if (!systemResult.saved) {
+      return {
+        filled,
+        fieldResults,
+        systemSaved: false,
+        systemError: systemResult.error || "Sistem Sorgulama kaydedilemedi",
+      };
+    }
+
+    const complaintCard = cardByTitle("Yakınması") || document;
+    write("patient_complaint", byPlaceholder("Şikayeti", complaintCard), fields.patient_complaint);
+    write("patient_story", byPlaceholder("Öykü", complaintCard), fields.patient_story);
+    record("complaint_start_date", fillDuration(complaintCard, fields.complaint_start_date));
+    write("review_of_system_simple", byPlaceholder("Sistem Sorgusu", cardByTitle("Sistem Sorgusu") || document), fields.review_of_system_simple);
 
     const examCard = cardByTitle("Fizik Muayene Bulguları") || document;
     write("exam_simple_textarea", byPlaceholder("Muayene Notu", examCard), fields.exam_simple_textarea);
@@ -760,6 +866,18 @@
 
       const diagnosisPosted = !postError && hasDiagnosisPost && postResults.length > 0;
       const formResult = await fillFormDraft(transfer, {skipDiagnoses: diagnosisPosted});
+      if (!formResult.systemSaved) {
+        const systemError = new Error(formResult.systemError || "Sistem Sorgulama kaydedilemedi");
+        systemError.klinotDebug = {
+          stage: "system_inquiry",
+          extension: {
+            filled_count: formResult.filled,
+            system_inquiry_saved: false,
+            fields: formResult.fieldResults,
+          },
+        };
+        throw systemError;
+      }
       if (!postResults.length && !formResult.filled) {
         throw postError || new Error("COMED form alanları bulunamadı; kartı yenileyip tekrar deneyin");
       }
@@ -793,9 +911,10 @@
       await updateStatus(transfer.id, "failed", error.message, {
         started_at: startedAt,
         finished_at: new Date().toISOString(),
-        stage: "failed",
+        stage: error.klinotDebug?.stage || "failed",
         message: error.message,
         auto_sign: false,
+        ...(error.klinotDebug || {}),
       }).catch(() => {});
       sessionStorage.removeItem(ACTIVE_TRANSFER_KEY);
       activeTransferId = null;

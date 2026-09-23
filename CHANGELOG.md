@@ -1,5 +1,11 @@
 # Sürüm Geçmişi
 
+## v2.8.1 — 23 Eylül 2026
+
+- Sistem Sorgulama belgesinin dokuz zorunlu grubunun tamamen yüklenmesi bekleniyor; görüşmede bulgu yoksa her grup için güvenli `Özellik Yok`/`Komplikasyon Yok` varsayılanı seçiliyor.
+- COMED'in özel checkbox bileşeninde gerçek input hedefi kullanılıyor ve her grubun işaretlendiği doğrulanmadan alt belgenin sağ-alt `Kaydet` düğmesine basılmıyor.
+- Alt belge kaydedilip kapanmadan ana muayene alanlarına geçilmiyor; başarısız kayıt artık hazır gibi gösterilmeyip admin debug kaydında `system_inquiry` aşamasıyla raporlanıyor.
+
 ## v2.8.0 — 22 Eylül 2026
 
 - COMED'in genişletilemeyen `window` nesnesinde izleyiciyi durduran hata giderildi; gerçek GET/POST şablonları yeniden yakalanabilir hale geldi.
