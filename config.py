@@ -7,7 +7,7 @@ load_dotenv(override=True)  # .env her zaman kazanır
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
-APP_VERSION = os.getenv("APP_VERSION", "v2.8.1")
+APP_VERSION = os.getenv("APP_VERSION", "v2.8.2")
 
 # COMED test ortamı. Kimlik doğrulama anahtarları uygulama sunucusunda tutulmaz;
 # aktarım, kurumsal ağdaki yetkili tarayıcı köprüsü üzerinden tamamlanır.
@@ -23,7 +23,7 @@ COMED_API_BASE_URL = os.getenv(
 ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY", "")
 ELEVENLABS_STT_MODEL = os.getenv("ELEVENLABS_STT_MODEL", "scribe_v2")
 ELEVENLABS_STT_LANGUAGE = os.getenv("ELEVENLABS_STT_LANGUAGE", "tr")
-ELEVENLABS_STT_TIMEOUT = float(os.getenv("ELEVENLABS_STT_TIMEOUT", "90"))
+ELEVENLABS_STT_TIMEOUT = float(os.getenv("ELEVENLABS_STT_TIMEOUT", "900"))
 _DEFAULT_STT_KEYTERMS = (
     "doktor,hasta,şikâyet,anamnez,muayene,tetkik,ilaç,doz,reçete,kontrol,"
     "gastrit,ülser,reflü,endoskopi,bulantı,kusma,ağrı,alerji,ameliyat,"
@@ -39,7 +39,7 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 OPENAI_STT_MODEL = os.getenv("OPENAI_STT_MODEL", "gpt-4o-transcribe-diarize")
 OPENAI_STT_FALLBACK_MODEL = os.getenv("OPENAI_STT_FALLBACK_MODEL", "gpt-transcribe")
 OPENAI_STT_LANGUAGE = os.getenv("OPENAI_STT_LANGUAGE", "tr")
-OPENAI_STT_TIMEOUT = float(os.getenv("OPENAI_STT_TIMEOUT", "60"))
+OPENAI_STT_TIMEOUT = float(os.getenv("OPENAI_STT_TIMEOUT", "900"))
 
 # 0 = deterministik: aynı görüşme -> mümkün olduğunca aynı çıktı
 TEMPERATURE = float(os.getenv("TEMPERATURE", "0"))

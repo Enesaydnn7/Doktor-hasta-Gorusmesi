@@ -8,6 +8,7 @@ Kullanıcı paneli : http://127.0.0.1:8000
 Admin paneli     : http://127.0.0.1:8000/admin   (kullanıcı: admin / şifre: admin)
 """
 import asyncio
+import hashlib
 import json
 import logging
 import re
@@ -66,12 +67,68 @@ def admin_auth(request: Request):
 
 # ---- Ses, analizden önce yüklendiği için geçici olarak burada tutulur ----
 _PENDING_MAX = 20
+_TRANSCRIPTION_TASKS: dict[str, asyncio.Task] = {}
 
 
 def _pending_put(data: bytes, mime: str, ad: str) -> str:
     aid = uuid.uuid4().hex
     db.bekleyen_ses_kaydet(aid, data, mime, ad, limit=_PENDING_MAX)
     return aid
+
+
+def _transcription_payload(job: dict) -> dict:
+    payload = {
+        "job_id": job["id"],
+        "status": job["status"],
+        "attempts": job.get("attempts", 0),
+    }
+    if job["status"] == "completed":
+        payload.update({
+            "transcript": job.get("transcript") or "",
+            "usage": job.get("usage") or {},
+            "audio_id": job["id"],
+        })
+    elif job.get("error"):
+        payload["error"] = job["error"]
+    return payload
+
+
+async def _run_transcription_job(job_id: str) -> None:
+    """İstemci bağlantısı kapansa da STT işini sunucuda tamamla."""
+    try:
+        db.transcription_job_processing(job_id)
+        pending = db.bekleyen_ses_al(job_id, sil=False)
+        if not pending:
+            raise RuntimeError("Yüklenen ses kaydı bulunamadı; kaydı yeniden gönderin.")
+        data, mime, name = pending
+        text, usage = await asyncio.to_thread(stt.transcribe, data, mime, name)
+        db.transcription_job_complete(job_id, text, usage)
+        logger.info(
+            "Mobil STT işi tamamlandı: job=%s provider=%s model=%s bytes=%s seconds=%s",
+            job_id[:12], usage.get("provider"), usage.get("model"), len(data),
+            usage.get("seconds"),
+        )
+    except Exception as exc:  # noqa: BLE001
+        error_id = uuid.uuid4().hex[:8]
+        logger.exception("Mobil STT işi hatası [%s] job=%s", error_id, job_id[:12])
+        db.transcription_job_fail(
+            job_id,
+            f"{public_error_message(exc)} (hata kodu: {error_id})",
+        )
+
+
+def _ensure_transcription_task(job_id: str) -> None:
+    task = _TRANSCRIPTION_TASKS.get(job_id)
+    if task is not None and not task.done():
+        return
+    task = asyncio.create_task(_run_transcription_job(job_id))
+    _TRANSCRIPTION_TASKS[job_id] = task
+
+    def cleanup(finished: asyncio.Task, key: str = job_id) -> None:
+        if _TRANSCRIPTION_TASKS.get(key) is finished:
+            _TRANSCRIPTION_TASKS.pop(key, None)
+
+    task.add_done_callback(cleanup)
 
 
 class AnalyzeIn(BaseModel):
@@ -367,6 +424,64 @@ async def mobile_transcribe(
     _user: dict = Depends(mobile_auth),
 ):
     return await transcribe(file)
+
+
+@app.post("/api/v1/mobile/transcriptions")
+async def mobile_transcription_start(
+    file: UploadFile = File(...),
+    user: dict = Depends(mobile_auth),
+):
+    """Sesi hızla teslim al; uzun STT işini bağlantıdan bağımsız yürüt."""
+    data = await file.read()
+    if not data:
+        return JSONResponse({"error": "Ses dosyası boş."}, status_code=400)
+    if len(data) > stt.MAX_BYTES:
+        return JSONResponse(
+            {
+                "error": (
+                    f"Ses dosyası çok büyük ({len(data) // (1024 * 1024)} MB). "
+                    f"Üst sınır {stt.MAX_BYTES // (1024 * 1024)} MB."
+                )
+            },
+            status_code=413,
+        )
+
+    # Aynı kullanıcının aynı ses dosyasını tekrar göndermesi tek bir işe bağlanır.
+    digest = hashlib.sha256()
+    digest.update(user["user"].encode("utf-8"))
+    digest.update(b"\0")
+    digest.update(data)
+    job_id = digest.hexdigest()
+    job = db.transcription_job_create(
+        job_id,
+        data,
+        file.content_type or "audio/mpeg",
+        file.filename or "klinot-kayit.m4a",
+        requested_by=user["user"],
+        limit=_PENDING_MAX,
+    )
+    if job["status"] != "completed":
+        _ensure_transcription_task(job_id)
+        job = db.transcription_job_get(job_id) or job
+    return JSONResponse(
+        _transcription_payload(job),
+        status_code=200 if job["status"] == "completed" else 202,
+    )
+
+
+@app.get("/api/v1/mobile/transcriptions/{job_id}")
+async def mobile_transcription_status(
+    job_id: str,
+    user: dict = Depends(mobile_auth),
+):
+    job = db.transcription_job_get(job_id)
+    if not job or job.get("requested_by") != user["user"]:
+        raise HTTPException(status_code=404, detail="Ses işleme kaydı bulunamadı")
+    if job["status"] in {"queued", "processing"}:
+        # Sunucu yeniden başladıysa veritabanındaki bekleyen işi kaldığı yerden başlat.
+        _ensure_transcription_task(job_id)
+        job = db.transcription_job_get(job_id) or job
+    return _transcription_payload(job)
 
 
 @app.post("/api/v1/mobile/analyze/stream")

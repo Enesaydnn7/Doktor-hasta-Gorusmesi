@@ -54,7 +54,7 @@ formundan ayrı yetki ve iş akışlarıdır. Ses kaydından otomatik tetiklenme
 
 ## POST davranışı
 
-v2.8.1 hibrit çalışır. Klinot aynı protokol için daha önce başarıyla yakalanmış COMED
+v2.8.2 hibrit çalışır. Klinot aynı protokol için daha önce başarıyla yakalanmış COMED
 gövde şemasını güncel klinik taslakla eşleyebiliyorsa izin listesindeki
 `saveDocumentProcesses` ve doğrulanabildiğinde `savevisitdiagnoses` uçlarına POST
 eder. Ana POST şablonu yoksa seçili açık hasta kartını eklenti üzerinden doldurur;

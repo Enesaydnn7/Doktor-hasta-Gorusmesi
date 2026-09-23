@@ -88,6 +88,23 @@ def init():
             "ON bekleyen_sesler(olusturma DESC)"
         )
         c.execute("""
+            CREATE TABLE IF NOT EXISTS transcription_jobs (
+                id TEXT PRIMARY KEY,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                status TEXT NOT NULL,
+                transcript TEXT,
+                usage TEXT,
+                error TEXT,
+                requested_by TEXT,
+                attempts INTEGER NOT NULL DEFAULT 0
+            )
+        """)
+        c.execute(
+            "CREATE INDEX IF NOT EXISTS ix_transcription_jobs_updated "
+            "ON transcription_jobs(updated_at DESC)"
+        )
+        c.execute("""
             CREATE TABLE IF NOT EXISTS comed_worklist (
                 visit_id TEXT PRIMARY KEY,
                 clinical_card_id TEXT NOT NULL,
@@ -580,6 +597,109 @@ def bekleyen_ses_al(kimlik: str, sil: bool = True):
         if sil:
             c.execute("DELETE FROM bekleyen_sesler WHERE id=?", (kimlik,))
         return r["ses"], (r["ses_mime"] or "audio/mpeg"), (r["ses_ad"] or "kayit")
+
+
+def transcription_job_create(kimlik: str, ses: bytes, ses_mime: str,
+                             ses_ad: str, requested_by: str,
+                             limit: int = 20) -> dict:
+    """Sesi kalıcı bekleyen alana al ve aynı içerik için tek STT işi oluştur."""
+    now = datetime.now().isoformat(timespec="microseconds")
+    with _lock, _conn() as c:
+        existing = c.execute(
+            "SELECT * FROM transcription_jobs WHERE id=?", (kimlik,)
+        ).fetchone()
+        c.execute(
+            """INSERT OR REPLACE INTO bekleyen_sesler
+               (id, olusturma, ses, ses_mime, ses_ad) VALUES (?,?,?,?,?)""",
+            (kimlik, now, ses, ses_mime, ses_ad),
+        )
+        if existing is None:
+            c.execute(
+                """INSERT INTO transcription_jobs
+                   (id, created_at, updated_at, status, requested_by, attempts)
+                   VALUES (?,?,?,?,?,0)""",
+                (kimlik, now, now, "queued", requested_by),
+            )
+        elif existing["status"] == "failed":
+            c.execute(
+                """UPDATE transcription_jobs
+                   SET updated_at=?, status='queued', error=NULL, requested_by=?
+                   WHERE id=?""",
+                (now, requested_by, kimlik),
+            )
+
+        eski = c.execute(
+            """SELECT pending.id
+               FROM bekleyen_sesler AS pending
+               LEFT JOIN transcription_jobs AS job ON job.id=pending.id
+               WHERE job.status IS NULL OR job.status!='processing'
+               ORDER BY pending.olusturma DESC LIMIT -1 OFFSET ?""",
+            (max(1, int(limit)),),
+        ).fetchall()
+        if eski:
+            ids = [(row["id"],) for row in eski]
+            c.executemany("DELETE FROM bekleyen_sesler WHERE id=?", ids)
+            c.executemany(
+                "DELETE FROM transcription_jobs WHERE id=? AND status!='processing'",
+                ids,
+            )
+
+        row = c.execute(
+            "SELECT * FROM transcription_jobs WHERE id=?", (kimlik,)
+        ).fetchone()
+    return _transcription_job_dict(row)
+
+
+def transcription_job_get(kimlik: str) -> dict | None:
+    with _lock, _conn() as c:
+        row = c.execute(
+            "SELECT * FROM transcription_jobs WHERE id=?", (kimlik,)
+        ).fetchone()
+    return _transcription_job_dict(row) if row else None
+
+
+def transcription_job_processing(kimlik: str) -> None:
+    with _lock, _conn() as c:
+        c.execute(
+            """UPDATE transcription_jobs
+               SET updated_at=?, status='processing', error=NULL,
+                   attempts=attempts+1
+               WHERE id=?""",
+            (datetime.now().isoformat(timespec="microseconds"), kimlik),
+        )
+
+
+def transcription_job_complete(kimlik: str, transcript: str, usage: dict) -> None:
+    with _lock, _conn() as c:
+        c.execute(
+            """UPDATE transcription_jobs
+               SET updated_at=?, status='completed', transcript=?, usage=?, error=NULL
+               WHERE id=?""",
+            (
+                datetime.now().isoformat(timespec="microseconds"),
+                transcript,
+                json.dumps(usage or {}, ensure_ascii=False),
+                kimlik,
+            ),
+        )
+
+
+def transcription_job_fail(kimlik: str, error: str) -> None:
+    with _lock, _conn() as c:
+        c.execute(
+            """UPDATE transcription_jobs
+               SET updated_at=?, status='failed', error=? WHERE id=?""",
+            (datetime.now().isoformat(timespec="microseconds"), error, kimlik),
+        )
+
+
+def _transcription_job_dict(row) -> dict:
+    item = dict(row)
+    try:
+        item["usage"] = json.loads(item.get("usage") or "{}")
+    except (TypeError, json.JSONDecodeError):
+        item["usage"] = {}
+    return item
 
 
 def ses_getir(kid: int):

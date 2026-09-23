@@ -47,9 +47,9 @@ class ComedExtensionTests(unittest.TestCase):
         self.assertNotIn('window.__klinotComedTraceEvents', source)
         self.assertNotIn("saveAndSign", source)
 
-    def test_manifest_declares_v281(self):
+    def test_manifest_declares_v282(self):
         manifest = json.loads((EXTENSION / "manifest.json").read_text(encoding="utf-8"))
-        self.assertEqual(manifest["version"], "2.8.1")
+        self.assertEqual(manifest["version"], "2.8.2")
 
 
 if __name__ == "__main__":

@@ -1,5 +1,13 @@
 # Sürüm Geçmişi
 
+## v2.8.2 — 23 Eylül 2026
+
+- Mobil transkripsiyon tek uzun bağlantı yerine kalıcı sunucu işi ve durum sorgulama akışına taşındı.
+- 120 saniyelik kesilme kaldırıldı; 15–30 dakikalık kayıtlar için 45 dakikalık işleme penceresi eklendi.
+- Aynı ses tekrar gönderildiğinde içerik kimliğiyle mevcut sonuç kullanılıyor; çift STT maliyeti önleniyor.
+- Kayıt ve analiz sırasında ekran uyanık tutuluyor; bağlantı kesilse bile yerel ses silinmiyor.
+- Yeni kayıtlar 64 kbps kalıcı uygulama klasörüne yazılıyor; eski geçici kayıtlar açılışta kurtarılıyor.
+
 ## v2.8.1 — 23 Eylül 2026
 
 - Sistem Sorgulama belgesinin dokuz zorunlu grubunun tamamen yüklenmesi bekleniyor; görüşmede bulgu yoksa her grup için güvenli `Özellik Yok`/`Komplikasyon Yok` varsayılanı seçiliyor.
