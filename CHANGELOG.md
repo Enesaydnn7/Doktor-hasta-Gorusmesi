@@ -1,5 +1,14 @@
 # Sürüm Geçmişi
 
+## v2.8.4 — 23 Eylül 2026
+
+- Metre olarak gelen boy değeri COMED'in santimetre alanına çevriliyor; hatalı VKİ/VYA oluşması engellendi.
+- Ağrı skoru COMED'in ayrı NRS kaydırıcısından dolduruluyor; saat cinsindeki ağrı başlangıcı yanlışlıkla gün olarak yazılmıyor.
+- Düşme riski ayrıntı menüsü doğru COMED kapsayıcısından bulunuyor ve hasta yaşı kart başlığından türetiliyor.
+- Özgeçmiş alışkanlıkları seçimden sonra `+` ile ekleniyor; gerçek bilgiler varken `Özellik Yok` seçimi uygulanmıyor.
+- Soygeçmiş tablosu başlıksız COMED yapısına göre eşlenerek ilişki/hastalık hücreleri dolduruluyor.
+- Sistem sorgusu özeti ayrıntılı bulgulardan üretiliyor; aynı bulgular zaten kayıtlıysa tekrar kaydetme yapılıp sunucu uyarısı açılmıyor.
+
 ## v2.8.3 — 23 Eylül 2026
 
 - COMED özgeçmişinde aynı protokolde zaten bulunan hastalık yeniden eklenmiyor; yalnız bilinen tekrar-kayıt uyarısı güvenli biçimde kapatılıyor.

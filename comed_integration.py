@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 import json
+import re
 from typing import Any
 from urllib.parse import urlsplit
 
@@ -151,6 +152,34 @@ def _named_items(value: Any) -> list[dict[str, str | None]]:
     return items
 
 
+def _height_cm(value: Any) -> Any:
+    """Normalize a model-provided metre value for COMED's centimetre field."""
+    if value is None or isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        number = float(value)
+    else:
+        match = re.search(r"-?\d+(?:[.,]\d+)?", str(value))
+        if not match:
+            return value
+        try:
+            number = float(match.group(0).replace(",", "."))
+        except ValueError:
+            return value
+    if 0.5 <= number <= 3:
+        number *= 100
+    rounded = round(number, 1)
+    return int(rounded) if rounded.is_integer() else rounded
+
+
+def _review_summary(review: dict[str, list[str]]) -> str:
+    parts = []
+    for group, values in review.items():
+        if values:
+            parts.append(f"{group}: {', '.join(values)}")
+    return "; ".join(parts)
+
+
 def _family_items(value: Any) -> list[dict[str, str | None]]:
     items: list[dict[str, str | None]] = []
     for item in value if isinstance(value, list) else []:
@@ -208,18 +237,22 @@ def _fall_risk_present(value: Any) -> bool:
         return True
     if not isinstance(value, dict) or value.get("exists") is not True:
         return False
-    return (
-        value.get("age_group") in {"65_plus", "under_65"}
-        and all(
-            isinstance(value.get(field), bool)
-            for field in FALL_RISK_DETAIL_FIELDS
-            if field != "age_group"
-        )
+    # Yaş grubu COMED kartındaki hasta yaşından eklenti tarafından güvenle
+    # türetilir; klinik risk cevaplarının tamamı ise analiz taslağında bulunmalı.
+    return all(
+        isinstance(value.get(field), bool)
+        for field in FALL_RISK_DETAIL_FIELDS
+        if field != "age_group"
     )
 
 
 def _pain_present(value: Any) -> bool:
-    return isinstance(value, dict) and isinstance(value.get("exists"), bool)
+    if not isinstance(value, dict) or not isinstance(value.get("exists"), bool):
+        return False
+    if value.get("exists") is False:
+        return True
+    score = value.get("score")
+    return isinstance(score, (int, float)) and not isinstance(score, bool) and 0 <= score <= 10
 
 
 def normalize_draft(draft: dict[str, Any] | None) -> dict[str, Any]:
@@ -251,15 +284,20 @@ def normalize_draft(draft: dict[str, Any] | None) -> dict[str, Any]:
     data["profile"]["family_history"] = _family_items(
         data["profile"].get("family_history")
     )
+    if any(data["profile"].get(field) for field in PROFILE_LIST_FIELDS):
+        data["profile"]["no_known_history"] = False
+    if data["profile"]["family_history"]:
+        data["profile"]["no_known_family_history"] = False
     if not isinstance(data["profile"].get("parents_related"), bool):
         data["profile"]["parents_related"] = None
+
+    data["vitals"]["height"] = _height_cm(data["vitals"].get("height"))
 
     # The doctor explicitly asked for a fully reviewable MVP draft.  These are
     # operational placeholders, not inferred findings: the admin debug surface
     # marks every one and the doctor still performs the final COMED review/sign.
     fallback("patient_complaint", OPERATIONAL_DEFAULTS["patient_complaint"])
     fallback("patient_story", OPERATIONAL_DEFAULTS["patient_story"])
-    fallback("review_of_system_simple", OPERATIONAL_DEFAULTS["review_of_system_simple"])
     fallback("exam_simple_textarea", OPERATIONAL_DEFAULTS["exam_simple_textarea"])
     fallback("treatment_note_v2", OPERATIONAL_DEFAULTS["treatment_note_v2"])
     fallback("complaint_start_date", {"value": 1, "unit": "hour", "before": True})
@@ -295,6 +333,11 @@ def normalize_draft(draft: dict[str, Any] | None) -> dict[str, Any]:
             fallback_fields.append(f"review_of_system.{group}")
         normalized_review[group] = values
     data["review_of_system"] = normalized_review
+    if not _present(data.get("review_of_system_simple")):
+        data["review_of_system_simple"] = _review_summary(normalized_review)
+        if not _present(data["review_of_system_simple"]):
+            data["review_of_system_simple"] = OPERATIONAL_DEFAULTS["review_of_system_simple"]
+        fallback_fields.append("review_of_system_simple")
 
     if data.get("treatment_plan_label") not in TREATMENT_PLANS:
         data["treatment_plan_label"] = "Ayaktan takip ve tedavi"
@@ -345,6 +388,13 @@ def normalize_draft(draft: dict[str, Any] | None) -> dict[str, Any]:
     data["diagnoses"] = diagnoses[:3]
 
     pain = data["pain"]
+    try:
+        if pain.get("score") is not None and not isinstance(pain.get("score"), bool):
+            pain["score"] = float(str(pain["score"]).replace(",", "."))
+            if pain["score"].is_integer():
+                pain["score"] = int(pain["score"])
+    except (TypeError, ValueError):
+        pain["score"] = None
     pain["qualities"] = [
         value for value in pain.get("qualities") or [] if value in PAIN_QUALITIES
     ]

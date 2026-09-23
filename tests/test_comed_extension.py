@@ -31,9 +31,15 @@ class ComedExtensionTests(unittest.TestCase):
         self.assertIn("system_inquiry_saved", source)
         self.assertIn("fieldResults", source)
         self.assertIn("profileItemAlreadyPresent", source)
-        self.assertIn('fillDuration(card, pain.start_date, "Ağrı Başlangıcı")', source)
+        self.assertIn("async function fillPainScore", source)
+        self.assertIn('.co-popover input[type="range"]', source)
+        self.assertIn('pain.start_date?.unit === "day"', source)
         self.assertIn('["Engellilik Durumu", profile.disabilities]', source)
         self.assertIn('normalized.age_group = age >= 65 ? "65_plus" : "under_65"', source)
+        self.assertIn('textOf(item).includes("Düşme Hikayesi")', source)
+        self.assertIn('const target = cells.slice(1).find', source)
+        self.assertIn('[data-test="co-button-icon-arti"]', source)
+        self.assertIn("const alreadyPresent", source)
         self.assertIn("closeKnownDuplicateProfileNotice", source)
         self.assertIn("bu hastal[ıi]k hastaya ait bu protokol", source)
         self.assertLess(source.index("const systemResult = await fillSystemInquiry"),
@@ -53,9 +59,9 @@ class ComedExtensionTests(unittest.TestCase):
         self.assertNotIn('window.__klinotComedTraceEvents', source)
         self.assertNotIn("saveAndSign", source)
 
-    def test_manifest_declares_v283(self):
+    def test_manifest_declares_v284(self):
         manifest = json.loads((EXTENSION / "manifest.json").read_text(encoding="utf-8"))
-        self.assertEqual(manifest["version"], "2.8.3")
+        self.assertEqual(manifest["version"], "2.8.4")
 
 
 if __name__ == "__main__":
