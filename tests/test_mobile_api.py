@@ -1,5 +1,8 @@
+import asyncio
 import json
+import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
@@ -157,6 +160,49 @@ class MobileApiTests(unittest.TestCase):
         self.assertEqual(response.headers["content-type"], "application/pdf")
         self.assertIn("epikriz_20260908.pdf", response.headers["content-disposition"])
         build_pdf.assert_called_once_with("doktor", {"tani": "Gastrit"})
+
+    def test_long_transcription_job_survives_request_and_reuses_result(self):
+        token = auth.api_token_uret("dr-enes", "doctor")
+        headers = {"Authorization": f"Bearer {token}"}
+        fake_usage = {"provider": "test", "audio_seconds": 1800}
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "jobs.db"
+            with (
+                patch.object(main.db, "DB_PATH", str(path)),
+                patch.dict("os.environ", {"SEED_MANAGER_DEMO": "false"}),
+                patch.object(main, "_ensure_transcription_task") as ensure,
+                patch.object(
+                    main.stt,
+                    "transcribe",
+                    return_value=("Doktor: Merhaba\nHasta: Ağrım var", fake_usage),
+                ) as transcribe,
+            ):
+                main.db.init()
+                started = self.client.post(
+                    "/api/v1/mobile/transcriptions",
+                    headers=headers,
+                    files={"file": ("uzun.m4a", b"long-audio", "audio/mp4")},
+                )
+                self.assertEqual(started.status_code, 202)
+                job_id = started.json()["job_id"]
+                ensure.assert_called_once_with(job_id)
+
+                asyncio.run(main._run_transcription_job(job_id))
+                completed = self.client.get(
+                    f"/api/v1/mobile/transcriptions/{job_id}", headers=headers
+                )
+                duplicate = self.client.post(
+                    "/api/v1/mobile/transcriptions",
+                    headers=headers,
+                    files={"file": ("uzun.m4a", b"long-audio", "audio/mp4")},
+                )
+
+        self.assertEqual(completed.status_code, 200)
+        self.assertEqual(completed.json()["status"], "completed")
+        self.assertEqual(completed.json()["audio_id"], job_id)
+        self.assertEqual(duplicate.status_code, 200)
+        self.assertEqual(duplicate.json()["transcript"], "Doktor: Merhaba\nHasta: Ağrım var")
+        transcribe.assert_called_once()
 
 
 if __name__ == "__main__":

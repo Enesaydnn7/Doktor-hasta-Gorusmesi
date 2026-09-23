@@ -17,7 +17,9 @@ import role_classifier
 
 logger = logging.getLogger(__name__)
 
-MAX_BYTES = 20 * 1024 * 1024
+# 64 kbps mobil kayıtta 30 dakika yaklaşık 14 MB tutar. Eski 128 kbps
+# kayıtların yeniden gönderimine de güvenli pay bırakılır.
+MAX_BYTES = 48 * 1024 * 1024
 
 # OpenAI Transcription API'nin desteklediği dosya uzantıları.
 _MIME_BY_EXTENSION = {
@@ -395,7 +397,7 @@ def transcribe(data: bytes, mime: str = "audio/mpeg", filename: str = ""):
     if not data:
         raise ValueError("Ses verisi boş.")
     if len(data) > MAX_BYTES:
-        raise ValueError("Ses dosyası çok büyük (20 MB üstü). Lütfen daha kısa bir kayıt yükleyin.")
+        raise ValueError("Ses dosyası çok büyük (48 MB üstü). Lütfen kaydı bölerek yeniden yükleyin.")
 
     source_mime = mime
     prepared_name, prepared_data, prepared_mime = _prepare_audio(data, mime, filename)

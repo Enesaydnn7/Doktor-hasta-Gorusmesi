@@ -52,7 +52,7 @@ Tarayıcı: **http://127.0.0.1:8000** → "Örnek yükle" → "Analiz et".
 
 GEMINI_API_KEY=...
 GEMINI_MODEL=gemini-2.5-flash
-APP_VERSION=v2.8.1
+APP_VERSION=v2.8.2
 COMED_WEB_BASE_URL=http://goztepe.comedtest.mlpcare.com/tr-tr/medical
 COMED_API_BASE_URL=http://goztepe.comedtestapi.mlpcare.com/tr-tr/api/json
 MOBILE_SESSION_DAYS=30
@@ -123,7 +123,7 @@ OPENAI_STT_FALLBACK_MODEL=gpt-transcribe
 4. **Environment** sekmesinden değişkenleri gir:
    - `GEMINI_API_KEY` = (anahtarın)
    - `GEMINI_MODEL` = `gemini-2.5-flash`
-   - `APP_VERSION` = `v2.8.1`
+   - `APP_VERSION` = `v2.8.2`
    - `MOBILE_SESSION_DAYS` = `30`
    - `ELEVENLABS_API_KEY` = (ElevenLabs API anahtarın)
    - `ELEVENLABS_STT_MODEL` = `scribe_v2`
@@ -171,10 +171,10 @@ Panelde metin kutusunun üstünde **Kaydet** ve **Ses dosyası yükle** var:
 
 ### COMED Chrome köprüsü
 
-Hazır eklenti paketi: [`build_artifacts/klinot-comed-bridge-v2.8.1.zip`](build_artifacts/klinot-comed-bridge-v2.8.1.zip).
+Hazır eklenti paketi: [`build_artifacts/klinot-comed-bridge-v2.8.2.zip`](build_artifacts/klinot-comed-bridge-v2.8.2.zip).
 ZIP'i klasöre çıkardıktan sonra [`build_artifacts/README.md`](build_artifacts/README.md) içindeki adımları izleyin.
 COMED oturumu Chrome'da normal şekilde açılır; eklentiye COMED parolası değil, mobil Klinot hesabı girilir.
-v2.8.1 aynı protokol için doğrulanmış COMED kayıt gövdesi varsa izin listeli POST'u
+v2.8.2 aynı protokol için doğrulanmış COMED kayıt gövdesi varsa izin listeli POST'u
 kullanır; şablon yoksa açık hasta kartını ve ayrı Sistem Sorgulama belgesini eklenti
 üzerinden dolduran MVP akışına döner. Admin debug görünümü hangi alanın POST veya eklenti
 ile hazırlandığını gösterir. Her iki durumda da ana formun son kontrolü, kaydı ve imzası doktordadır.
@@ -208,7 +208,8 @@ Kaynaklar: [Scribe v2 özellikleri](https://elevenlabs.io/docs/overview/capabili
   sözcük aralığının doktor/hasta olduğunu seçer. Böylece aynı ses içinde de rol değişimi bulunabilir.
 - Rol sınıflandırması başarısız olursa transkript kaybedilmez; çok sesli kayıtta konuşma sırası,
   tek sesli demoda cümle sırası kullanılır ve arayüz kontrol uyarısı gösterir.
-- Not: 20 MB üstü ses için daha kısa kayıt kullanın (uzun görüşmeler için ileride parçalama eklenebilir).
+- Mobil kayıtlar 64 kbps tutulur; 15–30 dakikalık görüşmeler kalıcı sunucu işi olarak işlenir.
+  Bağlantı kesilirse aynı kayıt yeniden gönderildiğinde mevcut iş/sonuç kullanılır. Sunucu yükleme üst sınırı 48 MB'dir.
 - KVKK: ses metinden daha hassastır. Gerçek hasta kayıtlarında kurum politikasını, açık rızayı ve kullanılan
   sağlayıcılarla gerekli veri işleme/saklama sözleşmelerini ayrıca değerlendirin.
 

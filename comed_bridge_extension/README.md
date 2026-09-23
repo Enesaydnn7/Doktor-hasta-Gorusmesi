@@ -35,7 +35,7 @@ satırını doğrudan okur. Göreve ilk kez girildiğinde hasta kartı kimliği 
 tamamlanır. Liste ve kart bilgileri yalnız aynı Klinot kullanıcısına gösterilir.
 
 Köprü iş listesini mobil uygulamaya eşitler. Mobilde **COMED'e aktar** denince
-bekleyen taslak için doğru protokolün **Göreve Git** düğmesini açar. v2.8.1 hibrit
+bekleyen taslak için doğru protokolün **Göreve Git** düğmesini açar. v2.8.2 hibrit
 çalışır: aynı protokol için başarılı olduğu doğrulanan `saveDocumentProcesses`
 gövdesi varsa seçili protokol kimliği tekrar doğrulanarak COMED test API'sine POST
 edilir. Böyle bir öğrenilmiş şablon yoksa aktarım durmaz; açık hasta kartındaki

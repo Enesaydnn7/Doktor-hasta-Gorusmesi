@@ -50,6 +50,10 @@ class ApiClient implements KlinotApi {
   final String baseUrl;
   final http.Client _client;
 
+  static const transcriptionUploadTimeout = Duration(minutes: 15);
+  static const transcriptionProcessingTimeout = Duration(minutes: 45);
+  static const transcriptionPollInterval = Duration(seconds: 3);
+
   Uri _uri(String path) => Uri.parse('$baseUrl$path');
 
   Map<String, String> _headers(String token) => {
@@ -99,21 +103,145 @@ class ApiClient implements KlinotApi {
 
   @override
   Future<TranscriptionResult> transcribe(String token, File file) async {
+    try {
+      return await _transcribeWithJob(token, file);
+    } on ApiException catch (error) {
+      // Dağıtım sırasında yeni iş uç noktası henüz ayağa kalkmadıysa eski
+      // sunucuyla da çalış. Yeni sunucuda bütün uzun kayıtlar iş kuyruğunu kullanır.
+      if (error.statusCode == 404) {
+        return _transcribeLegacy(token, file);
+      }
+      rethrow;
+    } on TimeoutException catch (_) {
+      throw const ApiException(
+        'Ses kaydı sunucuya gönderilirken bağlantı zaman aşımına uğradı. '
+        'Kayıt cihazda güvende; bağlantıyı kontrol edip Analiz et düğmesine yeniden basın.',
+      );
+    } on SocketException catch (_) {
+      throw const ApiException(
+        'İnternet bağlantısı kesildi. Kayıt cihazda güvende; bağlantı gelince Analiz et düğmesine yeniden basın.',
+      );
+    } on http.ClientException catch (_) {
+      throw const ApiException(
+        'Sunucu bağlantısı geçici olarak kesildi. Kayıt cihazda güvende; Analiz et düğmesine yeniden basabilirsiniz.',
+      );
+    }
+  }
+
+  Future<TranscriptionResult> _transcribeWithJob(
+    String token,
+    File file,
+  ) async {
+    Map<String, dynamic>? job;
+    Object? lastTransientError;
+    for (var attempt = 0; attempt < 3; attempt++) {
+      try {
+        job = await _startTranscriptionJob(token, file);
+        break;
+      } on ApiException catch (error) {
+        if (error.statusCode == 404) rethrow;
+        if (!_isTransient(error) || attempt == 2) rethrow;
+        lastTransientError = error;
+      } on Object catch (error) {
+        if (!_isTransient(error) || attempt == 2) rethrow;
+        lastTransientError = error;
+      }
+      await Future<void>.delayed(Duration(seconds: 2 + attempt * 3));
+    }
+    if (job == null) {
+      throw lastTransientError ?? const ApiException('Ses yüklenemedi.');
+    }
+
+    final deadline = DateTime.now().add(transcriptionProcessingTimeout);
+    var current = job;
+    while (true) {
+      final completed = _completedTranscription(current);
+      if (completed != null) return completed;
+      if (current['status'] == 'failed') {
+        throw ApiException(
+          current['error']?.toString() ?? 'Ses kaydı metne dönüştürülemedi. Kayıt cihazda korundu; yeniden deneyebilirsiniz.',
+        );
+      }
+      final jobId = current['job_id']?.toString() ?? '';
+      if (jobId.isEmpty) {
+        throw const ApiException('Sunucu ses işleme kimliği göndermedi.');
+      }
+      if (DateTime.now().isAfter(deadline)) {
+        throw const ApiException(
+          'Ses işleme beklenenden uzun sürdü. Sunucudaki işlem korunuyor; birkaç dakika sonra Analiz et düğmesine yeniden basın.',
+        );
+      }
+
+      await Future<void>.delayed(transcriptionPollInterval);
+      try {
+        final response = await _client
+            .get(
+              _uri('/api/v1/mobile/transcriptions/$jobId'),
+              headers: _headers(token),
+            )
+            .timeout(const Duration(seconds: 70));
+        current = _decodeResponse(response);
+      } on Object catch (error) {
+        if (!_isTransient(error)) rethrow;
+        // Telefon kısa süre çevrimdışı kalsa veya ekran elle kapatılsa bile iş
+        // sunucuda sürer; son tarihe kadar durum sorgulamaya devam et.
+        await Future<void>.delayed(const Duration(seconds: 5));
+      }
+    }
+  }
+
+  Future<Map<String, dynamic>> _startTranscriptionJob(
+    String token,
+    File file,
+  ) async {
     final request = http.MultipartRequest(
       'POST',
-      _uri('/api/v1/mobile/transcribe'),
+      _uri('/api/v1/mobile/transcriptions'),
     )..headers.addAll(_headers(token));
     request.files.add(
       await http.MultipartFile.fromPath(
         'file',
         file.path,
-        filename: 'klinot_${DateTime.now().millisecondsSinceEpoch}.m4a',
+        filename: file.uri.pathSegments.isEmpty
+            ? 'klinot-kayit.m4a'
+            : file.uri.pathSegments.last,
       ),
     );
     final streamed = await _client
         .send(request)
-        .timeout(const Duration(seconds: 120));
-    final response = await http.Response.fromStream(streamed);
+        .timeout(transcriptionUploadTimeout);
+    final response = await http.Response.fromStream(streamed)
+        .timeout(const Duration(seconds: 70));
+    return _decodeResponse(response);
+  }
+
+  TranscriptionResult? _completedTranscription(Map<String, dynamic> job) {
+    if (job['status'] != 'completed') return null;
+    return TranscriptionResult.fromJson(job);
+  }
+
+  bool _isTransient(Object error) {
+    if (error is TimeoutException ||
+        error is SocketException ||
+        error is http.ClientException) {
+      return true;
+    }
+    return error is ApiException &&
+        error.statusCode != null &&
+        error.statusCode! >= 500;
+  }
+
+  Future<TranscriptionResult> _transcribeLegacy(String token, File file) async {
+    final request = http.MultipartRequest(
+      'POST',
+      _uri('/api/v1/mobile/transcribe'),
+    )..headers.addAll(_headers(token));
+    request.files.add(await http.MultipartFile.fromPath('file', file.path));
+    final streamed = await _client
+        .send(request)
+        .timeout(transcriptionProcessingTimeout);
+    final response = await http.Response.fromStream(streamed)
+        .timeout(const Duration(minutes: 2));
     return TranscriptionResult.fromJson(_decodeResponse(response));
   }
 
@@ -130,7 +258,7 @@ class ApiClient implements KlinotApi {
         'audio_id': transcription.audioId,
         'stt_usage': transcription.usage,
         'source': 'mobile',
-        'client_version': '2.8.1',
+        'client_version': '2.8.2',
         'metadata': {
           'platform': Platform.operatingSystem,
           if (comedPatient != null) 'comed_patient': comedPatient.toJson(),

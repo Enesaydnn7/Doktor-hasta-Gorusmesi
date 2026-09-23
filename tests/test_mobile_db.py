@@ -156,6 +156,41 @@ class MobileDatabaseTests(unittest.TestCase):
         self.assertEqual(record["client_version"], "1.0.0")
         self.assertEqual(record["metadata"], {"platform": "android"})
 
+    def test_transcription_job_is_idempotent_and_keeps_audio_until_analysis(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "jobs.db"
+            with (
+                patch.object(db, "DB_PATH", str(path)),
+                patch.dict("os.environ", {"SEED_MANAGER_DEMO": "false"}),
+            ):
+                db.init()
+                first = db.transcription_job_create(
+                    "job-12345678",
+                    b"long-recording",
+                    "audio/mp4",
+                    "visit.m4a",
+                    requested_by="doctor-a",
+                )
+                db.transcription_job_processing(first["id"])
+                db.transcription_job_complete(
+                    first["id"],
+                    "Doktor: Merhaba\nHasta: Ağrım var",
+                    {"provider": "test", "audio_seconds": 1800},
+                )
+                duplicate = db.transcription_job_create(
+                    "job-12345678",
+                    b"long-recording",
+                    "audio/mp4",
+                    "visit.m4a",
+                    requested_by="doctor-a",
+                )
+                pending = db.bekleyen_ses_al(first["id"], sil=False)
+
+        self.assertEqual(duplicate["status"], "completed")
+        self.assertEqual(duplicate["attempts"], 1)
+        self.assertEqual(duplicate["usage"]["audio_seconds"], 1800)
+        self.assertEqual(pending[0], b"long-recording")
+
 
 if __name__ == "__main__":
     unittest.main()

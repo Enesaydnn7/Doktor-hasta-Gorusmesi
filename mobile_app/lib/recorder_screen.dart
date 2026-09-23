@@ -38,6 +38,7 @@ class _RecorderScreenState extends State<RecorderScreen> {
   var _level = 0.0;
   var _consent = false;
   File? _recordedFile;
+  var _recoveredRecording = false;
   String? _error;
   List<ComedPatient> _worklist = const [];
   ComedPatient? _selectedPatient;
@@ -55,6 +56,19 @@ class _RecorderScreenState extends State<RecorderScreen> {
       if (mounted) setState(() => _level = level);
     });
     unawaited(_loadWorklist());
+    unawaited(_recoverRecording());
+  }
+
+  Future<void> _recoverRecording() async {
+    final recovered = await _recorder.recoverLatest();
+    if (!mounted || recovered == null || _state != RecordingState.idle) return;
+    setState(() {
+      _recordedFile = recovered.file;
+      _elapsed = recovered.elapsed ?? Duration.zero;
+      _recoveredRecording = true;
+      _state = RecordingState.ready;
+      _error = null;
+    });
   }
 
   Future<void> _loadWorklist() async {
@@ -106,6 +120,7 @@ class _RecorderScreenState extends State<RecorderScreen> {
       await _recorder.start();
       _timer?.cancel();
       _elapsed = Duration.zero;
+      _recoveredRecording = false;
       _timer = Timer.periodic(const Duration(seconds: 1), (_) {
         if (mounted && _state == RecordingState.recording) {
           setState(() => _elapsed += const Duration(seconds: 1));
@@ -149,8 +164,10 @@ class _RecorderScreenState extends State<RecorderScreen> {
         );
       }
       if (!mounted) return;
+      unawaited(_recorder.saveRecoveryMetadata(file, _elapsed));
       setState(() {
         _recordedFile = file;
+        _recoveredRecording = false;
         _state = RecordingState.ready;
         _level = 0;
         _error = null;
@@ -168,12 +185,11 @@ class _RecorderScreenState extends State<RecorderScreen> {
 
   Future<void> _discardRecordedFile() async {
     final file = _recordedFile;
-    if (file != null && file.existsSync()) {
-      file.deleteSync();
-    }
+    if (file != null) unawaited(_recorder.deleteRecording(file));
     if (!mounted) return;
     setState(() {
       _recordedFile = null;
+      _recoveredRecording = false;
       _state = RecordingState.idle;
       _elapsed = Duration.zero;
       _level = 0;
@@ -184,12 +200,21 @@ class _RecorderScreenState extends State<RecorderScreen> {
   Future<void> _analyze() async {
     final file = _recordedFile;
     if (file == null) return;
+    if (_selectedPatient == null) {
+      setState(
+        () => _error = 'Analizden önce COMED iş listesinden hastayı seçin.',
+      );
+      return;
+    }
     setState(() {
       _state = RecordingState.processing;
       _error = null;
     });
 
+    var keepAwake = false;
     try {
+      await _recorder.keepAwake();
+      keepAwake = true;
       final transcription = await widget.api.transcribe(
         widget.session.token,
         file,
@@ -211,6 +236,10 @@ class _RecorderScreenState extends State<RecorderScreen> {
       if (completed == null) {
         throw const ApiException('Sunucu analiz sonucunu göndermedi.');
       }
+      if (!mounted) return;
+
+      await _recorder.allowSleep();
+      keepAwake = false;
       if (!mounted) return;
 
       await Navigator.of(context).push(
@@ -235,6 +264,8 @@ class _RecorderScreenState extends State<RecorderScreen> {
         _state = RecordingState.ready;
         _error = error.toString();
       });
+    } finally {
+      if (keepAwake) await _recorder.allowSleep();
     }
   }
 
@@ -286,7 +317,7 @@ class _RecorderScreenState extends State<RecorderScreen> {
                 selected: _selectedPatient,
                 loading: _loadingWorklist,
                 error: _worklistError,
-                locked: _state != RecordingState.idle,
+                locked: _isRecording || processing,
                 onChanged: (patient) => setState(() {
                   _selectedPatient = patient;
                   _error = null;
@@ -317,6 +348,7 @@ class _RecorderScreenState extends State<RecorderScreen> {
                         ? _ReadyRecording(
                             key: const ValueKey('ready'),
                             elapsed: _time,
+                            recovered: _recoveredRecording,
                             onAnalyze: _analyze,
                             onDiscard: _discardRecordedFile,
                           )
@@ -753,11 +785,13 @@ class _ReadyRecording extends StatelessWidget {
   const _ReadyRecording({
     super.key,
     required this.elapsed,
+    required this.recovered,
     required this.onAnalyze,
     required this.onDiscard,
   });
 
   final String elapsed;
+  final bool recovered;
   final VoidCallback onAnalyze;
   final VoidCallback onDiscard;
 
@@ -777,7 +811,9 @@ class _ReadyRecording extends StatelessWidget {
       ),
       const SizedBox(height: 7),
       Text(
-        'Görüşme süresi $elapsed',
+        recovered && elapsed == '00:00'
+            ? 'Önceki kayıt cihazdan kurtarıldı'
+            : 'Görüşme süresi $elapsed',
         style: const TextStyle(color: Color(0xFF60777D)),
       ),
       const SizedBox(height: 8),

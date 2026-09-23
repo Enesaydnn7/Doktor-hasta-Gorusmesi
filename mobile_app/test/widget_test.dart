@@ -139,9 +139,37 @@ class FakeRecorder extends AudioRecorderService {
 
   @override
   Future<void> cancel() async {}
+
+  @override
+  Future<void> keepAwake() async {}
+
+  @override
+  Future<void> allowSleep() async {}
+
+  @override
+  Future<RecoveredRecording?> recoverLatest() async => null;
+
+  @override
+  Future<void> saveRecoveryMetadata(File file, Duration elapsed) async {}
+
+  @override
+  Future<void> deleteRecording(File file) async {
+    if (file.existsSync()) file.deleteSync();
+  }
 }
 
 void main() {
+  test(
+    'long recordings use upload and processing windows above 30 minutes',
+    () {
+      expect(ApiClient.transcriptionUploadTimeout, const Duration(minutes: 15));
+      expect(
+        ApiClient.transcriptionProcessingTimeout,
+        const Duration(minutes: 45),
+      );
+    },
+  );
+
   testWidgets('login submits credentials and returns session', (tester) async {
     UserSession? loggedIn;
     await tester.pumpWidget(
@@ -155,7 +183,7 @@ void main() {
     );
 
     expect(find.text('Klinot'), findsOneWidget);
-    expect(find.textContaining('v2.5.0'), findsOneWidget);
+    expect(find.textContaining('v2.8.2'), findsOneWidget);
     await tester.enterText(find.byKey(const Key('usernameField')), 'admin');
     await tester.enterText(find.byKey(const Key('passwordField')), 'secret');
     await tester.tap(find.byKey(const Key('loginButton')));
