@@ -134,6 +134,16 @@ KURALLAR (ÇOK ÖNEMLİ):
   riski, ameliyat kararı veya özgeçmiş bilgisi UYDURMA. Bilgi yoksa null/boş liste kullan.
 - Şikâyet süresini yalnız açıkça söylenmişse sayısal değere çevir. Birim yalnız
   hour|day|week|month|year olabilir.
+- Sayıları BAĞLAMINDAN KOPARMA: "iki saat önce" şikâyet/ağrı başlangıç süresidir;
+  ağrı skoru değildir. Ağrı skoru yalnız 0-10 sorusuna verilen yanıt veya açık
+  "X/10", "X şiddetinde" ifadesinden alınır. Çıktıdan önce skor ile süreyi karşılaştır.
+- Görüşmede ilaç, ameliyat, alerji, sigara/alkol, engellilik, cihaz, aşı,
+  transfüzyon, terapi veya özel durum söylenmişse HER BİRİNİ kendi profile listesine
+  koy. Bunlardan biri varken no_known_history true OLAMAZ.
+- Son bir yılda düşme/düştüm veya "düşme riskim var" açıkça söylenmişse
+  fall_risk.exists ve fall_risk.history true olmalıdır. "Düşmedim/risk yok" ile
+  karıştırma. Denge bozukluğu ve düzenli ilaç kullanımı da ilgili alt alanlara taşınır.
+- "Baskı/basınç şeklinde ağrı" COMED ağrı niteliğinde "Bastırıcı" olarak eşlenir.
 - Tanı net değilse diagnosis_type "preliminary" olsun. ICD kodu için ana semptoma
   uygun en fazla 3 öneri ver; COMED aramasında bulunmayan kod değiştirilmeyecektir.
 - "Özellik yok" ancak görüşmede açıkça yok/özellik yok denmişse true olabilir.
@@ -169,7 +179,7 @@ YANITINI SADECE şu JSON olarak ver:
     "no_known_family_history": false,
     "diseases": [{"name": "Hipertansiyon", "description": null}],
     "operations": [], "pharmacy_products": [], "allergies": [], "addictions": [],
-    "special_conditions": [], "vaccines": [], "devices": [],
+    "special_conditions": [], "vaccines": [], "devices": [], "disabilities": [],
     "transfusions": [], "therapies": [],
     "family_history": [
       {"relationship": "Babası", "condition": "Hipertansiyon", "description": null}

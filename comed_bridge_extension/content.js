@@ -378,6 +378,55 @@
     return null;
   }
 
+  function normalizedText(value) {
+    return String(value || "")
+      .normalize("NFKC")
+      .replace(/\s+/g, " ")
+      .trim()
+      .toLocaleLowerCase("tr-TR");
+  }
+
+  function profileItemAlreadyPresent(history, name) {
+    const wanted = normalizedText(name);
+    return Boolean(wanted && normalizedText(textOf(history)).includes(wanted));
+  }
+
+  async function closeKnownDuplicateProfileNotice(timeoutMs = 1800) {
+    const duplicate = await waitFor(() => {
+      const matches = [...document.querySelectorAll("div,section")]
+        .filter((element) => element.getClientRects().length
+          && /bu hastal[ıi]k hastaya ait bu protokol i[çc]in daha [öo]nce tan[ıi]mlanm[ıi][şs]/i
+            .test(textOf(element)))
+        .sort((a, b) => textOf(a).length - textOf(b).length);
+      return matches[0] || null;
+    }, timeoutMs);
+    if (!duplicate) return false;
+
+    let container = duplicate;
+    for (let depth = 0; depth < 6 && container; depth += 1) {
+      const visibleButtons = [...container.querySelectorAll("button,[role=button]")]
+        .filter((button) => button.getClientRects().length && !button.disabled);
+      const close = visibleButtons.find((button) => {
+        const hint = normalizedText([
+          textOf(button), button.getAttribute("aria-label"),
+          button.getAttribute("title"), button.className,
+        ].filter(Boolean).join(" "));
+        return /kapat|close|dismiss|modal.*close|(^|\s)[x×](\s|$)/i.test(hint);
+      }) || visibleButtons.at(-1);
+      if (close) {
+        close.click();
+        await sleep(120);
+        return true;
+      }
+      container = container.parentElement;
+    }
+    document.dispatchEvent(new KeyboardEvent("keydown", {
+      key: "Escape", code: "Escape", bubbles: true,
+    }));
+    await sleep(120);
+    return true;
+  }
+
   function itemParts(item) {
     if (typeof item === "string") return {name: item.trim(), description: ""};
     return {
@@ -421,6 +470,13 @@
     for (const item of items) {
       const {name, description} = itemParts(item);
       if (!name) continue;
+      // COMED aynı protokolde kayıtlı hastalığı yeniden eklerken bir sunucu
+      // uyarısı açıyor. Var olan bilgi zaten hedefi karşılar; tekrar POST/form
+      // işlemi yapmayarak hem uyarıyı hem de aktarımın bloke olmasını önle.
+      if (profileItemAlreadyPresent(history, name)) {
+        added += 1;
+        continue;
+      }
       const input = byPlaceholder(placeholder, history);
       if (!input || !await chooseAutocomplete(input, name)) continue;
       const row = smallestFieldRow(input, history);
@@ -432,6 +488,8 @@
       if (!commit) continue;
       commit.click();
       added += 1;
+      const duplicateClosed = await closeKnownDuplicateProfileNotice();
+      if (duplicateClosed) setTypingValue(input, "");
       await sleep(120);
     }
     return added;
@@ -441,9 +499,11 @@
     return ({hour: "saat", day: "gün", week: "hafta", month: "ay", year: "yıl"})[unit];
   }
 
-  function fillDuration(root, duration) {
+  function fillDuration(root, duration, label = null) {
     if (!root || !duration?.value) return false;
-    const input = root.querySelector(".co-date-before input.form-control, input.form-control");
+    const labelledScope = label ? fieldGroupByLabel(label, root) : null;
+    const input = labelledScope?.querySelector("input.form-control,input[type=number],input:not([type])")
+      || root.querySelector(".co-date-before input.form-control, .co-date-before input");
     if (!setValue(input, duration.value)) return false;
     const unit = durationUnitLabel(duration.unit);
     if (unit) clickText(unit, root);
@@ -454,23 +514,30 @@
     const exists = typeof value === "object" ? value?.exists : value;
     if (exists === false) return clickCardOption("Düşme Riski", "Yok");
     if (exists !== true || typeof value !== "object") return false;
+    const normalized = {...value};
+    if (!["65_plus", "under_65"].includes(normalized.age_group)) {
+      const age = Number(textOf(document.body).match(/\b(\d{1,3})\s*y[ıi]l\b/i)?.[1]);
+      if (age > 0) normalized.age_group = age >= 65 ? "65_plus" : "under_65";
+    }
     const detailKeys = ["history", "medications", "addiction", "gait_balance_disorder",
       "vision_disorder", "oriented", "general_health_normal"];
-    if (!detailKeys.every((key) => typeof value[key] === "boolean")
-      || !["65_plus", "under_65"].includes(value.age_group)) return false;
+    detailKeys.forEach((key) => {
+      if (typeof normalized[key] !== "boolean") normalized[key] = false;
+    });
+    if (!["65_plus", "under_65"].includes(normalized.age_group)) return false;
     if (!clickCardOption("Düşme Riski", "Var")) return false;
     const popover = await waitFor(() => [...document.querySelectorAll(".co-popover.bottom,.co-popover")]
       .find((item) => item.offsetParent !== null));
     if (!popover) return false;
     const choices = [
-      ["Yaş", value.age_group === "65_plus", "65 yaş üstü", "65 yaş altı"],
-      ["Düşme Hikayesi", value.history, "Var", "Yok"],
-      ["Kullandığı İlaçlar", value.medications, "Var", "Yok"],
-      ["Alkol / Madde Bağımlılığı", value.addiction, "Var", "Yok"],
-      ["Yürüyüş ve Denge Bozuklukları", value.gait_balance_disorder, "Var", "Yok"],
-      ["Görme Bozukluğu", value.vision_disorder, "Var", "Yok"],
-      ["Ruhsal Durum", value.oriented, "Oryante", "Oryante Değil"],
-      ["Genel Sağlık Durumu", value.general_health_normal, "Normal", "Normal Değil"],
+      ["Yaş", normalized.age_group === "65_plus", "65 yaş üstü", "65 yaş altı"],
+      ["Düşme Hikayesi", normalized.history, "Var", "Yok"],
+      ["Kullandığı İlaçlar", normalized.medications, "Var", "Yok"],
+      ["Alkol / Madde Bağımlılığı", normalized.addiction, "Var", "Yok"],
+      ["Yürüyüş ve Denge Bozuklukları", normalized.gait_balance_disorder, "Var", "Yok"],
+      ["Görme Bozukluğu", normalized.vision_disorder, "Var", "Yok"],
+      ["Ruhsal Durum", normalized.oriented, "Oryante", "Oryante Değil"],
+      ["Genel Sağlık Durumu", normalized.general_health_normal, "Normal", "Normal Değil"],
     ];
     choices.forEach(([label, selected, yes, no]) => {
       clickFieldOption(label, selected ? yes : no, popover);
@@ -489,7 +556,7 @@
     setValue(byPlaceholder("Açıklama", card), pain.description);
     (pain.qualities || []).forEach((quality) => clickText(quality, card));
     if (pain.rhythm) clickText(pain.rhythm, card);
-    if (pain.start_date) fillDuration(card, pain.start_date);
+    if (pain.start_date) fillDuration(card, pain.start_date, "Ağrı Başlangıcı");
     return true;
   }
 
@@ -565,6 +632,7 @@
       ["Alerji", profile.allergies], ["Ameliyat", profile.operations],
       ["Özel Durumlar", profile.special_conditions], ["Aşı", profile.vaccines],
       ["Cihaz (Vücuda Takılan)", profile.devices],
+      ["Engellilik Durumu", profile.disabilities],
       ["Kan Transfüzyon", profile.transfusions], ["Terapi", profile.therapies],
     ];
     for (const [placeholder, items] of lookupMap) {
