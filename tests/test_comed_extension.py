@@ -49,6 +49,11 @@ class ComedExtensionTests(unittest.TestCase):
         self.assertIn("Aktarım bitti · doktor kontrolü bekleniyor", source)
         self.assertIn("unresolved_count", source)
         self.assertIn("bu hastal[ıi]k hastaya ait bu protokol", source)
+        self.assertIn("function isMainClinicalSaveButton", source)
+        self.assertIn('".co-modal,.co-document-popup,[role=dialog],.document-fill__footer"', source)
+        self.assertIn("sessionStorage.removeItem(ACTIVE_TRANSFER_KEY);\n    activeTransferId = null;", source)
+        self.assertIn("sessionStorage.setItem(ACTIVE_TRANSFER_KEY, String(transfer.id));\n      activeTransferId = transfer.id;", source)
+        self.assertIn("if (!activeTransferId || !isMainClinicalSaveButton(button)) return;", source)
         self.assertLess(source.index("const systemResult = await fillSystemInquiry"),
                         source.index('const complaintCard = cardByTitle("Yakınması")'))
         self.assertNotIn('textOf(button) === "Kaydet ve İmzala"', source)
@@ -66,9 +71,9 @@ class ComedExtensionTests(unittest.TestCase):
         self.assertNotIn('window.__klinotComedTraceEvents', source)
         self.assertNotIn("saveAndSign", source)
 
-    def test_manifest_declares_v285(self):
+    def test_manifest_declares_v287(self):
         manifest = json.loads((EXTENSION / "manifest.json").read_text(encoding="utf-8"))
-        self.assertEqual(manifest["version"], "2.8.6")
+        self.assertEqual(manifest["version"], "2.8.7")
 
 
 if __name__ == "__main__":

@@ -1,5 +1,11 @@
 # Sürüm Geçmişi
 
+## v2.8.7 — 24 Eylül 2026
+
+- Sistem Sorgulama gibi alt belgelerin `Kaydet` düğmeleri artık ana COMED muayenesinin tamamlandığı şeklinde yorumlanmıyor.
+- Ana kayıt tamamlanma takibi yalnızca bütün form, Özgeçmiş, Soygeçmiş ve Sistem Sorgulama işlemleri ile son DOM doğrulaması bittikten sonra etkinleşiyor.
+- Mobil uygulama ve yönetim paneli, gerçek aktarım sonuna kadar `dolduruluyor` durumunda kalıyor; `Aktarım bitti` mesajı yalnızca son kontrolden sonra gösteriliyor.
+
 ## v2.8.6 — 24 Eylül 2026
 
 - 24 Eylül göğüs ağrısı denemesinin gerçek ses kaydı, transkripti, raporları ve COMED aktarım/debug verisi private repo içinde kalıcı demo kaydı olarak arşivlendi.

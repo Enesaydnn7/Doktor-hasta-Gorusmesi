@@ -1031,10 +1031,21 @@
     });
   }
 
+  function isMainClinicalSaveButton(button) {
+    if (!button || !/^Kaydet(?: ve İmzala)?$/.test(textOf(button))) return false;
+    return !button.closest(
+      ".co-modal,.co-document-popup,[role=dialog],.document-fill__footer",
+    );
+  }
+
   async function postTransfer(transfer) {
     if (busy || !transfer?.bundle) return;
     busy = true;
-    activeTransferId = transfer.id;
+    // Alt belgelerdeki (ör. Sistem Sorgulama) Kaydet düğmeleri ana muayene
+    // kaydı değildir. Ana kayıt takibini ancak bütün alanlar hazır olduktan
+    // sonra etkinleştir; böylece uygulama ve admin paneli erken tamamlanmaz.
+    sessionStorage.removeItem(ACTIVE_TRANSFER_KEY);
+    activeTransferId = null;
     bridgeStatus("COMED taslağı hazırlanıyor");
     const startedAt = new Date().toISOString();
     try {
@@ -1113,6 +1124,7 @@
       };
       await updateStatus(transfer.id, "ready_for_review", note, debug);
       sessionStorage.setItem(ACTIVE_TRANSFER_KEY, String(transfer.id));
+      activeTransferId = transfer.id;
       bridgeStatus(unresolved.length
         ? `Aktarım bitti · ${unresolved.length} alan doktor kontrolünde`
         : "Aktarım bitti · doktor kontrolü bekleniyor", "ok");
@@ -1177,7 +1189,7 @@
       const selected = parseRow(button.closest("tr,[role=row]"));
       if (selected) sessionStorage.setItem(SELECTED_PATIENT_KEY, JSON.stringify(selected));
     }
-    if (!activeTransferId || !button || !/^Kaydet(?: ve İmzala)?$/.test(textOf(button))) return;
+    if (!activeTransferId || !isMainClinicalSaveButton(button)) return;
     const id = activeTransferId;
     setTimeout(() => {
       const success = /Kayıt başarılı/i.test(document.body.innerText);
