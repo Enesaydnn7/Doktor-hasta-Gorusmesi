@@ -41,6 +41,11 @@ class ComedExtensionTests(unittest.TestCase):
         self.assertIn('[data-test="co-button-icon-arti"]', source)
         self.assertIn("const alreadyPresent", source)
         self.assertIn("closeKnownDuplicateProfileNotice", source)
+        self.assertIn("profileEntryAlreadyPresent", source)
+        self.assertIn("waitForDomQuiet", source)
+        self.assertIn("Özgeçmiş son kontrolleri yapılıyor", source)
+        self.assertIn("Aktarım bitti · doktor kontrolü bekleniyor", source)
+        self.assertIn("unresolved_count", source)
         self.assertIn("bu hastal[ıi]k hastaya ait bu protokol", source)
         self.assertLess(source.index("const systemResult = await fillSystemInquiry"),
                         source.index('const complaintCard = cardByTitle("Yakınması")'))
@@ -59,9 +64,9 @@ class ComedExtensionTests(unittest.TestCase):
         self.assertNotIn('window.__klinotComedTraceEvents', source)
         self.assertNotIn("saveAndSign", source)
 
-    def test_manifest_declares_v284(self):
+    def test_manifest_declares_v285(self):
         manifest = json.loads((EXTENSION / "manifest.json").read_text(encoding="utf-8"))
-        self.assertEqual(manifest["version"], "2.8.4")
+        self.assertEqual(manifest["version"], "2.8.5")
 
 
 if __name__ == "__main__":

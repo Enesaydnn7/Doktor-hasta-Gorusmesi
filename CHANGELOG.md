@@ -1,5 +1,12 @@
 # Sürüm Geçmişi
 
+## v2.8.5 — 24 Eylül 2026
+
+- Bağlamlı Sistem Sorgusu bulguları COMED'in gerçek kısa seçeneklerine kanonik olarak eşleniyor; pozitif bulgu varken yanlış `Özellik Yok` seçilmiyor.
+- Bozuk STT metninde açıkça bulunan ilaç, işitme kaybı, transfüzyon, fizik tedavi, özel diyet, sigara ve düşme riski paralel COMED çıktısında kaybolursa deterministik olarak geri kazanılıyor.
+- Özgeçmiş tekrar-kayıt kontrolündeki gereksiz uzun beklemeler kısaltıldı ve aynı sigara kaydının tekrar eklenmesi engellendi.
+- Aktarım başarı durumu, Özgeçmiş/Soygeçmiş dâhil DOM güncellemeleri sakinleşip son doğrulama tamamlandıktan sonra gösteriliyor; eksik bulunan alan sayısı ayrıca doktor kontrolüne bırakılıyor.
+
 ## v2.8.4 — 23 Eylül 2026
 
 - Metre olarak gelen boy değeri COMED'in santimetre alanına çevriliyor; hatalı VKİ/VYA oluşması engellendi.

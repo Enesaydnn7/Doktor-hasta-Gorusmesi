@@ -1,8 +1,8 @@
 # Klinot COMED Köprüsü kurulumu
 
-Kurulacak dosya: `klinot-comed-bridge-v2.8.4.zip`
+Kurulacak dosya: `klinot-comed-bridge-v2.8.5.zip`
 
-Android uygulaması: `Klinot-v2.8.4.apk`
+Android uygulaması: `Klinot-v2.8.5.apk`
 
 1. ZIP dosyasını bilgisayarda bir klasöre çıkarın.
 2. Chrome adres çubuğunda `chrome://extensions` sayfasını açın.

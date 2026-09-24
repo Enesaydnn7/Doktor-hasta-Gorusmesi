@@ -147,6 +147,10 @@ KURALLAR (ÇOK ÖNEMLİ):
 - Tanı net değilse diagnosis_type "preliminary" olsun. ICD kodu için ana semptoma
   uygun en fazla 3 öneri ver; COMED aramasında bulunmayan kod değiştirilmeyecektir.
 - "Özellik yok" ancak görüşmede açıkça yok/özellik yok denmişse true olabilir.
+- Sistem sorgusunda bağlamlı cümle değil COMED'in kısa seçenek adını kullan: örneğin
+  "Bacaklarda kas ağrısı" -> "Kas ağrısı", "Kollarda kaşıntı" -> "Kaşıntı",
+  "Merdiven çıkarken nefes darlığı" -> "Nefes darlığı", "Hafif bulantı" -> "Bulantı".
+  Bir grupta açık pozitif bulgu varken aynı gruba "Özellik Yok" yazma.
 - Özgeçmiş lookup listelerinde her kayıt {"name": "COMED'de aranacak ad", "description":
   "görüşmedeki ek bilgi veya null"} biçimindedir. Hastalık, ilaç, alerji, ameliyat ve diğer
   kayıtları ilgili listelere ayrı ayrı koy; bir bilgiyi yanlış kategoriye taşıma.

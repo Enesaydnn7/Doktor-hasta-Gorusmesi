@@ -5,6 +5,7 @@ from __future__ import annotations
 from copy import deepcopy
 import json
 import re
+import unicodedata
 from typing import Any
 from urllib.parse import urlsplit
 
@@ -31,6 +32,95 @@ SYSTEM_REVIEW_GROUPS = {
     "Dolaşım Sistemi": "Özellik Yok",
     "Gastrointestinal Sistem": "Özellik Yok",
     "Komplikasyon": "Komplikasyon Yok",
+}
+
+# Gemini bazen COMED seçeneğini doğru klinik anlamla fakat cümle içinde döndürüyor
+# (örn. "Bacaklarda kas ağrısı"). COMED ise birebir seçenek metni beklediği için bu
+# ifadeleri, yeni bir bulgu üretmeden, paneldeki gerçek seçenek adına indirgeriz.
+SYSTEM_REVIEW_OPTION_ALIASES = {
+    "Genel Sistem Sorgusu": {
+        "Halsizlik": ("halsizlik", "halsiz"),
+        "Kilo kaybı": ("kilo kaybı",),
+        "İştahsızlık": ("iştahsızlık",),
+        "Uyku bozukluğu": ("uyku bozukluğu",),
+        "Ateş": ("ateş",),
+        "Gece terlemesi": ("gece terlemesi",),
+        "Çok susama": ("çok susama",),
+        "Çok acıkma": ("çok acıkma",),
+        "Kanama bozukluğu": ("kanama bozukluğu",),
+        "LAP": ("lap", "lenfadenopati"),
+    },
+    "Genitoüriner Sistem": {
+        "Sık idrara çıkma": ("sık idrara çıkma", "sık idrar"),
+        "Zor idrar yapma": ("zor idrar",),
+        "İdrar renginde değişiklik": ("idrar renginde değişiklik",),
+        "Gece idrara kalkma": ("gece idrara", "noktüri"),
+        "İdrar akımında azalma": ("idrar akımında azalma",),
+        "İdrar kaçırma": ("idrar kaçırma", "inkontinans"),
+        "Ağrı": ("idrar yaparken ağrı",),
+        "Hematüri": ("hematüri", "idrarda kan"),
+        "Dribbling": ("dribbling", "damlama"),
+        "Poliüri": ("poliüri",),
+        "Dizüri": ("dizüri",),
+    },
+    "Deri": {
+        "Renk değişikliği": ("renk değişikliği",),
+        "Morarma": ("morarma",),
+        "Kaşıntı": ("kaşıntı", "kaşınıyor"),
+        "Kabarma": ("kabarma",),
+        "Kuruluk": ("kuruluk",),
+        "Tüylenme artışı": ("tüylenme artışı",),
+        "Saç dökülmesi": ("saç dökülmesi",),
+        "Tırnaklarda değişiklik": ("tırnaklarda değişiklik",),
+        "Verniksli": ("verniksli",),
+        "Soyulma": ("soyulma",),
+    },
+    "Solunum Sistemi": {
+        "Nefes darlığı": ("nefes darlığı",),
+        "Öksürük": ("öksürük",),
+        "Yan ağrısı": ("yan ağrısı",),
+        "Balgam": ("balgam",),
+    },
+    "Sinir Sistemi": {
+        "Hafıza bozukluğu": ("hafıza bozukluğu",),
+        "Konuşma bozukluğu": ("konuşma bozukluğu",),
+        "Yutma bozukluğu": ("yutma bozukluğu",),
+        "Denge bozukluğu": ("denge bozukluğu",),
+        "Yürüme bozukluğu": ("yürüme bozukluğu",),
+        "Duyu bozukluğu": ("duyu bozukluğu",),
+        "Titreme": ("titreme",),
+        "Güçsüzlük": ("güçsüzlük",),
+    },
+    "Kas - İskelet Sistemi": {
+        "Kas ağrısı": ("kas ağrısı",),
+        "Hareket kısıtlılığı": ("hareket kısıtlılığı",),
+        "Hareket ile ağrı": ("hareket ile ağrı", "hareketle ağrı"),
+        "Eklemlerde şişlik": ("eklemlerde şişlik",),
+        "Protez": ("protez",),
+    },
+    "Dolaşım Sistemi": {
+        "Göğüs ağrısı": ("göğüs ağrısı",),
+        "Çarpıntı": ("çarpıntı",),
+        "Nefes darlığı": ("nefes darlığı",),
+        "Çabuk yorulma": ("çabuk yorulma",),
+        "Varis": ("varis",),
+        "Ekstremitelerde ödem": ("ekstremitelerde ödem", "periferik ödem"),
+    },
+    "Gastrointestinal Sistem": {
+        "Yutma güçlüğü": ("yutma güçlüğü",),
+        "Bulantı": ("bulantı",),
+        "Kusma": ("kusma",),
+        "Karında ağrı": ("karında ağrı", "karın ağrısı"),
+        "Karında şişlik": ("karında şişlik",),
+        "Midede yanma": ("midede yanma", "mide yanması"),
+        "Kabızlık": ("kabızlık",),
+        "İshal": ("ishal",),
+        "Makatta ağrı": ("makatta ağrı",),
+        "Makatta yanma": ("makatta yanma",),
+    },
+    "Komplikasyon": {
+        "Komplikasyon Yok": ("komplikasyon yok", "komplikasyon olmadı"),
+    },
 }
 
 OPERATIONAL_DEFAULTS = {
@@ -180,6 +270,67 @@ def _review_summary(review: dict[str, list[str]]) -> str:
     return "; ".join(parts)
 
 
+def _fold_text(value: Any) -> str:
+    text = unicodedata.normalize("NFKD", str(value or "").casefold())
+    return "".join(char for char in text if not unicodedata.combining(char)).replace("ı", "i")
+
+
+def _positive_alias_in_text(text: str, alias: str) -> bool:
+    """Return true only when an alias is present without a nearby negation."""
+    folded = _fold_text(text)
+    needle = _fold_text(alias)
+    start = folded.find(needle)
+    if start < 0:
+        return False
+    window = folded[max(0, start - 12):start + len(needle) + 24]
+    return not re.search(r"\b(yok|degil|olmadi|bulunmuyor|saptanmadi)\b", window)
+
+
+def _review_group_segment(summary: Any, group: str) -> str:
+    """Extract a labelled group fragment from the model's plain review summary."""
+    text = str(summary or "")
+    wanted = _fold_text(group)
+    for part in re.split(r"[;\n]+", text):
+        if wanted and wanted in _fold_text(part):
+            return part
+    return ""
+
+
+def _canonical_review_values(group: str, values: Any, summary: Any) -> list[str]:
+    if isinstance(values, str):
+        values = [values]
+    raw_values = [str(value).strip() for value in (values or []) if str(value).strip()]
+    empty_label = SYSTEM_REVIEW_GROUPS[group]
+    aliases = SYSTEM_REVIEW_OPTION_ALIASES.get(group, {})
+    canonical: list[str] = []
+
+    for raw in raw_values:
+        folded = _fold_text(raw)
+        if folded == _fold_text(empty_label):
+            canonical.append(empty_label)
+            continue
+        match = next((label for label, needles in aliases.items()
+                      if _fold_text(label) == folded
+                      or any(_positive_alias_in_text(raw, needle) for needle in needles)), None)
+        canonical.append(match or raw)
+
+    # Some model responses put the detailed positive only in the labelled summary
+    # while leaving the structured group on "Özellik Yok". Recover only that same
+    # labelled fragment, so findings are not inferred from unrelated prose.
+    segment = _review_group_segment(summary, group)
+    if segment:
+        for label, needles in aliases.items():
+            if any(_positive_alias_in_text(segment, needle) for needle in needles):
+                canonical.append(label)
+
+    deduplicated: list[str] = []
+    for value in canonical:
+        if value not in deduplicated:
+            deduplicated.append(value)
+    positives = [value for value in deduplicated if value != empty_label]
+    return positives or ([empty_label] if empty_label in deduplicated else [])
+
+
 def _family_items(value: Any) -> list[dict[str, str | None]]:
     items: list[dict[str, str | None]] = []
     for item in value if isinstance(value, list) else []:
@@ -324,10 +475,11 @@ def normalize_draft(draft: dict[str, Any] | None) -> dict[str, Any]:
         review = {}
     normalized_review = {}
     for group, empty_label in SYSTEM_REVIEW_GROUPS.items():
-        values = review.get(group)
-        if isinstance(values, str):
-            values = [values]
-        values = [str(value).strip() for value in (values or []) if str(value).strip()]
+        values = _canonical_review_values(
+            group,
+            review.get(group),
+            data.get("review_of_system_simple"),
+        )
         if not values:
             values = [empty_label]
             fallback_fields.append(f"review_of_system.{group}")

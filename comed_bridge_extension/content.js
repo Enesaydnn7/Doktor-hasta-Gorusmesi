@@ -414,15 +414,49 @@
     return Boolean(wanted && normalizedText(textOf(history)).includes(wanted));
   }
 
-  async function closeKnownDuplicateProfileNotice(timeoutMs = 1800) {
-    const duplicate = await waitFor(() => {
-      const matches = [...document.querySelectorAll("div,section")]
-        .filter((element) => element.getClientRects().length
-          && /bu hastal[ıi]k hastaya ait bu protokol i[çc]in daha [öo]nce tan[ıi]mlanm[ıi][şs]/i
-            .test(textOf(element)))
-        .sort((a, b) => textOf(a).length - textOf(b).length);
-      return matches[0] || null;
-    }, timeoutMs);
+  function profileEntryAlreadyPresent(history, name, description = "") {
+    const haystack = normalizedText(textOf(history));
+    const detail = normalizedText(description);
+    if (detail && haystack.includes(detail)) return true;
+    const wanted = normalizedText(name);
+    if (!wanted) return false;
+    // Açık editördeki seçenek etiketi bir kez görünür; ikinci görünüm kayıtlı
+    // etiketi/çipi gösterir. Böylece aynı sigara kaydı tekrar eklenmez.
+    return haystack.split(wanted).length - 1 > 1;
+  }
+
+  function duplicateProfileNotice() {
+    return [...document.querySelectorAll("div,section")]
+      .filter((element) => element.getClientRects().length
+        && /bu hastal[ıi]k hastaya ait bu protokol i[çc]in daha [öo]nce tan[ıi]mlanm[ıi][şs]/i
+          .test(textOf(element)))
+      .sort((a, b) => textOf(a).length - textOf(b).length)[0] || null;
+  }
+
+  function waitForDomQuiet(root = document.body, quietMs = 220, timeoutMs = 2200) {
+    if (!root) return Promise.resolve();
+    return new Promise((resolve) => {
+      let quietTimer = null;
+      let timeoutTimer = null;
+      const finish = () => {
+        clearTimeout(quietTimer);
+        clearTimeout(timeoutTimer);
+        observer.disconnect();
+        resolve();
+      };
+      const arm = () => {
+        clearTimeout(quietTimer);
+        quietTimer = setTimeout(finish, quietMs);
+      };
+      const observer = new MutationObserver(arm);
+      observer.observe(root, {subtree: true, childList: true, attributes: true, characterData: true});
+      timeoutTimer = setTimeout(finish, timeoutMs);
+      arm();
+    });
+  }
+
+  async function closeKnownDuplicateProfileNotice(timeoutMs = 360) {
+    const duplicate = await waitFor(duplicateProfileNotice, timeoutMs);
     if (!duplicate) return false;
 
     let container = duplicate;
@@ -513,7 +547,7 @@
       added += 1;
       const duplicateClosed = await closeKnownDuplicateProfileNotice();
       if (duplicateClosed) setTypingValue(input, "");
-      await sleep(120);
+      await waitForDomQuiet(history, 100, 700);
     }
     return added;
   }
@@ -675,6 +709,10 @@
         : value.includes("alkol") ? "Alkol"
           : value.includes("madde") ? "Madde" : null;
       if (!option) continue;
+      if (profileEntryAlreadyPresent(history, option, description)) {
+        filled += 1;
+        continue;
+      }
       const optionLabel = [...history.querySelectorAll("label")]
         .find((label) => textOf(label) === option && label.offsetParent !== null);
       const row = optionLabel?.closest(".d-flex.align-items-center.position-relative");
@@ -685,7 +723,7 @@
       if (!commit || commit.disabled) continue;
       commit.click();
       filled += 1;
-      await sleep(120);
+      await waitForDomQuiet(history, 100, 700);
     }
     const lookupMap = [
       ["Kronik Hastalık", profile.diseases], ["İlaç", profile.pharmacy_products],
@@ -706,8 +744,12 @@
       await sleep(80);
       if (clickText(profile.education)) filled += 1;
     }
+    bridgeStatus("Özgeçmiş son kontrolleri yapılıyor");
+    await waitForDomQuiet(history, 240, 1800);
     if (clickText("Görüldü", history)) filled += 1;
+    await waitForDomQuiet(history, 180, 1200);
     filled += await fillFamilyHistory(profile);
+    await waitForDomQuiet(document.body, 220, 1800);
     return filled;
   }
 
@@ -946,6 +988,7 @@
       .filter(Boolean).join("\n");
     write("treatment_note_v2", byPlaceholder("Tedavi Notu", planCard), treatmentText);
 
+    bridgeStatus("Özgeçmiş ve soygeçmiş hazırlanıyor");
     const profileCount = await fillProfile(fields.profile || {});
     record("profile_and_family_history", profileCount > 0, `${profileCount} seçim`);
     const psychological = fields.psychological_status || {};
@@ -1032,10 +1075,17 @@
       if (!postResults.length && !formResult.filled) {
         throw postError || new Error("COMED form alanları bulunamadı; kartı yenileyip tekrar deneyin");
       }
+      bridgeStatus("Son alanlar doğrulanıyor");
+      await waitForDomQuiet(document.body, 400, 3500);
+      const unresolved = formResult.fieldResults.filter(
+        (item) => !["filled", "saved", "reused"].includes(item.status),
+      );
       const mode = postResults.length
         ? "POST + form tamamlama"
         : postError ? "POST fallback + eklenti form doldurma" : "eklenti form doldurma";
-      const note = `${mode}; ${formResult.filled} alan hazırlandı. Doktor Kaydet/İmzala kontrolünü yapmalıdır.`;
+      const note = `${mode}; ${formResult.filled} alan işlendi${unresolved.length
+        ? `, ${unresolved.length} alan doktor kontrolüne bırakıldı`
+        : " ve tarayıcı güncellemeleri tamamlandı"}. Doktor Kaydet/İmzala kontrolünü yapmalıdır.`;
       const debug = {
         started_at: startedAt,
         finished_at: new Date().toISOString(),
@@ -1050,6 +1100,7 @@
           filled_count: formResult.filled,
           system_inquiry_saved: formResult.systemSaved,
           fields: formResult.fieldResults,
+          unresolved_count: unresolved.length,
         },
         fallback_fields: transfer.bundle.fallback_fields || [],
         remaining_required: transfer.bundle.missing_required || [],
@@ -1057,7 +1108,9 @@
       };
       await updateStatus(transfer.id, "ready_for_review", note, debug);
       sessionStorage.setItem(ACTIVE_TRANSFER_KEY, String(transfer.id));
-      bridgeStatus(`${formResult.filled} alan hazırlandı · doktor kontrolü bekleniyor`, "ok");
+      bridgeStatus(unresolved.length
+        ? `Aktarım bitti · ${unresolved.length} alan doktor kontrolünde`
+        : "Aktarım bitti · doktor kontrolü bekleniyor", "ok");
     } catch (error) {
       await updateStatus(transfer.id, "failed", error.message, {
         started_at: startedAt,

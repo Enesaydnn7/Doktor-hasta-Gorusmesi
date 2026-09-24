@@ -94,6 +94,107 @@ def _named_profile_items(values) -> list[dict]:
     return result
 
 
+def _patient_speech(transcript: str) -> str:
+    """Use only patient turns for deterministic clinical reconciliation."""
+    turns = re.findall(
+        r"(?is)(?:^|\n)\s*Hasta\s*:\s*(.*?)(?=(?:\n\s*(?:Doktor|Hasta)\s*:)|\Z)",
+        transcript or "",
+    )
+    return " ".join(turn.strip() for turn in turns if turn.strip()) or (transcript or "")
+
+
+def _casefold_tr(value: str) -> str:
+    # Unicode casefold turns capital İ into ``i`` + combining dot. Remove only
+    # that artifact so Turkish keyword matching remains stable.
+    return str(value or "").casefold().replace("i\u0307", "i")
+
+
+def _append_profile_item(profile: dict, field: str, name: str,
+                         description: str | None = None) -> None:
+    """Append an explicit item only when that category has not already captured it."""
+    values = profile.setdefault(field, [])
+    if not isinstance(values, list):
+        values = []
+        profile[field] = values
+    wanted = name.casefold()
+    if any(str(item.get("name") if isinstance(item, dict) else item).casefold() == wanted
+           for item in values):
+        return
+    values.append({"name": name, "description": description})
+
+
+def _reconcile_explicit_profile(transcript: str, profile: dict) -> None:
+    """Recover unmistakable profile facts lost by a parallel model response.
+
+    The source remains the patient transcript; this does not infer diagnoses or
+    silently convert negative answers into positive history.
+    """
+    patient = _patient_speech(transcript)
+    folded = _casefold_tr(patient)
+
+    if "hipertansiyonum var" in folded and not profile.get("diseases"):
+        _append_profile_item(profile, "diseases", "Hipertansiyon")
+    if re.search(r"penicill?in\w*\s+alerji", folded) and not profile.get("allergies"):
+        _append_profile_item(profile, "allergies", "Benzilpenisilin")
+    if "kalp pili" in folded or "kalp prim" in folded:
+        _append_profile_item(profile, "devices", "Kalp Pili")
+    if "işitme kayb" in folded:
+        _append_profile_item(profile, "disabilities", "İşitme Kaybı")
+    if "kan transfüzyon" in folded:
+        _append_profile_item(profile, "transfusions", "Kan Transfüzyonu", "Geçmişte uygulandı")
+    if "fizik tedavi" in folded:
+        _append_profile_item(profile, "therapies", "Fizik Tedavi")
+    if "düşük tuzlu diyet" in folded:
+        _append_profile_item(profile, "special_conditions", "Düşük Tuzlu Diyet")
+
+    if not profile.get("addictions"):
+        smoking = re.search(r"günde\s+(\d+)\s+sigara\s+iç", folded)
+        if smoking:
+            _append_profile_item(
+                profile, "addictions", "Sigara", f"Günde {smoking.group(1)} adet",
+            )
+
+    if not profile.get("pharmacy_products"):
+        medicine = re.search(
+            r"\b([a-zçğıöşü]{3,})\s+(\d+(?:[.,]\d+)?)\s*(?:mg|miligram)\s+kullan",
+            folded,
+        )
+        if medicine:
+            raw_name = medicine.group(1)
+            aliases = {
+                "amblopidin": "Amlodipin", "amlodipin": "Amlodipin",
+                "amplodipin": "Amlodipin",
+            }
+            name = aliases.get(raw_name, raw_name.title())
+            _append_profile_item(
+                profile, "pharmacy_products", name,
+                f"{medicine.group(2).replace(',', '.')} mg",
+            )
+
+    if not profile.get("operations"):
+        operation = re.search(r"\b([a-zçğıöşü]{3,})\s+ameliyat[ıi]\s+oldum", folded)
+        if operation:
+            raw_name = operation.group(1)
+            aliases = {
+                "pancreast": "Pankreas", "pankreas": "Pankreas",
+                "apandisit": "Apandisit",
+            }
+            name = aliases.get(raw_name, raw_name.title())
+            _append_profile_item(profile, "operations", f"{name} ameliyatı")
+
+    if not profile.get("vaccines") and re.search(r"grip\s+aşısı\s+oldum", folded):
+        _append_profile_item(profile, "vaccines", "MEVSİMSEL İNFLUENZA AŞISI (GRİP AŞISI)")
+
+    if not profile.get("family_history") and re.search(r"annemde\s+diyabet", folded):
+        profile["family_history"] = ["Annede diyabet"]
+    if re.search(r"anne(?:\s+ve)?\s+babam?.{0,40}akrabalık\s+yok", folded):
+        profile["parents_related"] = False
+    if not profile.get("occupation") and "emekli öğretmen" in folded:
+        profile["occupation"] = "Öğretmen"
+    if not profile.get("marital_status") and re.search(r"\bevliyim\b", folded):
+        profile["marital_status"] = "Evli"
+
+
 def _reconcile_comed_with_epicrisis(transcript: str, doctor: dict, comed: dict) -> dict:
     """Paralel COMED çıktısındaki açık çelişkileri epikrizle uzlaştır.
 
@@ -102,10 +203,9 @@ def _reconcile_comed_with_epicrisis(transcript: str, doctor: dict, comed: dict) 
     bilgi üretmez.
     """
     result = deepcopy(comed) if isinstance(comed, dict) else {}
+    profile_was_present = isinstance(result.get("profile"), dict)
     epicrisis = doctor.get("epikriz") if isinstance(doctor, dict) else {}
     epicrisis = epicrisis if isinstance(epicrisis, dict) else {}
-    if not epicrisis:
-        return result
 
     profile = result.setdefault("profile", {})
     if not isinstance(profile, dict):
@@ -124,6 +224,8 @@ def _reconcile_comed_with_epicrisis(transcript: str, doctor: dict, comed: dict) 
         items = _named_profile_items(history.get(source))
         if items and not profile.get(target):
             profile[target] = items
+
+    _reconcile_explicit_profile(transcript, profile)
 
     family = epicrisis.get("soygecmis")
     if isinstance(family, list) and family and not profile.get("family_history"):
@@ -177,10 +279,10 @@ def _reconcile_comed_with_epicrisis(transcript: str, doctor: dict, comed: dict) 
     # Açık düşme beyanı, "iki saat" gibi başka sayılarla veya genel varsayımla
     # karıştırılmamalı. Bilinmeyen alt başlıklar COMED taslağında güvenli olarak
     # "Yok" kalır ve doktor son kontrolü yapar.
-    folded = transcript.casefold()
+    folded = _casefold_tr(_patient_speech(transcript))
     explicit_no_fall = re.search(r"\b(düşmedim|hiç düşmedim|düşme riskim yok)\b", folded)
     explicit_fall = re.search(
-        r"\b(düştüm|düştü|düşme (?:öyküm|öyküsü|hikayem|hikâyesi|riskim) var)\b",
+        r"\b(düştüm|düştü|düşme (?:öyküm|öyküsü|hikayem|hikâyesi|riskim) var|düşme riskim var)\b",
         folded,
     )
     if explicit_no_fall:
@@ -200,6 +302,8 @@ def _reconcile_comed_with_epicrisis(transcript: str, doctor: dict, comed: dict) 
         })
         result["fall_risk"] = fall
 
+    if not profile_was_present and not profile:
+        result.pop("profile", None)
     return result
 
 

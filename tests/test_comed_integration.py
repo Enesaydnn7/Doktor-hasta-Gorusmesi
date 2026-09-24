@@ -158,6 +158,39 @@ class ComedIntegrationTests(unittest.TestCase):
         self.assertIn("Solunum Sistemi: Nefes darlığı", summary)
         self.assertNotIn("özellik yok olarak hazırlandı", summary.casefold())
 
+    def test_contextual_system_findings_are_mapped_to_exact_comed_options(self):
+        normalized = comed_integration.normalize_draft({
+            "review_of_system_simple": (
+                "Genel Sistem Sorgusu: Halsizlik; Genitoüriner Sistem: Son günlerde sık idrara çıkma; "
+                "Deri: Kollarda kaşıntı; Solunum Sistemi: Merdiven çıkarken nefes darlığı; "
+                "Sinir Sistemi: Bazen denge bozukluğu; Kas - İskelet Sistemi: Bacaklarda kas ağrısı; "
+                "Dolaşım Sistemi: Zaman zaman çarpıntı; Gastrointestinal Sistem: Hafif bulantı; "
+                "Komplikasyon: Komplikasyon olmadı"
+            ),
+            "review_of_system": {
+                "Genel Sistem Sorgusu": ["Halsizliğim var"],
+                "Genitoüriner Sistem": ["Son günlerde sık idrara çıkıyorum"],
+                "Deri": ["Özellik Yok"],
+                "Solunum Sistemi": ["Özellik Yok"],
+                "Sinir Sistemi": ["Bazen denge bozukluğu yaşıyorum"],
+                "Kas - İskelet Sistemi": ["Özellik Yok"],
+                "Dolaşım Sistemi": ["Zaman zaman çarpıntım oluyor"],
+                "Gastrointestinal Sistem": ["Özellik Yok"],
+                "Komplikasyon": ["Komplikasyon Yok"],
+            },
+        })
+        review = normalized["fields"]["review_of_system"]
+
+        self.assertEqual(review["Genel Sistem Sorgusu"], ["Halsizlik"])
+        self.assertEqual(review["Genitoüriner Sistem"], ["Sık idrara çıkma"])
+        self.assertEqual(review["Deri"], ["Kaşıntı"])
+        self.assertEqual(review["Solunum Sistemi"], ["Nefes darlığı"])
+        self.assertEqual(review["Sinir Sistemi"], ["Denge bozukluğu"])
+        self.assertEqual(review["Kas - İskelet Sistemi"], ["Kas ağrısı"])
+        self.assertEqual(review["Dolaşım Sistemi"], ["Çarpıntı"])
+        self.assertEqual(review["Gastrointestinal Sistem"], ["Bulantı"])
+        self.assertEqual(review["Komplikasyon"], ["Komplikasyon Yok"])
+
     def test_real_profile_data_wins_over_conflicting_no_known_flags(self):
         normalized = comed_integration.normalize_draft({
             "profile": {

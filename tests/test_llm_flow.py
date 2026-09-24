@@ -87,6 +87,35 @@ class AnalyzeFlowTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(reconciled["profile"]["no_known_history"])
         self.assertEqual(reconciled["diagnoses"][0]["code"], "R07.4")
 
+    def test_explicit_patient_profile_and_fall_risk_survive_garbled_stt(self):
+        transcript = """Doktor: Özgeçmişinizi soracağım.
+Hasta: Hipertansiyonum var. Her gün Amblopidin 5 mg kullanıyorum. Penicilline alerjim var.
+Hasta: Kalp primim var. İşitme kaybım var. 2020 yılında kan transfüzyonu yapıldı.
+Hasta: Haftada bir fizik tedavi oluyorum ve düşük tuzlu diyet uyguluyorum.
+Hasta: Günde 10 sigara içiyorum. Annemde diyabet var ve anne babam arasında akrabalık yok.
+Doktor: Son bir yılda düştünüz mü?
+Hasta: Evet, gençliğinde evde bir kez düştüm. Bu nedenle düşme riskim var.
+Hasta: Bazen denge bozukluğu yaşıyorum, bilincim açık ve çevreye uyumluyum."""
+
+        reconciled = llm._reconcile_comed_with_epicrisis(
+            transcript,
+            {},
+            {"profile": {}, "fall_risk": {"exists": False}},
+        )
+        profile = reconciled["profile"]
+
+        self.assertEqual(profile["pharmacy_products"][0]["name"], "Amlodipin")
+        self.assertEqual(profile["disabilities"][0]["name"], "İşitme Kaybı")
+        self.assertEqual(profile["transfusions"][0]["name"], "Kan Transfüzyonu")
+        self.assertEqual(profile["therapies"][0]["name"], "Fizik Tedavi")
+        self.assertEqual(profile["special_conditions"][0]["name"], "Düşük Tuzlu Diyet")
+        self.assertEqual(profile["addictions"][0]["description"], "Günde 10 adet")
+        self.assertEqual(profile["family_history"], ["Annede diyabet"])
+        self.assertFalse(profile["parents_related"])
+        self.assertTrue(reconciled["fall_risk"]["exists"])
+        self.assertTrue(reconciled["fall_risk"]["history"])
+        self.assertTrue(reconciled["fall_risk"]["gait_balance_disorder"])
+
 
 if __name__ == "__main__":
     unittest.main()
