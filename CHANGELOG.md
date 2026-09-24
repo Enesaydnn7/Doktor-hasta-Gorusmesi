@@ -1,5 +1,11 @@
 # Sürüm Geçmişi
 
+## v2.8.6 — 24 Eylül 2026
+
+- 24 Eylül göğüs ağrısı denemesinin gerçek ses kaydı, transkripti, raporları ve COMED aktarım/debug verisi private repo içinde kalıcı demo kaydı olarak arşivlendi.
+- Render'ın geçici SQLite diski sıfırlansa bile bu kayıt uygulama açılışında tekilleştirilmiş `demo_key` ile admin paneline yeniden ekleniyor.
+- Aktarım sınırında yalnızca hasta cümleleri kullanılarak açık düşme/düşmeme beyanı yeniden doğrulanıyor; eski analiz taslakları yanlış düşme değeri taşıyorsa doktor incelemesinden önce düzeltiliyor.
+
 ## v2.8.5 — 24 Eylül 2026
 
 - Bağlamlı Sistem Sorgusu bulguları COMED'in gerçek kısa seçeneklerine kanonik olarak eşleniyor; pozitif bulgu varken yanlış `Özellik Yok` seçilmiyor.

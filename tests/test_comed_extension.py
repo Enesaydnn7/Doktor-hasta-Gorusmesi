@@ -37,6 +37,8 @@ class ComedExtensionTests(unittest.TestCase):
         self.assertIn('["Engellilik Durumu", profile.disabilities]', source)
         self.assertIn('normalized.age_group = age >= 65 ? "65_plus" : "under_65"', source)
         self.assertIn('textOf(item).includes("Düşme Hikayesi")', source)
+        self.assertIn("for (const [label, selected, yes, no] of choices)", source)
+        self.assertIn("if (!clickFieldOption(label, selected ? yes : no, popover)) return false", source)
         self.assertIn('const target = cells.slice(1).find', source)
         self.assertIn('[data-test="co-button-icon-arti"]', source)
         self.assertIn("const alreadyPresent", source)
@@ -66,7 +68,7 @@ class ComedExtensionTests(unittest.TestCase):
 
     def test_manifest_declares_v285(self):
         manifest = json.loads((EXTENSION / "manifest.json").read_text(encoding="utf-8"))
-        self.assertEqual(manifest["version"], "2.8.5")
+        self.assertEqual(manifest["version"], "2.8.6")
 
 
 if __name__ == "__main__":

@@ -28,6 +28,9 @@ DEMO_AUDIO_PATH = DEMO_DIR / "gastrit_demo_kayit_2_2026-08-27.webm"
 LEG_PAIN_DEMO_RECORD_KEY = "manager-leg-pain-demo-2026-09-09"
 LEG_PAIN_DEMO_JSON_PATH = DEMO_DIR / "bacak_agrisi_demo_kayit_2_2026-09-09.json"
 LEG_PAIN_DEMO_AUDIO_PATH = DEMO_DIR / "bacak_agrisi_demo_kayit_2_2026-09-09.m4a"
+CHEST_PAIN_DEMO_RECORD_KEY = "manager-chest-pain-demo-2026-09-24"
+CHEST_PAIN_DEMO_JSON_PATH = DEMO_DIR / "gogus_agrisi_demo_kayit_3_2026-09-24.json"
+CHEST_PAIN_DEMO_AUDIO_PATH = DEMO_DIR / "gogus_agrisi_demo_kayit_3_2026-09-24.m4a"
 _lock = threading.Lock()
 
 
@@ -191,16 +194,17 @@ def _ensure_demo_record(c):
             continue
 
         record = json.loads(json_path.read_text(encoding="utf-8"))
-        c.execute(
+        cur = c.execute(
             """INSERT INTO kayitlar
-               (olusturma, transkript, hasta, doktor, yonetim, usage,
+               (olusturma, transkript, hasta, doktor, yonetim, comed, usage,
                 ses, ses_mime, ses_ad, ozet, demo_key,
                 source, client_version, metadata)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (
                 record["olusturma"], record["transkript"],
                 encode(record.get("hasta")), encode(record.get("doktor")),
-                encode(record.get("yonetim")), encode(record.get("usage")),
+                encode(record.get("yonetim")), encode(record.get("comed")),
+                encode(record.get("usage")),
                 audio_path.read_bytes(), spec["audio_mime"],
                 record.get("ses_ad") or audio_path.name,
                 record.get("ozet") or spec["summary"], demo_key,
@@ -208,6 +212,26 @@ def _ensure_demo_record(c):
                 record.get("client_version"), encode(record.get("metadata")),
             ),
         )
+        transfer = record.get("comed_transfer")
+        if isinstance(transfer, dict) and transfer.get("visit_id"):
+            created_at = transfer.get("created_at") or record["olusturma"]
+            updated_at = transfer.get("updated_at") or created_at
+            c.execute(
+                """INSERT INTO comed_transfers
+                   (record_id, visit_id, patient_id, clinical_card_url, status,
+                    bundle, error, debug, requested_by, created_at, updated_at)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+                (
+                    cur.lastrowid, str(transfer.get("visit_id") or ""),
+                    str(transfer.get("patient_id") or ""),
+                    str(transfer.get("clinical_card_url") or ""),
+                    transfer.get("status") or "ready_for_review",
+                    encode(transfer.get("bundle")), transfer.get("error"),
+                    encode(transfer.get("debug")),
+                    transfer.get("requested_by") or "",
+                    created_at, updated_at,
+                ),
+            )
 
 
 def _demo_record_specs():
@@ -225,6 +249,13 @@ def _demo_record_specs():
             "audio_path": LEG_PAIN_DEMO_AUDIO_PATH,
             "audio_mime": "audio/mp4",
             "summary": "Yönetici demosu · Bacak ağrısı",
+        },
+        {
+            "key": CHEST_PAIN_DEMO_RECORD_KEY,
+            "json_path": CHEST_PAIN_DEMO_JSON_PATH,
+            "audio_path": CHEST_PAIN_DEMO_AUDIO_PATH,
+            "audio_mime": "audio/mp4",
+            "summary": "Yönetici demosu · Göğüs ağrısı COMED aktarımı",
         },
     )
 

@@ -21,3 +21,14 @@ Dosya private repoda korunur. Uygulama her yeni/geçici SQLite veritabanında bu
 - SHA-256: `DB6FBD6D6B7C46124DC1FE4291816CED21FD5065D16317F1F43DAE81CE7CEC10`
 
 Bu deneme de benzersiz `demo_key` ile her yeni/geçici SQLite veritabanına yalnızca bir kez eklenir; deploy sonrasında admin panelinde sesi ve raporlarıyla yeniden görünür.
+
+## Göğüs ağrısı ve COMED aktarım denemesi
+
+- Ses: `gogus_agrisi_demo_kayit_3_2026-09-24.m4a`
+- Arşiv verisi: `gogus_agrisi_demo_kayit_3_2026-09-24.json`
+- Kayıt zamanı: `24 Eylül 2026 06:44:49`
+- Senaryo: Dursun Kılıçarslan test hastası; göğüs ağrısı ve tam COMED alan aktarımı
+- Ses boyutu: `1.753.848` bayt
+- SHA-256: `0CDC4D064251D38EADC70407328152BCD772D511E758932EA84C10991E85AF8A`
+
+Bu kayıt da repo içinde ses, transkript, raporlar ve COMED taslağıyla korunur. Render'ın geçici diski sıfırlansa bile yeni veritabanına otomatik olarak yeniden eklenir.

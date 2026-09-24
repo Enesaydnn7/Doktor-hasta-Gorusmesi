@@ -70,16 +70,31 @@ class DemoRecordSeedTests(unittest.TestCase):
                 db.init()
                 db.init()
                 records = db.liste()
+                chest_record = next(
+                    record for record in records
+                    if record["ozet"] == "Yönetici demosu · Göğüs ağrısı COMED aktarımı"
+                )
+                seeded = db.getir(chest_record["id"])
 
-            self.assertEqual(len(records), 2)
+            self.assertEqual(len(records), 3)
             self.assertEqual(
                 {record["ozet"] for record in records},
                 {
                     "Yönetici demosu · Gastrit (mide iltihabı)",
                     "Yönetici demosu · Bacak ağrısı",
+                    "Yönetici demosu · Göğüs ağrısı COMED aktarımı",
                 },
             )
             self.assertTrue(all(record["ses_var"] for record in records))
+
+            self.assertEqual(seeded["client_version"], "2.8.5")
+            self.assertTrue(seeded["comed"]["fall_risk"]["exists"])
+            self.assertEqual(seeded["comed"]["diagnoses"][0]["code"], "R07.4")
+            self.assertEqual(seeded["comed_transfer"]["status"], "ready_for_review")
+            self.assertEqual(
+                seeded["comed_transfer"]["debug"]["extension"]["unresolved_count"],
+                1,
+            )
 
 
 if __name__ == "__main__":

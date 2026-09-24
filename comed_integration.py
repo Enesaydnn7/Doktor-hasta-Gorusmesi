@@ -275,6 +275,65 @@ def _fold_text(value: Any) -> str:
     return "".join(char for char in text if not unicodedata.combining(char)).replace("ı", "i")
 
 
+def _patient_transcript_text(transcript: Any) -> str:
+    """Return only patient turns so a doctor's screening question cannot set a field."""
+    patient_turns = []
+    for line in str(transcript or "").splitlines():
+        match = re.match(r"^\s*(hasta|patient)\s*:\s*(.+)$", line, flags=re.IGNORECASE)
+        if match:
+            patient_turns.append(match.group(2))
+    return "\n".join(patient_turns)
+
+
+def _reconcile_fall_risk_from_transcript(draft: dict[str, Any], transcript: Any) -> None:
+    """Repair a stale model fall-risk value immediately before COMED transfer.
+
+    Analysis already performs this reconciliation. Repeating the evidence check at
+    the transfer boundary also fixes older/re-analysed records whose saved COMED
+    draft still says ``exists: false`` even though the patient explicitly reported
+    a fall.
+    """
+    patient_text = _fold_text(_patient_transcript_text(transcript))
+    if not patient_text:
+        return
+
+    explicit_no_fall = re.search(
+        r"\b(?:hic\s+)?dusmedim\b|\bdusme\s+(?:oykum|hikayem|riskim)\s+yok\b",
+        patient_text,
+    )
+    explicit_fall = re.search(
+        r"\b(?:dustum|dustu|dusme\s+(?:oykum|oykusu|hikayem|hikayesi|riskim)\s+var)\b",
+        patient_text,
+    )
+    if explicit_no_fall:
+        draft["fall_risk"] = {"exists": False}
+        return
+    if not explicit_fall:
+        return
+
+    current = draft.get("fall_risk")
+    fall_risk = deepcopy(current) if isinstance(current, dict) else {}
+    fall_risk["exists"] = True
+    fall_risk["history"] = True
+    fall_risk.setdefault("medications", bool(re.search(
+        r"\b(?:ilac|kullaniyorum|mg)\b", patient_text
+    )))
+    fall_risk.setdefault("addiction", False)
+    fall_risk["gait_balance_disorder"] = bool(
+        fall_risk.get("gait_balance_disorder")
+        or "denge bozuk" in patient_text
+        or "dusme riskim var" in patient_text
+    )
+    fall_risk.setdefault("vision_disorder", False)
+    fall_risk["oriented"] = bool(
+        fall_risk.get("oriented")
+        or "bilincim acik" in patient_text
+        or "cevreye uyumlu" in patient_text
+    )
+    fall_risk.setdefault("general_health_normal", False)
+    draft["fall_risk"] = fall_risk
+
+
 def _positive_alias_in_text(text: str, alias: str) -> bool:
     """Return true only when an alias is present without a nearby negation."""
     folded = _fold_text(text)
@@ -772,7 +831,9 @@ def build_native_requests(fields: dict[str, Any], visit_id: str,
 
 def build_transfer_bundle(record: dict[str, Any], patient: dict[str, Any],
                           trace_templates: list[dict[str, Any]] | None = None) -> dict[str, Any]:
-    normalized = normalize_draft(record.get("comed") or {})
+    draft = deepcopy(record.get("comed") or {})
+    _reconcile_fall_risk_from_transcript(draft, record.get("transkript"))
+    normalized = normalize_draft(draft)
     visit_id = str(patient.get("visit_id") or "").strip()
     card_id = str(patient.get("clinical_card_id") or "").strip()
     url = patient.get("clinical_card_url") or (

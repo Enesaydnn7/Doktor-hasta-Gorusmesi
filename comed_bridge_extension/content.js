@@ -597,9 +597,14 @@
       ["Ruhsal Durum", normalized.oriented, "Oryante", "Oryante Değil"],
       ["Genel Sağlık Durumu", normalized.general_health_normal, "Normal", "Normal Değil"],
     ];
-    choices.forEach(([label, selected, yes, no]) => {
-      clickFieldOption(label, selected ? yes : no, popover);
-    });
+    for (const [label, selected, yes, no] of choices) {
+      if (!clickFieldOption(label, selected ? yes : no, popover)) return false;
+      await sleep(35);
+    }
+    document.dispatchEvent(new KeyboardEvent("keydown", {
+      key: "Escape", code: "Escape", bubbles: true,
+    }));
+    await sleep(80);
     return true;
   }
 

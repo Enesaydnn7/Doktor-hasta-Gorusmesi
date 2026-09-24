@@ -239,6 +239,43 @@ class ComedIntegrationTests(unittest.TestCase):
             ],
         )
 
+    def test_transfer_repairs_stale_fall_risk_from_patient_transcript(self):
+        record = {
+            "id": 44,
+            "transkript": (
+                "Doktor: Son bir yıl içinde düştünüz mü?\n"
+                "Hasta: Evet geçen ay evde bir kez düştüm. Bu nedenle düşme riskim var.\n"
+                "Hasta: Bilincim açık ve çevreye uyumluyum."
+            ),
+            "comed": {"fall_risk": {"exists": False}},
+        }
+        bundle = comed_integration.build_transfer_bundle(
+            record,
+            {"visit_id": "22207357", "clinical_card_id": "30416836"},
+        )
+        fall_risk = bundle["requests"][0]["fields"]["fall_risk"]
+
+        self.assertTrue(fall_risk["exists"])
+        self.assertTrue(fall_risk["history"])
+        self.assertTrue(fall_risk["gait_balance_disorder"])
+        self.assertTrue(fall_risk["oriented"])
+
+    def test_transfer_respects_explicit_patient_no_fall(self):
+        record = {
+            "id": 45,
+            "transkript": (
+                "Doktor: Düşme öykünüz var mı?\n"
+                "Hasta: Hayır, hiç düşmedim ve düşme riskim yok."
+            ),
+            "comed": {"fall_risk": {"exists": True, "history": True}},
+        }
+        bundle = comed_integration.build_transfer_bundle(
+            record,
+            {"visit_id": "22207357", "clinical_card_id": "30416836"},
+        )
+
+        self.assertFalse(bundle["requests"][0]["fields"]["fall_risk"]["exists"])
+
     def test_native_document_post_is_built_only_from_same_visit_success_template(self):
         record = {
             "id": 42,

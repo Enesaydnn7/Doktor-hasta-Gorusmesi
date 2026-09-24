@@ -52,7 +52,7 @@ Tarayıcı: **http://127.0.0.1:8000** → "Örnek yükle" → "Analiz et".
 
 GEMINI_API_KEY=...
 GEMINI_MODEL=gemini-2.5-flash
-APP_VERSION=v2.8.5
+APP_VERSION=v2.8.6
 COMED_WEB_BASE_URL=http://goztepe.comedtest.mlpcare.com/tr-tr/medical
 COMED_API_BASE_URL=http://goztepe.comedtestapi.mlpcare.com/tr-tr/api/json
 MOBILE_SESSION_DAYS=30
@@ -123,7 +123,7 @@ OPENAI_STT_FALLBACK_MODEL=gpt-transcribe
 4. **Environment** sekmesinden değişkenleri gir:
    - `GEMINI_API_KEY` = (anahtarın)
    - `GEMINI_MODEL` = `gemini-2.5-flash`
-   - `APP_VERSION` = `v2.8.5`
+   - `APP_VERSION` = `v2.8.6`
    - `MOBILE_SESSION_DAYS` = `30`
    - `ELEVENLABS_API_KEY` = (ElevenLabs API anahtarın)
    - `ELEVENLABS_STT_MODEL` = `scribe_v2`
@@ -171,10 +171,10 @@ Panelde metin kutusunun üstünde **Kaydet** ve **Ses dosyası yükle** var:
 
 ### COMED Chrome köprüsü
 
-Hazır eklenti paketi: [`build_artifacts/klinot-comed-bridge-v2.8.5.zip`](build_artifacts/klinot-comed-bridge-v2.8.5.zip).
+Hazır eklenti paketi: [`build_artifacts/klinot-comed-bridge-v2.8.6.zip`](build_artifacts/klinot-comed-bridge-v2.8.6.zip).
 ZIP'i klasöre çıkardıktan sonra [`build_artifacts/README.md`](build_artifacts/README.md) içindeki adımları izleyin.
 COMED oturumu Chrome'da normal şekilde açılır; eklentiye COMED parolası değil, mobil Klinot hesabı girilir.
-v2.8.5 aynı protokol için doğrulanmış COMED kayıt gövdesi varsa izin listeli POST'u
+v2.8.6 aynı protokol için doğrulanmış COMED kayıt gövdesi varsa izin listeli POST'u
 kullanır; şablon yoksa açık hasta kartını ve ayrı Sistem Sorgulama belgesini eklenti
 üzerinden dolduran MVP akışına döner. Admin debug görünümü hangi alanın POST veya eklenti
 ile hazırlandığını gösterir. Her iki durumda da ana formun son kontrolü, kaydı ve imzası doktordadır.
