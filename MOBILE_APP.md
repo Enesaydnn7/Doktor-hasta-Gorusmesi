@@ -1,16 +1,16 @@
 # Klinot mobil MVP mimarisi
 
-Klinot, yüz yüze doktor–hasta görüşmesinde telefonun masanın ortasında bulunduğu kayıt senaryosudur. `mobile_app/` tek Flutter kod tabanından Android ve iOS doktor istemcileri üretir. Mobil uygulamada yönetim ekranı bulunmaz. Bütün görüşmeler mevcut web `/admin` panelinde toplanır; ileride hazırlanacak ayrı yönetim uygulaması da aynı yönetici API'lerini kullanabilir.
+Klinot, yüz yüze doktor–hasta görüşmesinde telefonun masanın ortasında bulunduğu kayıt senaryosudur. `mobile_app/` tek Flutter kod tabanından Android ve iOS doktor/hasta istemcileri üretir. Mobil uygulamada yönetim ekranı bulunmaz. Bütün görüşmeler mevcut web `/admin` panelinde toplanır.
 
 ## Akış
 
-1. Doktor mobil uygulamada oturum açar ve COMED iş listesinden görüşeceği hasta/protokolü seçer.
-2. Hasta bilgilendirme onayı işaretlenir ve kayıt başlatılır.
-3. Uygulama mono AAC/M4A kaydeder, ekranı açık tutar ve gerçek mikrofon seviyesini gösterir.
-4. Kayıt `/api/v1/mobile/transcribe` ile mevcut Scribe/OpenAI zincirine gönderilir.
-5. Doktor transkripti kontrol edip gerekiyorsa düzeltir.
-6. `/api/v1/mobile/analyze/stream` üç raporu ve COMED alan taslağını paralel üretir. Doktor uygulaması yapılandırılmış epikrizi ve iletişim önerilerini gösterir.
-7. Doktor epikrizi PDF olarak indirebilir veya taslağı “COMED'e aktar” ile açık kurumsal COMED oturumuna gönderebilir.
+1. Kullanıcı açılışta Doktor veya Hasta rolünü seçerek oturum açar.
+2. Doktor kendi COMED iş listesinden görüşeceği hastayı; hasta ise yalnız kendi hasta numarasına bağlı randevuyu seçer.
+3. Bilgilendirme onayı iOS tarzı anahtarla verilir ve kayıt başlatılır.
+4. Uygulama mono AAC/M4A kaydeder, ekranı açık tutar ve gerçek mikrofon seviyesini gösterir.
+5. Kayıt `/api/v1/mobile/transcribe` ile mevcut Scribe/OpenAI zincirine gönderilir.
+6. `/api/v1/mobile/analyze/stream` raporları ve COMED alan taslağını paralel üretir. Doktor yapılandırılmış epikrizi ve iletişim önerilerini, hasta sade sağlık raporunu görür.
+7. Doktor epikrizi PDF olarak indirebilir veya taslağı “COMED'e aktar” ile açık kurumsal COMED oturumuna gönderebilir. Hasta yalnız sağlık raporunu PDF olarak indirebilir.
 8. Chrome köprüsü güvenli metin alanlarını doldurur; doktor COMED'de kontrol eder ve COMED'in kendi Kaydet/İmzala işlemini kullanır.
 9. Ses, transkript, bütün raporlar, COMED taslağı, kullanım ve istemci bilgisi mevcut veritabanına kaydedilir; ayrı web `/admin` panelinde de izlenir.
 
@@ -18,12 +18,13 @@ Klinot, yüz yüze doktor–hasta görüşmesinde telefonun masanın ortasında 
 
 | Yöntem | Uç | Yetki | İş |
 |---|---|---|---|
-| `POST` | `/api/v1/mobile/auth/login` | Açık | Doktor/yönetici girişi, Bearer token |
+| `POST` | `/api/v1/mobile/auth/login` | Açık | Doktor/hasta girişi, rol kontrollü Bearer token |
 | `GET` | `/api/v1/mobile/health` | Açık | API ve model sağlık bilgisi |
-| `POST` | `/api/v1/mobile/transcribe` | Doktor/Yönetici | Multipart ses yükleme ve STT |
-| `POST` | `/api/v1/mobile/analyze/stream` | Doktor/Yönetici | NDJSON gerçek ilerleme ve raporlar |
-| `POST` | `/api/v1/mobile/pdf/epikriz` | Doktor/Yönetici | Doktor epikrizini PDF olarak üretme |
-| `GET` | `/api/v1/mobile/comed/worklist` | Doktor/Yönetici | COMED'den eşitlenmiş iş listesini getirir |
+| `POST` | `/api/v1/mobile/transcribe` | Doktor/Hasta | Multipart ses yükleme ve STT |
+| `POST` | `/api/v1/mobile/analyze/stream` | Doktor/Hasta | NDJSON gerçek ilerleme ve raporlar |
+| `POST` | `/api/v1/mobile/pdf/epikriz` | Doktor | Doktor epikrizini PDF olarak üretme |
+| `POST` | `/api/v1/mobile/pdf/saglik-raporu` | Hasta | Sade hasta sağlık raporunu PDF olarak üretme |
+| `GET` | `/api/v1/mobile/comed/worklist` | Doktor/Hasta | Doktora ait iş listesini veya hastaya ait randevuları getirir |
 | `POST` | `/api/v1/mobile/comed/worklist/sync` | Doktor/Yönetici | Chrome köprüsünün iş listesini eşitlemesi |
 | `POST` | `/api/v1/mobile/comed/transfers` | Doktor/Yönetici | Kayıt için doktor kontrollü aktarım oluşturur |
 | `GET` | `/api/v1/mobile/comed/transfers/{id}` | Doktor/Yönetici | Aktarım durumunu getirir |
@@ -33,7 +34,7 @@ Klinot, yüz yüze doktor–hasta görüşmesinde telefonun masanın ortasında 
 | `GET` | `/api/v1/mobile/records/{id}` | Yönetici | Rapor ve transkript ayrıntısı |
 | `DELETE` | `/api/v1/mobile/records/{id}` | Yönetici | Kayıt silme |
 
-Mobil doktor hesabı için Render Environment bölümüne `MOBILE_DOCTOR_USER` ve `MOBILE_DOCTOR_PASS` eklenir. Yönetici mevcut `ADMIN_USER` ve `ADMIN_PASS` ile web `/admin` paneline girer. Mobil yönetici API'leri gelecekteki ayrı yönetim uygulaması için korunur; Klinot doktor uygulaması bu uçları çağırmaz. Canlıda ayrıca uzun ve rastgele bir `SESSION_SECRET` kullanılmalıdır.
+Doktor hesapları `DOCTOR_ACCOUNTS_JSON`, hasta hesapları `PATIENT_ACCOUNTS_JSON` ile tanımlanır. Hasta kaydındaki `patient_no`, COMED iş listesindeki hasta numarasıyla eşleştirilir; böylece hasta başka kişilerin randevularını göremez. Yönetici mevcut `ADMIN_USER` ve `ADMIN_PASS` ile yalnız web `/admin` paneline girer. Canlıda ayrıca uzun ve rastgele bir `SESSION_SECRET` kullanılmalıdır.
 
 ## Veri ve dayanıklılık
 

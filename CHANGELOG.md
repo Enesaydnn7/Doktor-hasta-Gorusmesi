@@ -1,5 +1,13 @@
 # Sürüm Geçmişi
 
+## v2.10.0 — 29 Eylül 2026
+
+- Mobil girişe doktor/hasta rol seçimi ve hasta numarasıyla giriş eklendi.
+- Hasta hesabı yalnızca kendi COMED randevularını görür; görüşme sonunda sade sağlık raporu açılır.
+- Hasta sağlık raporu için ayrı PDF indirme akışı eklendi; COMED aktarımı doktor rolüyle sınırlandı.
+- Kayıt bilgilendirme kutusu modern, iOS uyumlu anahtara dönüştürüldü.
+- Doktorun mevcut kayıt, epikriz ve COMED aktarım akışı korunarak mobil sürüm `2.10.0+24` yapıldı.
+
 ## v2.9.2 — 29 Eylül 2026
 
 - Mobil epikriz hazırlama ekranı cihaz saatinden ölçülen gerçek geçen süreyi gösterir.

@@ -3,7 +3,7 @@
 Doktor–hasta görüşmesinin metnini alır, **Gemini** ile aynı görüşmeden üç rapor ve COMED alan taslağını paralel üretir.
 Epikriz şeması, gerçek hastane epikrizlerinin yapısına göre kurulmuştur (sigorta/kayıt uyumlu).
 
-`mobile_app/` altında yüz yüze görüşmeler için Android/iOS **Klinot Doktor** Flutter MVP'si bulunur. Mobil uygulama yalnızca kayıt, transkript kontrolü, doktor epikrizi ve epikriz PDF indirme akışını içerir; yönetim ekranları ayrı web `/admin` panelindedir. Mobil mimari ve kurulum: [MOBILE_APP.md](MOBILE_APP.md).
+`mobile_app/` altında yüz yüze görüşmeler için Android/iOS **Klinot** Flutter MVP'si bulunur. Açılışta doktor veya hasta rolü seçilir. Doktor kendi COMED iş listesinden hastayı seçip epikrizi ve iletişim önerilerini görür; hasta yalnız kendi randevularını seçip sade sağlık raporunu görür. Yönetim ekranları ayrı web `/admin` panelindedir. Mobil mimari ve kurulum: [MOBILE_APP.md](MOBILE_APP.md).
 
 | Kime | Ne alır |
 |---|---|
@@ -52,7 +52,7 @@ Tarayıcı: **http://127.0.0.1:8000** → "Örnek yükle" → "Analiz et".
 
 GEMINI_API_KEY=...
 GEMINI_MODEL=gemini-2.5-flash
-APP_VERSION=v2.9.2
+APP_VERSION=v2.10.0
 COMED_WEB_BASE_URL=http://goztepe.comedtest.mlpcare.com/tr-tr/medical
 COMED_API_BASE_URL=http://goztepe.comedtestapi.mlpcare.com/tr-tr/api/json
 MOBILE_SESSION_DAYS=30
@@ -123,7 +123,7 @@ OPENAI_STT_FALLBACK_MODEL=gpt-transcribe
 4. **Environment** sekmesinden değişkenleri gir:
    - `GEMINI_API_KEY` = (anahtarın)
    - `GEMINI_MODEL` = `gemini-2.5-flash`
-   - `APP_VERSION` = `v2.9.2`
+   - `APP_VERSION` = `v2.10.0`
    - `MOBILE_SESSION_DAYS` = `30`
    - `ELEVENLABS_API_KEY` = (ElevenLabs API anahtarın)
    - `ELEVENLABS_STT_MODEL` = `scribe_v2`
@@ -171,10 +171,10 @@ Panelde metin kutusunun üstünde **Kaydet** ve **Ses dosyası yükle** var:
 
 ### COMED Chrome köprüsü
 
-Hazır eklenti paketi: [`build_artifacts/klinot-comed-bridge-v2.9.2.zip`](build_artifacts/klinot-comed-bridge-v2.9.2.zip).
+Hazır eklenti paketi: [`build_artifacts/klinot-comed-bridge-v2.10.0.zip`](build_artifacts/klinot-comed-bridge-v2.10.0.zip).
 ZIP'i klasöre çıkardıktan sonra [`build_artifacts/README.md`](build_artifacts/README.md) içindeki adımları izleyin.
 COMED oturumu Chrome'da normal şekilde açılır; eklentiye COMED parolası değil, mobil Klinot hesabı girilir.
-v2.9.2 aynı protokol için doğrulanmış COMED kayıt gövdesi varsa izin listeli POST'u
+v2.10.0 aynı protokol için doğrulanmış COMED kayıt gövdesi varsa izin listeli POST'u
 kullanır; şablon yoksa açık hasta kartını ve ayrı Sistem Sorgulama belgesini eklenti
 üzerinden dolduran MVP akışına döner. Admin debug görünümü hangi alanın POST veya eklenti
 ile hazırlandığını gösterir. Her iki durumda da ana formun son kontrolü, kaydı ve imzası doktordadır.
@@ -243,6 +243,8 @@ Test hesapları:
 - `sami.sokucu;enes.aydin1|tracer` / `1`
 
 Hesaplar Render ortamında `DOCTOR_ACCOUNTS_JSON` ile değiştirilebilir. Yönetici hesabı mobil uygulama, doktor paneli ve eklentiye kabul edilmez.
+
+Mobil hasta girişi yalnız ilgili hasta numarasına ait eşitlenmiş COMED randevularını gösterir. MVP test hesabı `476644` / `1` (Dursun Kılıçarslan) olup hesaplar `PATIENT_ACCOUNTS_JSON` ile değiştirilebilir.
 
 ## Admin paneli (`/admin`)
 

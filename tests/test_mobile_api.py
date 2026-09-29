@@ -69,6 +69,54 @@ class MobileApiTests(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 401)
 
+    def test_patient_login_returns_patient_identity_and_rejects_wrong_role(self):
+        response = self.client.post(
+            "/api/v1/mobile/auth/login",
+            json={
+                "username": "476644",
+                "password": "1",
+                "requested_role": "patient",
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["user"]["role"], "patient")
+        self.assertEqual(payload["user"]["patient_no"], "476644")
+        self.assertEqual(payload["user"]["display_name"], "Dursun Kılıçarslan")
+        token_info = auth.api_token_bilgisi(payload["access_token"])
+        self.assertEqual(token_info["patient_no"], "476644")
+
+        wrong_role = self.client.post(
+            "/api/v1/mobile/auth/login",
+            json={
+                "username": "476644",
+                "password": "1",
+                "requested_role": "doctor",
+            },
+        )
+        self.assertEqual(wrong_role.status_code, 403)
+
+    def test_patient_worklist_is_filtered_by_patient_number(self):
+        token = auth.api_token_uret("476644", "patient")
+        appointments = [
+            {
+                "visit_id": "22207357",
+                "patient_no": "476644",
+                "patient_name": "Dursun Kılıçarslan",
+            }
+        ]
+        with patch.object(
+            main.db, "comed_patient_appointments", return_value=appointments
+        ) as patient_appointments:
+            response = self.client.get(
+                "/api/v1/mobile/comed/worklist",
+                headers={"Authorization": f"Bearer {token}"},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["items"], appointments)
+        patient_appointments.assert_called_once_with("476644")
+
     def test_admin_lists_all_records_and_doctor_lists_only_own_records(self):
         admin_token = auth.api_token_uret("admin", "admin")
         doctor_token = auth.api_token_uret("doctor", "doctor")
@@ -126,6 +174,36 @@ class MobileApiTests(unittest.TestCase):
         self.assertEqual(save.call_args.kwargs["source"], "mobile")
         self.assertEqual(save.call_args.kwargs["metadata"]["api_user"], "dr-enes")
 
+    def test_patient_analysis_response_contains_only_patient_report(self):
+        async def fake_analyze(_text, progress=None):
+            return {
+                "hasta": {"ozet": "Hastaya açık özet"},
+                "doktor": {"epikriz": {"gizli": "doktor notu"}},
+                "yonetim": {"risk": "yönetim notu"},
+                "comed": {"fields": {"secret": "taslak"}},
+            }
+
+        token = auth.api_token_uret("476644", "patient")
+        with (
+            patch.object(main.llm, "analyze_all", side_effect=fake_analyze),
+            patch.object(main.db, "bekleyen_ses_al", return_value=None),
+            patch.object(main.db, "kaydet", return_value=56),
+        ):
+            response = self.client.post(
+                "/api/v1/mobile/analyze/stream",
+                headers={"Authorization": f"Bearer {token}"},
+                json={"transcript": "Hasta: Göğsüm ağrıyor"},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        messages = [json.loads(line) for line in response.text.splitlines()]
+        result = next(item["data"] for item in messages if item["type"] == "result")
+        self.assertEqual(result["hasta"], {"ozet": "Hastaya açık özet"})
+        self.assertEqual(result["kayit_id"], 56)
+        self.assertNotIn("doktor", result)
+        self.assertNotIn("yonetim", result)
+        self.assertNotIn("comed", result)
+
     def test_mobile_health_does_not_require_login(self):
         response = self.client.get("/api/v1/mobile/health")
         self.assertEqual(response.status_code, 200)
@@ -157,6 +235,33 @@ class MobileApiTests(unittest.TestCase):
         self.assertEqual(response.headers["content-type"], "application/pdf")
         self.assertIn("epikriz_20260908.pdf", response.headers["content-disposition"])
         build_pdf.assert_called_once_with("doktor", {"tani": "Gastrit"})
+
+    def test_mobile_patient_report_pdf_uses_patient_template(self):
+        token = auth.api_token_uret("476644", "patient")
+        report = {"ozet": "Görüşme özeti", "yapilacaklar": ["Kontrole gelin"]}
+        with patch.object(
+            main.pdf_report,
+            "build_pdf",
+            return_value=(b"%PDF-patient", "hasta_raporu_20260929.pdf"),
+        ) as build_pdf:
+            response = self.client.post(
+                "/api/v1/mobile/pdf/saglik-raporu",
+                headers={"Authorization": f"Bearer {token}"},
+                json={"data": report},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content, b"%PDF-patient")
+        self.assertIn("hasta_raporu_20260929.pdf", response.headers["content-disposition"])
+        build_pdf.assert_called_once_with("hasta", report)
+
+        doctor_token = auth.api_token_uret("dr-enes", "doctor")
+        forbidden = self.client.post(
+            "/api/v1/mobile/pdf/saglik-raporu",
+            headers={"Authorization": f"Bearer {doctor_token}"},
+            json={"data": report},
+        )
+        self.assertEqual(forbidden.status_code, 403)
 
     def test_long_transcription_job_survives_request_and_reuses_result(self):
         token = auth.api_token_uret("dr-enes", "doctor")

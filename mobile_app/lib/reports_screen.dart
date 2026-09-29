@@ -61,10 +61,16 @@ class _ReportsScreenState extends State<ReportsScreen>
     if (_downloading) return;
     setState(() => _downloading = true);
     try {
-      final pdf = await widget.api.downloadEpikriz(
-        widget.session.token,
-        widget.result.doctor,
-      );
+      final patientMode = widget.session.role == 'patient';
+      final pdf = patientMode
+          ? await widget.api.downloadPatientReport(
+              widget.session.token,
+              widget.result.patient,
+            )
+          : await widget.api.downloadEpikriz(
+              widget.session.token,
+              widget.result.doctor,
+            );
       final baseName = pdf.fileName.replaceFirst(
         RegExp(r'\.pdf$', caseSensitive: false),
         '',
@@ -79,7 +85,7 @@ class _ReportsScreenState extends State<ReportsScreen>
       _notice(
         savedPath == null
             ? 'PDF kaydetme işlemi iptal edildi.'
-            : 'Epikriz PDF olarak kaydedildi.',
+            : '${patientMode ? 'Sağlık raporu' : 'Epikriz'} PDF olarak kaydedildi.',
       );
     } catch (error) {
       if (mounted) _notice('PDF indirilemedi: $error', error: true);
@@ -199,12 +205,15 @@ class _ReportsScreenState extends State<ReportsScreen>
 
   @override
   Widget build(BuildContext context) {
+    final patientMode = widget.session.role == 'patient';
     final recordLabel = widget.result.recordId == null
         ? 'Yeni görüşme'
         : 'Kayıt #${widget.result.recordId}';
     final patient = widget.result.comedPatient;
     return Scaffold(
-      appBar: AppBar(title: const Text('Doktor epikrizi')),
+      appBar: AppBar(
+        title: Text(patientMode ? 'Sağlık raporum' : 'Doktor epikrizi'),
+      ),
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
@@ -217,13 +226,16 @@ class _ReportsScreenState extends State<ReportsScreen>
                     child: _ReadyHeader(
                       recordLabel: recordLabel,
                       patient: patient,
+                      patientMode: patientMode,
                     ),
                   ),
                 ),
                 SliverPadding(
                   padding: const EdgeInsets.fromLTRB(18, 14, 18, 30),
                   sliver: SliverToBoxAdapter(
-                    child: JsonReportView(data: widget.result.doctor),
+                    child: patientMode
+                        ? PatientReportView(data: widget.result.patient)
+                        : JsonReportView(data: widget.result.doctor),
                   ),
                 ),
               ],
@@ -237,17 +249,24 @@ class _ReportsScreenState extends State<ReportsScreen>
           heightFactor: 1,
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 780),
-            child: _ReportActions(
-              downloading: _downloading,
-              transferring: _transferring,
-              transfer: _transfer,
-              canTransfer: patient != null && widget.result.recordId != null,
-              canOpenComed: patient?.clinicalCardUrl.isNotEmpty == true,
-              onDownload: _downloadPdf,
-              onTransfer: _transferToComed,
-              onOpenComed: _openComed,
-              onNew: () => Navigator.of(context).pop(),
-            ),
+            child: patientMode
+                ? _PatientReportActions(
+                    downloading: _downloading,
+                    onDownload: _downloadPdf,
+                    onNew: () => Navigator.of(context).pop(),
+                  )
+                : _ReportActions(
+                    downloading: _downloading,
+                    transferring: _transferring,
+                    transfer: _transfer,
+                    canTransfer:
+                        patient != null && widget.result.recordId != null,
+                    canOpenComed: patient?.clinicalCardUrl.isNotEmpty == true,
+                    onDownload: _downloadPdf,
+                    onTransfer: _transferToComed,
+                    onOpenComed: _openComed,
+                    onNew: () => Navigator.of(context).pop(),
+                  ),
           ),
         ),
       ),
@@ -256,9 +275,14 @@ class _ReportsScreenState extends State<ReportsScreen>
 }
 
 class _ReadyHeader extends StatelessWidget {
-  const _ReadyHeader({required this.recordLabel, required this.patient});
+  const _ReadyHeader({
+    required this.recordLabel,
+    required this.patient,
+    required this.patientMode,
+  });
   final String recordLabel;
   final ComedPatient? patient;
+  final bool patientMode;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -299,8 +323,8 @@ class _ReadyHeader extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Epikriz hazır',
+              Text(
+                patientMode ? 'Sağlık raporu hazır' : 'Epikriz hazır',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 20,
@@ -310,7 +334,7 @@ class _ReadyHeader extends StatelessWidget {
               const SizedBox(height: 4),
               Text(
                 patient == null
-                    ? '$recordLabel · Doktor kontrolüne hazır'
+                    ? '$recordLabel · ${patientMode ? 'Görüntülemeye hazır' : 'Doktor kontrolüne hazır'}'
                     : '${patient!.patientName} · ${patient!.protocolNo.isEmpty ? patient!.visitId : patient!.protocolNo}',
                 style: const TextStyle(color: Color(0xFFD5F2EF), height: 1.35),
               ),
@@ -321,6 +345,51 @@ class _ReadyHeader extends StatelessWidget {
           Icons.check_circle_rounded,
           color: Color(0xFFBDF5E7),
           size: 29,
+        ),
+      ],
+    ),
+  );
+}
+
+class _PatientReportActions extends StatelessWidget {
+  const _PatientReportActions({
+    required this.downloading,
+    required this.onDownload,
+    required this.onNew,
+  });
+
+  final bool downloading;
+  final VoidCallback onDownload;
+  final VoidCallback onNew;
+
+  @override
+  Widget build(BuildContext context) => Material(
+    color: Theme.of(context).scaffoldBackgroundColor,
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        FilledButton.icon(
+          key: const Key('downloadPatientReportButton'),
+          onPressed: downloading ? null : onDownload,
+          icon: downloading
+              ? const SizedBox.square(
+                  dimension: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : const Icon(Icons.picture_as_pdf_rounded),
+          label: Text(
+            downloading ? 'Hazırlanıyor…' : 'Sağlık raporunu PDF indir',
+          ),
+        ),
+        const SizedBox(height: 7),
+        TextButton.icon(
+          onPressed: downloading ? null : onNew,
+          icon: const Icon(Icons.add_rounded),
+          label: const Text('Yeni görüşme'),
         ),
       ],
     ),
@@ -431,6 +500,48 @@ class _ReportActions extends StatelessWidget {
       ],
     ),
   );
+}
+
+class PatientReportView extends StatelessWidget {
+  const PatientReportView({super.key, required this.data});
+  final Map<String, dynamic> data;
+
+  @override
+  Widget build(BuildContext context) {
+    if (data.isEmpty) return const Text('Sağlık raporu hazırlanamadı.');
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _SectionCard(
+          icon: Icons.health_and_safety_outlined,
+          title: 'Görüşme özeti',
+          tint: const Color(0xFFEAF6F4),
+          children: [
+            _LabeledText(label: 'Özet', value: data['ozet']),
+            _LabeledText(label: 'Değerlendirme', value: data['tani']),
+          ],
+        ),
+        _SectionCard(
+          icon: Icons.checklist_rounded,
+          title: 'Yapılacaklar',
+          tint: const Color(0xFFF3EEFF),
+          children: [
+            _TagGroup(label: 'Öneriler', values: data['yapilacaklar']),
+            _TagGroup(label: 'İlaçlar', values: data['ilaclar']),
+          ],
+        ),
+        _SectionCard(
+          icon: Icons.event_available_outlined,
+          title: 'Kontrol ve bilgilendirme',
+          tint: const Color(0xFFFFF4E5),
+          children: [
+            _LabeledText(label: 'Kontrol', value: data['kontrol']),
+            _LabeledText(label: 'Not', value: data['kapanis']),
+          ],
+        ),
+      ],
+    );
+  }
 }
 
 class JsonReportView extends StatelessWidget {

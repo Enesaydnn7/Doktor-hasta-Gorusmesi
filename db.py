@@ -475,6 +475,27 @@ def comed_worklist(limit: int = 100, synced_by: str | None = None) -> list[dict]
     return [dict(row) for row in rows]
 
 
+def comed_patient_appointments(patient_no: str, limit: int = 100) -> list[dict]:
+    """Bir hastanın doktor köprülerinden eşitlenmiş benzersiz randevularını getir."""
+    with _lock, _conn() as c:
+        rows = c.execute(
+            """SELECT * FROM comed_worklist WHERE patient_no=?
+               ORDER BY synced_at DESC, patient_name LIMIT ?""",
+            (str(patient_no), limit),
+        ).fetchall()
+    appointments: list[dict] = []
+    seen: set[str] = set()
+    for row in rows:
+        item = dict(row)
+        key = str(item.get("visit_id") or item.get("clinical_card_id") or "")
+        if key and key in seen:
+            continue
+        if key:
+            seen.add(key)
+        appointments.append(item)
+    return appointments
+
+
 def comed_transfer_create(record_id: int, patient: dict, bundle: dict,
                           requested_by: str = "") -> dict:
     now = datetime.now().isoformat(timespec="seconds")

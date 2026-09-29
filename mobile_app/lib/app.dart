@@ -41,12 +41,14 @@ class _KlinotAppState extends State<KlinotApp> {
       final username = await _storage.read(key: 'username');
       final role = await _storage.read(key: 'role');
       final displayName = await _storage.read(key: 'display_name');
+      final patientNo = await _storage.read(key: 'patient_no');
       if (token != null && username != null && role != null) {
         final stored = UserSession(
           token: token,
           username: username,
           role: role,
           displayName: displayName ?? '',
+          patientNo: patientNo ?? '',
         );
         try {
           await _api.validateSession(token);
@@ -78,6 +80,7 @@ class _KlinotAppState extends State<KlinotApp> {
       await _storage.write(key: 'username', value: session.username);
       await _storage.write(key: 'role', value: session.role);
       await _storage.write(key: 'display_name', value: session.displayName);
+      await _storage.write(key: 'patient_no', value: session.patientNo);
     } catch (_) {}
   }
 

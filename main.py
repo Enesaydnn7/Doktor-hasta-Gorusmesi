@@ -156,6 +156,7 @@ class MobileLoginIn(BaseModel):
     username: str
     password: str
     client_type: str | None = None
+    requested_role: str | None = None
 
 
 class PdfIn(BaseModel):
@@ -219,6 +220,18 @@ def mobile_admin(user: dict = Depends(mobile_auth)) -> dict:
 def mobile_doctor(user: dict = Depends(mobile_auth)) -> dict:
     if user.get("role") != "doctor":
         raise HTTPException(status_code=403, detail="Doktor hesabi gerekli")
+    return user
+
+
+def mobile_clinical_user(user: dict = Depends(mobile_auth)) -> dict:
+    if user.get("role") not in {"doctor", "patient"}:
+        raise HTTPException(status_code=403, detail="Klinik kullanıcı hesabı gerekli")
+    return user
+
+
+def mobile_patient(user: dict = Depends(mobile_auth)) -> dict:
+    if user.get("role") != "patient":
+        raise HTTPException(status_code=403, detail="Hasta hesabı gerekli")
     return user
 
 
@@ -327,9 +340,20 @@ async def analyze_stream(body: AnalyzeIn):
         async def work():
             try:
                 result = await llm.analyze_all(text, progress=progress)
+                stored = _store_analysis(body, text, result)
+                if (body.metadata or {}).get("api_role") == "patient":
+                    stored = {
+                        "hasta": stored.get("hasta") or {},
+                        "kayit_id": stored.get("kayit_id"),
+                        "comed_patient": stored.get("comed_patient"),
+                        **(
+                            {"kayit_hatasi": stored["kayit_hatasi"]}
+                            if stored.get("kayit_hatasi") else {}
+                        ),
+                    }
                 await queue.put({
                     "type": "result",
-                    "data": _store_analysis(body, text, result),
+                    "data": stored,
                 })
             except Exception as e:  # noqa: BLE001
                 error_id = uuid.uuid4().hex[:8]
@@ -421,12 +445,16 @@ async def mobile_login(body: MobileLoginIn):
     role = auth.api_giris_rolu(body.username.strip(), body.password)
     if not role:
         raise HTTPException(status_code=401, detail="Kullanıcı adı veya şifre hatalı")
-    if role != "doctor":
+    requested_role = (body.requested_role or "").strip().lower()
+    if requested_role in {"doctor", "patient"} and requested_role != role:
+        raise HTTPException(status_code=403, detail="Seçilen giriş türü hesapla eşleşmiyor")
+    if role not in {"doctor", "patient"}:
         raise HTTPException(
             status_code=403,
             detail="Yönetici hesabı yalnızca /admin panelinde kullanılabilir",
         )
     user = body.username.strip()
+    patient = auth.hasta_bilgisi(user) if role == "patient" else None
     return {
         "access_token": auth.api_token_uret(user, role),
         "token_type": "bearer",
@@ -435,6 +463,7 @@ async def mobile_login(body: MobileLoginIn):
             "username": user,
             "role": role,
             "display_name": auth.kullanici_adi(user, role),
+            **({"patient_no": patient.get("patient_no", user)} if patient else {}),
         },
         "api_version": "v1",
     }
@@ -449,6 +478,10 @@ async def mobile_session(user: dict = Depends(mobile_auth)):
             "username": user["user"],
             "role": user["role"],
             "display_name": user.get("display_name") or user["user"],
+            **(
+                {"patient_no": user.get("patient_no", user["user"])}
+                if user["role"] == "patient" else {}
+            ),
         },
         "expires_in": auth.MOBILE_API_MAX_AGE,
     }
@@ -463,7 +496,7 @@ async def mobile_health():
 @app.post("/api/v1/mobile/transcribe")
 async def mobile_transcribe(
     file: UploadFile = File(...),
-    _user: dict = Depends(mobile_doctor),
+    _user: dict = Depends(mobile_clinical_user),
 ):
     return await transcribe(file)
 
@@ -471,7 +504,7 @@ async def mobile_transcribe(
 @app.post("/api/v1/mobile/transcriptions")
 async def mobile_transcription_start(
     file: UploadFile = File(...),
-    user: dict = Depends(mobile_doctor),
+    user: dict = Depends(mobile_clinical_user),
 ):
     """Sesi hızla teslim al; uzun STT işini bağlantıdan bağımsız yürüt."""
     data = await file.read()
@@ -514,7 +547,7 @@ async def mobile_transcription_start(
 @app.get("/api/v1/mobile/transcriptions/{job_id}")
 async def mobile_transcription_status(
     job_id: str,
-    user: dict = Depends(mobile_doctor),
+    user: dict = Depends(mobile_clinical_user),
 ):
     job = db.transcription_job_get(job_id)
     if not job or job.get("requested_by") != user["user"]:
@@ -529,9 +562,13 @@ async def mobile_transcription_status(
 @app.post("/api/v1/mobile/analyze/stream")
 async def mobile_analyze_stream(
     body: AnalyzeIn,
-    user: dict = Depends(mobile_doctor),
+    user: dict = Depends(mobile_clinical_user),
 ):
-    metadata = {**(body.metadata or {}), "api_user": user["user"]}
+    metadata = {
+        **(body.metadata or {}),
+        "api_user": user["user"],
+        "api_role": user["role"],
+    }
     mobile_body = body.model_copy(update={"source": "mobile", "metadata": metadata})
     return await analyze_stream(mobile_body)
 
@@ -556,11 +593,35 @@ async def mobile_epikriz_pdf(
         )
 
 
+@app.post("/api/v1/mobile/pdf/saglik-raporu")
+async def mobile_patient_report_pdf(
+    body: MobileEpikrizPdfIn,
+    _user: dict = Depends(mobile_patient),
+):
+    """Hasta uygulamasındaki sade sağlık raporunu PDF olarak üret."""
+    try:
+        content, fname = pdf_report.build_pdf("hasta", body.data)
+        return Response(
+            content=content,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'attachment; filename="{fname}"'},
+        )
+    except Exception as e:  # noqa: BLE001
+        return JSONResponse(
+            {"error": f"Sağlık raporu PDF oluşturulamadı: {e}"},
+            status_code=500,
+        )
+
+
 @app.get("/api/v1/mobile/comed/worklist")
-async def mobile_comed_worklist(user: dict = Depends(mobile_doctor)):
-    """Kurumsal ağdaki tarayıcı köprüsünün son eşitlediği doktor iş listesi."""
+async def mobile_comed_worklist(user: dict = Depends(mobile_clinical_user)):
+    """Doktorun iş listesini veya hastanın kendi eşleşen randevularını getir."""
     return {
-        "items": db.comed_worklist(synced_by=user["user"]),
+        "items": (
+            db.comed_patient_appointments(user.get("patient_no", user["user"]))
+            if user["role"] == "patient"
+            else db.comed_worklist(synced_by=user["user"])
+        ),
         "web_base_url": config.COMED_WEB_BASE_URL,
     }
 

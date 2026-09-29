@@ -12,7 +12,11 @@ const defaultApiBaseUrl = String.fromEnvironment(
 );
 
 abstract class KlinotApi {
-  Future<UserSession> login(String username, String password);
+  Future<UserSession> login(
+    String username,
+    String password, {
+    String? requestedRole,
+  });
   Future<void> validateSession(String token);
   Future<TranscriptionResult> transcribe(String token, File file);
   Stream<AnalysisEvent> analyze(
@@ -30,6 +34,10 @@ abstract class KlinotApi {
   Future<DownloadedPdf> downloadEpikriz(
     String token,
     Map<String, dynamic> epikriz,
+  );
+  Future<DownloadedPdf> downloadPatientReport(
+    String token,
+    Map<String, dynamic> report,
   );
 }
 
@@ -82,16 +90,22 @@ class ApiClient implements KlinotApi {
   }
 
   @override
-  Future<UserSession> login(String username, String password) async {
+  Future<UserSession> login(
+    String username,
+    String password, {
+    String? requestedRole,
+  }) async {
+    final body = <String, dynamic>{
+      'username': username,
+      'password': password,
+      'client_type': 'mobile',
+    };
+    if (requestedRole != null) body['requested_role'] = requestedRole;
     final response = await _client
         .post(
           _uri('/api/v1/mobile/auth/login'),
           headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({
-            'username': username,
-            'password': password,
-            'client_type': 'mobile',
-          }),
+          body: jsonEncode(body),
         )
         .timeout(const Duration(seconds: 70));
     return UserSession.fromJson(_decodeResponse(response));
@@ -262,7 +276,7 @@ class ApiClient implements KlinotApi {
         'audio_id': transcription.audioId,
         'stt_usage': transcription.usage,
         'source': 'mobile',
-        'client_version': '2.9.2',
+        'client_version': '2.10.0',
         'metadata': {
           'platform': Platform.operatingSystem,
           if (comedPatient != null) 'comed_patient': comedPatient.toJson(),
@@ -377,6 +391,29 @@ class ApiClient implements KlinotApi {
     final fileName =
         match?.group(1)?.trim() ??
         'epikriz_${DateTime.now().millisecondsSinceEpoch}.pdf';
+    return DownloadedPdf(bytes: response.bodyBytes, fileName: fileName);
+  }
+
+  @override
+  Future<DownloadedPdf> downloadPatientReport(
+    String token,
+    Map<String, dynamic> report,
+  ) async {
+    final response = await _client
+        .post(
+          _uri('/api/v1/mobile/pdf/saglik-raporu'),
+          headers: {..._headers(token), 'Content-Type': 'application/json'},
+          body: jsonEncode({'data': report}),
+        )
+        .timeout(const Duration(seconds: 70));
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      _decodeResponse(response);
+    }
+    final disposition = response.headers['content-disposition'] ?? '';
+    final match = RegExp(r'filename="?([^";]+)').firstMatch(disposition);
+    final fileName =
+        match?.group(1)?.trim() ??
+        'saglik_raporu_${DateTime.now().millisecondsSinceEpoch}.pdf';
     return DownloadedPdf(bytes: response.bodyBytes, fileName: fileName);
   }
 }

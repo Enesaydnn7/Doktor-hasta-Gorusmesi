@@ -28,6 +28,13 @@ _DEFAULT_DOCTOR_ACCOUNTS = {
         "display_name": "Dr. Sami Sökücü",
     },
 }
+_DEFAULT_PATIENT_ACCOUNTS = {
+    "476644": {
+        "password": "1",
+        "display_name": "Dursun Kılıçarslan",
+        "patient_no": "476644",
+    },
+}
 
 
 def _doctor_accounts() -> dict[str, dict[str, str]]:
@@ -60,10 +67,42 @@ def doktor_bilgisi(user: str) -> dict[str, str] | None:
     return {"username": user, **account} if account else None
 
 
+def _patient_accounts() -> dict[str, dict[str, str]]:
+    """Hasta hesaplarını ortam değişkeninden veya MVP test hesabından oku."""
+    raw = os.getenv("PATIENT_ACCOUNTS_JSON", "").strip()
+    accounts: dict[str, dict[str, str]] = {}
+    if raw:
+        try:
+            parsed = json.loads(raw)
+            for username, value in parsed.items():
+                if isinstance(value, str):
+                    accounts[str(username)] = {
+                        "password": value,
+                        "display_name": str(username),
+                        "patient_no": str(username),
+                    }
+                elif isinstance(value, dict) and value.get("password") is not None:
+                    accounts[str(username)] = {
+                        "password": str(value["password"]),
+                        "display_name": str(value.get("display_name") or username),
+                        "patient_no": str(value.get("patient_no") or username),
+                    }
+        except (TypeError, ValueError, json.JSONDecodeError):
+            accounts = {}
+    if not accounts:
+        accounts = {key: dict(value) for key, value in _DEFAULT_PATIENT_ACCOUNTS.items()}
+    return accounts
+
+
+def hasta_bilgisi(user: str) -> dict[str, str] | None:
+    account = _patient_accounts().get(user or "")
+    return {"username": user, **account} if account else None
+
+
 def kullanici_adi(user: str, role: str) -> str:
     if role == "admin":
         return "Yönetici"
-    account = doktor_bilgisi(user)
+    account = hasta_bilgisi(user) if role == "patient" else doktor_bilgisi(user)
     return account.get("display_name", user) if account else user
 
 # Render yeniden başlasa da aynı yönetici bilgileri aynı imza anahtarını üretir.
@@ -139,12 +178,15 @@ def api_giris_rolu(user: str, password: str) -> str | None:
     account = doktor_bilgisi(user)
     if account and secrets.compare_digest(password or "", account["password"]):
         return "doctor"
+    account = hasta_bilgisi(user)
+    if account and secrets.compare_digest(password or "", account["password"]):
+        return "patient"
     return None
 
 
 def api_token_uret(user: str, role: str) -> str:
     """Mobil istemciler için süreli ve imzalı Bearer token üret."""
-    if role not in {"doctor", "admin"}:
+    if role not in {"doctor", "patient", "admin"}:
         raise ValueError("Geçersiz kullanıcı rolü")
     # Kullanıcı adları COMED tarafında `|tracer` içerebildiği için
     # kullanıcıyı ayrı bir base64url alanında taşıyoruz.
@@ -173,14 +215,18 @@ def api_token_bilgisi(token: str) -> dict | None:
             user = user_field
         else:
             return None
-        if role not in {"doctor", "admin"}:
+        if role not in {"doctor", "patient", "admin"}:
             return None
         if (time.time() - int(ts)) >= MOBILE_API_MAX_AGE:
             return None
-        return {
+        result = {
             "user": user,
             "role": role,
             "display_name": kullanici_adi(user, role),
         }
+        if role == "patient":
+            account = hasta_bilgisi(user)
+            result["patient_no"] = (account or {}).get("patient_no", user)
+        return result
     except Exception:
         return None

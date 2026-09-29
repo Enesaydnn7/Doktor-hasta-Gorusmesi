@@ -20,6 +20,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _password = TextEditingController();
   var _busy = false;
   var _obscure = true;
+  var _selectedRole = 'doctor';
   String? _error;
 
   @override
@@ -39,11 +40,10 @@ class _LoginScreenState extends State<LoginScreen> {
       final session = await widget.api.login(
         _username.text.trim(),
         _password.text,
+        requestedRole: _selectedRole,
       );
-      if (session.role != 'doctor') {
-        throw const ApiException(
-          'Mobil uygulamaya doktor hesabıyla giriş yapın.',
-        );
+      if (session.role != _selectedRole) {
+        throw const ApiException('Seçilen giriş türü bu hesapla eşleşmiyor.');
       }
       widget.onLoggedIn(session);
     } catch (error) {
@@ -89,22 +89,57 @@ class _LoginScreenState extends State<LoginScreen> {
                               ?.copyWith(fontWeight: FontWeight.w800),
                         ),
                         const SizedBox(height: 6),
-                        const Text(
-                          'Yüz yüze görüşmeyi kaydedin,\ndoktor epikrizini güvenle hazırlayın.',
+                        Text(
+                          _selectedRole == 'doctor'
+                              ? 'Yüz yüze görüşmeyi kaydedin,\ndoktor epikrizini güvenle hazırlayın.'
+                              : 'Randevunuzu seçin, görüşmeyi kaydedin\nve sağlık raporunuza ulaşın.',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             color: Color(0xFF60777D),
                             height: 1.45,
                           ),
                         ),
-                        const SizedBox(height: 30),
+                        const SizedBox(height: 24),
+                        SegmentedButton<String>(
+                          key: const Key('loginRoleSelector'),
+                          segments: const [
+                            ButtonSegment(
+                              value: 'doctor',
+                              icon: Icon(Icons.medical_services_outlined),
+                              label: Text('Doktor'),
+                            ),
+                            ButtonSegment(
+                              value: 'patient',
+                              icon: Icon(Icons.person_outline_rounded),
+                              label: Text('Hasta'),
+                            ),
+                          ],
+                          selected: {_selectedRole},
+                          onSelectionChanged: _busy
+                              ? null
+                              : (selection) => setState(() {
+                                  _selectedRole = selection.first;
+                                  _error = null;
+                                  _username.clear();
+                                  _password.clear();
+                                }),
+                          showSelectedIcon: false,
+                          style: const ButtonStyle(
+                            visualDensity: VisualDensity.comfortable,
+                          ),
+                        ),
+                        const SizedBox(height: 22),
                         TextFormField(
                           key: const Key('usernameField'),
                           controller: _username,
                           textInputAction: TextInputAction.next,
-                          decoration: const InputDecoration(
-                            labelText: 'Kullanıcı adı',
-                            prefixIcon: Icon(Icons.person_outline_rounded),
+                          decoration: InputDecoration(
+                            labelText: _selectedRole == 'doctor'
+                                ? 'Doktor kullanıcı adı'
+                                : 'Hasta numarası',
+                            prefixIcon: const Icon(
+                              Icons.person_outline_rounded,
+                            ),
                           ),
                           validator: (value) => (value ?? '').trim().isEmpty
                               ? 'Kullanıcı adını girin.'
@@ -159,7 +194,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         const SizedBox(height: 18),
                         const Text(
-                          'Klinot doktor · v2.9.2',
+                          'Klinot · v2.10.0',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 12,

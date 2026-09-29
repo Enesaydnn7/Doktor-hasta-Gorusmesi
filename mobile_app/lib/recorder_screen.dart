@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import 'api_client.dart';
@@ -53,6 +54,7 @@ class _RecorderScreenState extends State<RecorderScreen> {
 
   bool get _isRecording =>
       _state == RecordingState.recording || _state == RecordingState.paused;
+  bool get _patientMode => widget.session.role == 'patient';
 
   @override
   void initState() {
@@ -115,8 +117,9 @@ class _RecorderScreenState extends State<RecorderScreen> {
   Future<void> _start() async {
     if (_selectedPatient == null) {
       setState(
-        () => _error =
-            'Kayda başlamadan önce COMED iş listesinden hastayı seçin.',
+        () => _error = _patientMode
+            ? 'Kayda başlamadan önce randevunuzu seçin.'
+            : 'Kayda başlamadan önce COMED iş listesinden hastayı seçin.',
       );
       return;
     }
@@ -214,7 +217,9 @@ class _RecorderScreenState extends State<RecorderScreen> {
     if (file == null) return;
     if (_selectedPatient == null) {
       setState(
-        () => _error = 'Analizden önce COMED iş listesinden hastayı seçin.',
+        () => _error = _patientMode
+            ? 'Analizden önce randevunuzu seçin.'
+            : 'Analizden önce COMED iş listesinden hastayı seçin.',
       );
       return;
     }
@@ -274,7 +279,9 @@ class _RecorderScreenState extends State<RecorderScreen> {
 
       setState(() {
         _processingPercent = 100;
-        _processingPhase = 'Epikriz hazır';
+        _processingPhase = _patientMode
+            ? 'Sağlık raporu hazır'
+            : 'Epikriz hazır';
       });
 
       await _recorder.allowSleep();
@@ -320,7 +327,10 @@ class _RecorderScreenState extends State<RecorderScreen> {
 
   String _analysisPhaseLabel(String step) => switch (step) {
     'hasta' => 'Klinik bulgular düzenleniyor',
-    'doktor' => 'Detaylı epikriz hazırlanıyor',
+    'doktor' =>
+      _patientMode
+          ? 'Sağlık raporu son kontrollerden geçiyor'
+          : 'Detaylı epikriz hazırlanıyor',
     'yonetim' => 'Görüşme kaydı tamamlanıyor',
     _ => 'Klinik raporlar hazırlanıyor',
   };
@@ -349,7 +359,9 @@ class _RecorderScreenState extends State<RecorderScreen> {
                 _isRecording
                     ? 'Görüşme kaydediliyor'
                     : processing
-                    ? 'Epikriz hazırlanıyor'
+                    ? (_patientMode
+                          ? 'Sağlık raporu hazırlanıyor'
+                          : 'Epikriz hazırlanıyor')
                     : ready
                     ? 'Görüşme tamamlandı'
                     : 'Yeni görüşme',
@@ -361,7 +373,7 @@ class _RecorderScreenState extends State<RecorderScreen> {
                 _isRecording
                     ? 'Telefonu masanın ortasında bırakın ve doğal biçimde konuşun.'
                     : processing
-                    ? 'Görüşmeniz güvenli biçimde analiz ediliyor. Epikriz hazır olduğunda rapor otomatik açılacak.'
+                    ? 'Görüşmeniz güvenli biçimde analiz ediliyor. ${_patientMode ? 'Sağlık raporu' : 'Epikriz'} hazır olduğunda otomatik açılacak.'
                     : ready
                     ? 'Görüşme metni ekranda gösterilmez; kayıt analiz için hazır.'
                     : 'Telefonu doktor ile hastanın arasına, mikrofonu açık kalacak şekilde yerleştirin.',
@@ -369,6 +381,7 @@ class _RecorderScreenState extends State<RecorderScreen> {
               ),
               const SizedBox(height: 22),
               _ComedPatientSelector(
+                patientMode: _patientMode,
                 patients: _worklist,
                 selected: _selectedPatient,
                 loading: _loadingWorklist,
@@ -402,6 +415,7 @@ class _RecorderScreenState extends State<RecorderScreen> {
                             elapsed: _processingElapsed,
                             percent: _processingPercent,
                             phase: _processingPhase,
+                            patientMode: _patientMode,
                           )
                         : ready
                         ? _ReadyRecording(
@@ -411,6 +425,7 @@ class _RecorderScreenState extends State<RecorderScreen> {
                             analyzed: _analysisCompleted,
                             onAnalyze: _analyze,
                             onDiscard: _discardRecordedFile,
+                            patientMode: _patientMode,
                           )
                         : _IdleRecording(
                             key: const ValueKey('idle'),
@@ -418,6 +433,7 @@ class _RecorderScreenState extends State<RecorderScreen> {
                             onConsentChanged: (value) =>
                                 setState(() => _consent = value),
                             onStart: _start,
+                            patientMode: _patientMode,
                           ),
                   ),
                 ),
@@ -461,6 +477,7 @@ class _ComedPatientSelector extends StatelessWidget {
     required this.locked,
     required this.onChanged,
     required this.onRefresh,
+    required this.patientMode,
   });
 
   final List<ComedPatient> patients;
@@ -470,6 +487,7 @@ class _ComedPatientSelector extends StatelessWidget {
   final bool locked;
   final ValueChanged<ComedPatient?> onChanged;
   final VoidCallback onRefresh;
+  final bool patientMode;
 
   @override
   Widget build(BuildContext context) {
@@ -495,12 +513,12 @@ class _ComedPatientSelector extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 12),
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'COMED iş listesi',
+                        patientMode ? 'Randevularım' : 'COMED iş listesi',
                         style: TextStyle(
                           fontWeight: FontWeight.w800,
                           fontSize: 16,
@@ -508,7 +526,9 @@ class _ComedPatientSelector extends StatelessWidget {
                       ),
                       SizedBox(height: 2),
                       Text(
-                        'Görüşme yapılacak hastayı seçin',
+                        patientMode
+                            ? 'Görüşmenin yapılacağı randevuyu seçin'
+                            : 'Görüşme yapılacak hastayı seçin',
                         style: TextStyle(
                           color: Color(0xFF60777D),
                           fontSize: 12,
@@ -539,8 +559,10 @@ class _ComedPatientSelector extends StatelessWidget {
                     ),
                     child: Text(
                       error == null
-                          ? 'İş listesi henüz eşitlenmedi. Köprü kurulumunu tamamlayıp COMED iş listesini yenileyin.'
-                          : 'İş listesi alınamadı: $error',
+                          ? (patientMode
+                                ? 'Henüz eşitlenmiş bir randevu bulunamadı.'
+                                : 'İş listesi henüz eşitlenmedi. Köprü kurulumunu tamamlayıp COMED iş listesini yenileyin.')
+                          : '${patientMode ? 'Randevular' : 'İş listesi'} alınamadı: $error',
                       style: const TextStyle(
                         color: Color(0xFF795A18),
                         height: 1.4,
@@ -548,28 +570,29 @@ class _ComedPatientSelector extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  const ExpansionTile(
-                    key: Key('comedSetupInstructions'),
-                    tilePadding: EdgeInsets.symmetric(horizontal: 4),
-                    childrenPadding: EdgeInsets.fromLTRB(8, 0, 8, 10),
-                    leading: Icon(Icons.extension_outlined),
-                    title: Text(
-                      'COMED bağlantısı nasıl kurulur?',
-                      style: TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                    children: [
-                      Text(
-                        '1. Bilgisayardaki Chrome’a Klinot COMED Köprüsü eklentisini kurun.\n'
-                        '2. COMED’e kendi hesabınızla normal şekilde giriş yapın.\n'
-                        '3. Eklentiyi Klinot kullanıcı adınız ve şifrenizle bağlayın. COMED parolanızı eklentiye yazmayın.\n'
-                        '4. COMED iş listesini yenileyin, sonra bu ekrandaki yenile simgesine basın.',
-                        style: TextStyle(
-                          color: Color(0xFF526B73),
-                          height: 1.55,
-                        ),
+                  if (!patientMode)
+                    const ExpansionTile(
+                      key: Key('comedSetupInstructions'),
+                      tilePadding: EdgeInsets.symmetric(horizontal: 4),
+                      childrenPadding: EdgeInsets.fromLTRB(8, 0, 8, 10),
+                      leading: Icon(Icons.extension_outlined),
+                      title: Text(
+                        'COMED bağlantısı nasıl kurulur?',
+                        style: TextStyle(fontWeight: FontWeight.w700),
                       ),
-                    ],
-                  ),
+                      children: [
+                        Text(
+                          '1. Bilgisayardaki Chrome’a Klinot COMED Köprüsü eklentisini kurun.\n'
+                          '2. COMED’e kendi hesabınızla normal şekilde giriş yapın.\n'
+                          '3. Eklentiyi Klinot kullanıcı adınız ve şifrenizle bağlayın. COMED parolanızı eklentiye yazmayın.\n'
+                          '4. COMED iş listesini yenileyin, sonra bu ekrandaki yenile simgesine basın.',
+                          style: TextStyle(
+                            color: Color(0xFF526B73),
+                            height: 1.55,
+                          ),
+                        ),
+                      ],
+                    ),
                 ],
               )
             else
@@ -578,9 +601,11 @@ class _ComedPatientSelector extends StatelessWidget {
                 initialValue: selected,
                 isExpanded: true,
                 onChanged: locked ? null : onChanged,
-                decoration: const InputDecoration(
-                  labelText: 'Hasta / protokol',
-                  prefixIcon: Icon(Icons.person_search_outlined),
+                decoration: InputDecoration(
+                  labelText: patientMode
+                      ? 'Randevu / protokol'
+                      : 'Hasta / protokol',
+                  prefixIcon: const Icon(Icons.person_search_outlined),
                 ),
                 items: patients
                     .map(
@@ -659,11 +684,13 @@ class _IdleRecording extends StatelessWidget {
     required this.consent,
     required this.onConsentChanged,
     required this.onStart,
+    required this.patientMode,
   });
 
   final bool consent;
   final ValueChanged<bool> onConsentChanged;
   final VoidCallback onStart;
+  final bool patientMode;
 
   @override
   Widget build(BuildContext context) => Column(
@@ -703,16 +730,20 @@ class _IdleRecording extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Checkbox(
+              CupertinoSwitch(
+                key: const Key('recordingConsentSwitch'),
                 value: consent,
-                onChanged: (value) => onConsentChanged(value ?? false),
+                onChanged: onConsentChanged,
+                activeTrackColor: klinotTeal,
               ),
-              const Expanded(
+              Expanded(
                 child: Padding(
                   padding: EdgeInsets.only(top: 7),
                   child: Text(
-                    'Hasta, görüşmenin kaydedileceği ve rapor üretiminde kullanılacağı konusunda bilgilendirildi.',
-                    style: TextStyle(height: 1.4),
+                    patientMode
+                        ? 'Görüşmenin kaydedileceği ve sağlık raporu üretiminde kullanılacağı konusunda bilgilendirildim.'
+                        : 'Hasta, görüşmenin kaydedileceği ve rapor üretiminde kullanılacağı konusunda bilgilendirildi.',
+                    style: const TextStyle(height: 1.4),
                   ),
                 ),
               ),
@@ -849,6 +880,7 @@ class _ReadyRecording extends StatelessWidget {
     required this.analyzed,
     required this.onAnalyze,
     required this.onDiscard,
+    required this.patientMode,
   });
 
   final String elapsed;
@@ -856,6 +888,7 @@ class _ReadyRecording extends StatelessWidget {
   final bool analyzed;
   final VoidCallback onAnalyze;
   final VoidCallback onDiscard;
+  final bool patientMode;
 
   @override
   Widget build(BuildContext context) => Column(
@@ -882,7 +915,7 @@ class _ReadyRecording extends StatelessWidget {
       Text(
         analyzed
             ? 'Ses kaydı cihazda korunuyor. Aynı görüşmeyi yeniden analiz edebilir veya kaydı silip yeni görüşmeye başlayabilirsiniz.'
-            : 'Analiz başladığında görüşme metni ve işlem adımları gösterilmez. Epikriz hazır olunca doktor ekranı otomatik açılır.',
+            : 'Analiz başladığında görüşme metni ve işlem adımları gösterilmez. ${patientMode ? 'Sağlık raporu' : 'Epikriz'} hazır olunca ekran otomatik açılır.',
         textAlign: TextAlign.center,
         style: TextStyle(color: Color(0xFF60777D), height: 1.45),
       ),
@@ -913,11 +946,13 @@ class _ProcessingRecording extends StatelessWidget {
     required this.elapsed,
     required this.percent,
     required this.phase,
+    required this.patientMode,
   });
 
   final Duration elapsed;
   final int? percent;
   final String phase;
+  final bool patientMode;
 
   String get elapsedLabel {
     final minutes = elapsed.inMinutes.toString().padLeft(2, '0');
@@ -960,7 +995,7 @@ class _ProcessingRecording extends StatelessWidget {
       ),
       const SizedBox(height: 26),
       Text(
-        'Epikriz hazırlanıyor',
+        patientMode ? 'Sağlık raporu hazırlanıyor' : 'Epikriz hazırlanıyor',
         style: Theme.of(context).textTheme.titleLarge
             ?.copyWith(fontWeight: FontWeight.w800, color: klinotNavy),
       ),

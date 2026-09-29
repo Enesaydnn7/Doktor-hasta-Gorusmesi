@@ -7,6 +7,35 @@ import db
 
 
 class MobileDatabaseTests(unittest.TestCase):
+    def test_patient_appointments_include_only_that_patient_and_deduplicate_visits(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "patient-worklist.db"
+            with (
+                patch.object(db, "DB_PATH", str(path)),
+                patch.dict("os.environ", {"SEED_MANAGER_DEMO": "false"}),
+            ):
+                db.init()
+                dursun = {
+                    "visit_id": "22207357",
+                    "patient_name": "Dursun Kılıçarslan",
+                    "patient_no": "476644",
+                    "protocol_no": "V-22207357",
+                }
+                other = {
+                    "visit_id": "22207358",
+                    "patient_name": "Başka Hasta",
+                    "patient_no": "999999",
+                    "protocol_no": "V-22207358",
+                }
+                db.comed_worklist_sync([dursun, other], synced_by="doctor-a")
+                db.comed_worklist_sync([dursun], synced_by="doctor-b")
+
+                appointments = db.comed_patient_appointments("476644")
+
+        self.assertEqual(len(appointments), 1)
+        self.assertEqual(appointments[0]["visit_id"], "22207357")
+        self.assertEqual(appointments[0]["patient_no"], "476644")
+
     def test_comed_worklist_accepts_button_rows_and_scopes_each_user(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "comed.db"

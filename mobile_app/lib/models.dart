@@ -6,12 +6,14 @@ class UserSession {
     required this.username,
     required this.role,
     this.displayName = '',
+    this.patientNo = '',
   });
 
   final String token;
   final String username;
   final String role;
   final String displayName;
+  final String patientNo;
 
   factory UserSession.fromJson(Map<String, dynamic> json) {
     final user = Map<String, dynamic>.from(json['user'] as Map? ?? const {});
@@ -20,6 +22,7 @@ class UserSession {
       username: user['username']?.toString() ?? '',
       role: user['role']?.toString() ?? 'doctor',
       displayName: user['display_name']?.toString() ?? '',
+      patientNo: user['patient_no']?.toString() ?? '',
     );
   }
 }
@@ -156,18 +159,21 @@ class AnalysisCompleted extends AnalysisEvent {
 class AnalysisResult {
   const AnalysisResult({
     required this.doctor,
+    this.patient = const {},
     this.comed = const {},
     this.comedPatient,
     this.recordId,
   });
 
   final Map<String, dynamic> doctor;
+  final Map<String, dynamic> patient;
   final Map<String, dynamic> comed;
   final ComedPatient? comedPatient;
   final int? recordId;
 
   factory AnalysisResult.fromJson(Map<String, dynamic> json) => AnalysisResult(
     doctor: Map<String, dynamic>.from(json['doktor'] as Map? ?? const {}),
+    patient: Map<String, dynamic>.from(json['hasta'] as Map? ?? const {}),
     comed: Map<String, dynamic>.from(json['comed'] as Map? ?? const {}),
     comedPatient: json['comed_patient'] is Map
         ? ComedPatient.fromJson(

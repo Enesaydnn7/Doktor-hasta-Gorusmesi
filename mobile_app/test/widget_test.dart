@@ -15,8 +15,17 @@ import 'package:klinot/theme.dart';
 
 class FakeApi implements KlinotApi {
   @override
-  Future<UserSession> login(String username, String password) async =>
-      UserSession(token: 'test-token', username: username, role: 'doctor');
+  Future<UserSession> login(
+    String username,
+    String password, {
+    String? requestedRole,
+  }) async => UserSession(
+    token: 'test-token',
+    username: username,
+    role: requestedRole ?? 'doctor',
+    displayName: requestedRole == 'patient' ? 'Dursun Kılıçarslan' : '',
+    patientNo: requestedRole == 'patient' ? username : '',
+  );
 
   @override
   Future<void> validateSession(String token) async {}
@@ -69,6 +78,15 @@ class FakeApi implements KlinotApi {
   ) async => DownloadedPdf(
     bytes: Uint8List.fromList(const [37, 80, 68, 70]),
     fileName: 'epikriz_test.pdf',
+  );
+
+  @override
+  Future<DownloadedPdf> downloadPatientReport(
+    String token,
+    Map<String, dynamic> report,
+  ) async => DownloadedPdf(
+    bytes: Uint8List.fromList(const [37, 80, 68, 70]),
+    fileName: 'saglik_raporu_test.pdf',
   );
 
   @override
@@ -208,7 +226,7 @@ void main() {
     );
 
     expect(find.text('Klinot'), findsOneWidget);
-    expect(find.textContaining('v2.9.2'), findsOneWidget);
+    expect(find.textContaining('v2.10.0'), findsOneWidget);
     await tester.enterText(find.byKey(const Key('usernameField')), 'admin');
     await tester.enterText(find.byKey(const Key('passwordField')), 'secret');
     await tester.tap(find.byKey(const Key('loginButton')));
@@ -216,6 +234,30 @@ void main() {
 
     expect(loggedIn?.username, 'admin');
     expect(loggedIn?.role, 'doctor');
+  });
+
+  testWidgets('patient role login returns patient session', (tester) async {
+    UserSession? loggedIn;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildKlinotTheme(),
+        home: LoginScreen(
+          api: FakeApi(),
+          onLoggedIn: (session) => loggedIn = session,
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Hasta'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('usernameField')), '476644');
+    await tester.enterText(find.byKey(const Key('passwordField')), '1');
+    await tester.tap(find.byKey(const Key('loginButton')));
+    await tester.pumpAndSettle();
+
+    expect(loggedIn?.role, 'patient');
+    expect(loggedIn?.patientNo, '476644');
+    expect(loggedIn?.displayName, 'Dursun Kılıçarslan');
   });
 
   testWidgets('mobile shell never exposes a management panel', (tester) async {
@@ -312,6 +354,49 @@ void main() {
     expect(transfer.onPressed, isNotNull);
     expect(find.text('Yönetim'), findsNothing);
     expect(find.text('Hasta özeti'), findsNothing);
+  });
+
+  testWidgets('patient result shows health report without COMED actions', (
+    tester,
+  ) async {
+    const result = AnalysisResult(
+      doctor: {},
+      patient: {
+        'ozet': 'Göğüs ağrısı görüşmesi tamamlandı.',
+        'tani': 'Doktor değerlendirmesi bekleniyor.',
+        'yapilacaklar': ['Kontrol randevusuna gidin'],
+        'ilaclar': ['İlaçlarınızı önerildiği şekilde kullanın'],
+        'kontrol': 'Bir hafta sonra kontrol.',
+        'kapanis': 'Acil belirti olursa sağlık kuruluşuna başvurun.',
+      },
+      recordId: 44,
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildKlinotTheme(),
+        home: ReportsScreen(
+          api: FakeApi(),
+          session: UserSession(
+            token: 'patient-token',
+            username: '476644',
+            role: 'patient',
+            displayName: 'Dursun Kılıçarslan',
+            patientNo: '476644',
+          ),
+          result: result,
+        ),
+      ),
+    );
+
+    expect(find.text('Sağlık raporum'), findsOneWidget);
+    expect(find.text('Sağlık raporu hazır'), findsOneWidget);
+    expect(find.text('Göğüs ağrısı görüşmesi tamamlandı.'), findsOneWidget);
+    expect(
+      find.byKey(const Key('downloadPatientReportButton')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('transferToComedButton')), findsNothing);
+    expect(find.textContaining('COMED'), findsNothing);
   });
 
   testWidgets(
@@ -431,7 +516,7 @@ void main() {
 
       await tester.pumpAndSettle();
       await tester.ensureVisible(find.byKey(const Key('startRecordingButton')));
-      await tester.tap(find.byType(Checkbox));
+      await tester.tap(find.byKey(const Key('recordingConsentSwitch')));
       await tester.tap(find.byKey(const Key('startRecordingButton')));
       await tester.pump();
       await tester.ensureVisible(find.byKey(const Key('stopRecordingButton')));
