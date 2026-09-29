@@ -34,7 +34,12 @@ class _RecorderScreenState extends State<RecorderScreen> {
   RecordingState _state = RecordingState.idle;
   StreamSubscription<double>? _levelSubscription;
   Timer? _timer;
+  Timer? _processingTimer;
+  final Stopwatch _processingStopwatch = Stopwatch();
   Duration _elapsed = Duration.zero;
+  Duration _processingElapsed = Duration.zero;
+  int? _processingPercent;
+  String _processingPhase = 'Ses kaydı metne dönüştürülüyor';
   var _level = 0.0;
   var _consent = false;
   File? _recordedFile;
@@ -100,6 +105,8 @@ class _RecorderScreenState extends State<RecorderScreen> {
   @override
   void dispose() {
     _timer?.cancel();
+    _processingTimer?.cancel();
+    _processingStopwatch.stop();
     unawaited(_levelSubscription?.cancel());
     unawaited(_recorder.dispose());
     super.dispose();
@@ -211,6 +218,18 @@ class _RecorderScreenState extends State<RecorderScreen> {
       );
       return;
     }
+    _processingTimer?.cancel();
+    _processingStopwatch
+      ..reset()
+      ..start();
+    _processingElapsed = Duration.zero;
+    _processingPercent = null;
+    _processingPhase = 'Ses kaydı metne dönüştürülüyor';
+    _processingTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted && _state == RecordingState.processing) {
+        setState(() => _processingElapsed = _processingStopwatch.elapsed);
+      }
+    });
     setState(() {
       _state = RecordingState.processing;
       _error = null;
@@ -227,6 +246,12 @@ class _RecorderScreenState extends State<RecorderScreen> {
       if (transcription.transcript.trim().isEmpty) {
         throw const ApiException('Ses metne dönüştürülemedi.');
       }
+      if (mounted) {
+        setState(() {
+          _processingPercent = 0;
+          _processingPhase = 'Klinik raporlar hazırlanıyor';
+        });
+      }
 
       AnalysisResult? completed;
       await for (final event in widget.api.analyze(
@@ -234,14 +259,23 @@ class _RecorderScreenState extends State<RecorderScreen> {
         transcription,
         comedPatient: _selectedPatient,
       )) {
-        // Sunucunun gerçek ilerleme olayları alınmaya devam eder; doktor ekranına
-        // metin, adım veya yüzde yansıtılmaz.
+        if (event is AnalysisProgress && mounted) {
+          setState(() {
+            _processingPercent = event.percent.clamp(0, 100).toInt();
+            _processingPhase = _analysisPhaseLabel(event.step);
+          });
+        }
         if (event is AnalysisCompleted) completed = event.result;
       }
       if (completed == null) {
         throw const ApiException('Sunucu analiz sonucunu göndermedi.');
       }
       if (!mounted) return;
+
+      setState(() {
+        _processingPercent = 100;
+        _processingPhase = 'Epikriz hazır';
+      });
 
       await _recorder.allowSleep();
       keepAwake = false;
@@ -277,9 +311,19 @@ class _RecorderScreenState extends State<RecorderScreen> {
         _error = error.toString();
       });
     } finally {
+      _processingTimer?.cancel();
+      _processingTimer = null;
+      _processingStopwatch.stop();
       if (keepAwake) await _recorder.allowSleep();
     }
   }
+
+  String _analysisPhaseLabel(String step) => switch (step) {
+    'hasta' => 'Klinik bulgular düzenleniyor',
+    'doktor' => 'Detaylı epikriz hazırlanıyor',
+    'yonetim' => 'Görüşme kaydı tamamlanıyor',
+    _ => 'Klinik raporlar hazırlanıyor',
+  };
 
   String get _time {
     final minutes = _elapsed.inMinutes.toString().padLeft(2, '0');
@@ -353,8 +397,11 @@ class _RecorderScreenState extends State<RecorderScreen> {
                             onCancel: _cancel,
                           )
                         : processing
-                        ? const _ProcessingRecording(
+                        ? _ProcessingRecording(
                             key: ValueKey('processing'),
+                            elapsed: _processingElapsed,
+                            percent: _processingPercent,
+                            phase: _processingPhase,
                           )
                         : ready
                         ? _ReadyRecording(
@@ -861,7 +908,22 @@ class _ReadyRecording extends StatelessWidget {
 }
 
 class _ProcessingRecording extends StatelessWidget {
-  const _ProcessingRecording({super.key});
+  const _ProcessingRecording({
+    super.key,
+    required this.elapsed,
+    required this.percent,
+    required this.phase,
+  });
+
+  final Duration elapsed;
+  final int? percent;
+  final String phase;
+
+  String get elapsedLabel {
+    final minutes = elapsed.inMinutes.toString().padLeft(2, '0');
+    final seconds = (elapsed.inSeconds % 60).toString().padLeft(2, '0');
+    return '$minutes:$seconds';
+  }
 
   @override
   Widget build(BuildContext context) => Column(
@@ -871,12 +933,13 @@ class _ProcessingRecording extends StatelessWidget {
         child: Stack(
           alignment: Alignment.center,
           children: [
-            const SizedBox.expand(
+            SizedBox.expand(
               child: CircularProgressIndicator(
-                key: Key('epikrizLoadingIndicator'),
+                key: const Key('epikrizLoadingIndicator'),
+                value: percent == null ? null : percent! / 100,
                 strokeWidth: 9,
                 color: klinotTeal,
-                backgroundColor: Color(0xFFD9EFEC),
+                backgroundColor: const Color(0xFFD9EFEC),
               ),
             ),
             Container(
@@ -902,10 +965,42 @@ class _ProcessingRecording extends StatelessWidget {
             ?.copyWith(fontWeight: FontWeight.w800, color: klinotNavy),
       ),
       const SizedBox(height: 10),
-      const Text(
-        'Ses kaydı analiz ediliyor. İşlem tamamlandığında epikriz raporunu görebileceksiniz.',
+      Text(
+        phase,
         textAlign: TextAlign.center,
-        style: TextStyle(color: Color(0xFF60777D), height: 1.5),
+        style: const TextStyle(
+          color: Color(0xFF60777D),
+          height: 1.5,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      const SizedBox(height: 16),
+      LinearProgressIndicator(
+        key: const Key('analysisProgress'),
+        value: percent == null ? null : percent! / 100,
+        minHeight: 9,
+        borderRadius: BorderRadius.circular(99),
+        color: klinotTeal,
+        backgroundColor: const Color(0xFFD9EFEC),
+      ),
+      const SizedBox(height: 10),
+      Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            'Geçen süre $elapsedLabel',
+            key: const Key('processingElapsed'),
+            style: const TextStyle(color: Color(0xFF60777D)),
+          ),
+          Text(
+            percent == null ? 'Ses işleniyor' : 'Gerçek ilerleme · %$percent',
+            key: const Key('processingPercent'),
+            style: const TextStyle(
+              color: klinotTeal,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
       ),
       const SizedBox(height: 18),
       Container(
@@ -922,7 +1017,7 @@ class _ProcessingRecording extends StatelessWidget {
             SizedBox(width: 10),
             Expanded(
               child: Text(
-                'Görüşme metni, analiz adımları ve yüzdeler bu ekranda gösterilmez.',
+                'Süre cihaz saatinden, yüzde ise sunucunun tamamladığı gerçek rapor adımlarından gelir.',
                 style: TextStyle(color: Color(0xFF60777D), height: 1.4),
               ),
             ),

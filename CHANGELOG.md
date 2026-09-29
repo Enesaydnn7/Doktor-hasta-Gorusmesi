@@ -1,5 +1,11 @@
 # Sürüm Geçmişi
 
+## v2.9.2 — 29 Eylül 2026
+
+- Mobil epikriz hazırlama ekranı cihaz saatinden ölçülen gerçek geçen süreyi gösterir.
+- Transkripsiyon aşamasında uydurma yüzde yerine belirsiz ilerleme, rapor üretiminde sunucunun tamamladığı gerçek adımlara göre yüzde gösterilir.
+- COMED işlem günlüğü sağ alta taşındı; işlem sayısı, zaman, sonuç durumu ve okunabilir alan açıklamalarıyla yeniden tasarlandı.
+
 ## v2.9.1 — 29 Eylül 2026
 
 - Doktor paneli COMED iş listesini açılış ekranı yaptı; hasta seçimi ayrı aktarım görünümünü açıyor ve token göstergesi kaldırıldı.

@@ -148,17 +148,19 @@
     box = document.createElement("div");
     box.id = "klinot-comed-bridge";
     Object.assign(box.style, {
-      position: "fixed", left: "18px", bottom: "18px", zIndex: "2147483647",
-      width: "min(390px, calc(100vw - 36px))", color: "#fff",
+      position: "fixed", right: "18px", bottom: "18px", zIndex: "2147483647",
+      width: "min(440px, calc(100vw - 36px))", color: "#fff",
       font: "600 12px system-ui", filter: "drop-shadow(0 10px 28px #0004)",
     });
-    box.innerHTML = `<div data-klinot-log-panel style="display:none;max-height:310px;overflow:auto;background:#fff;color:#173143;border:1px solid #cddfe2;border-radius:14px 14px 0 0;padding:10px"></div><button data-klinot-log-toggle type="button" style="width:100%;border:0;border-radius:12px;padding:11px 14px;color:#fff;text-align:left;font:700 12px system-ui;cursor:pointer"><span data-klinot-log-title>Klinot</span><span style="float:right">İşlem günlüğü ▴</span></button>`;
+    box.innerHTML = `<div data-klinot-log-panel style="display:none;margin-bottom:8px;overflow:hidden;background:#fff;color:#173143;border:1px solid #cddfe2;border-radius:16px"><div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:#f3f8f8;border-bottom:1px solid #dce9eb"><strong style="font-size:13px">İşlem günlüğü</strong><span data-klinot-log-panel-count style="color:#60777d;font-weight:600"></span></div><div data-klinot-log-list style="max-height:300px;overflow:auto;padding:5px 10px"></div></div><button data-klinot-log-toggle type="button" aria-expanded="false" style="width:100%;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;border:0;border-radius:14px;padding:12px 14px;color:#fff;text-align:left;font:700 12px system-ui;cursor:pointer"><span data-klinot-log-title style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Klinot</span><span data-klinot-log-action style="display:inline-flex;align-items:center;gap:7px;white-space:nowrap"><span data-klinot-log-count style="display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 5px;border-radius:99px;background:#ffffff2e">0</span><span data-klinot-log-action-label>Günlüğü aç</span><span data-klinot-log-chevron>▴</span></span></button>`;
     const toggle = box.querySelector("[data-klinot-log-toggle]");
     toggle.addEventListener("click", () => {
       const panel = box.querySelector("[data-klinot-log-panel]");
       const open = panel.style.display !== "none";
       panel.style.display = open ? "none" : "block";
-      toggle.querySelector("span:last-child").textContent = open ? "İşlem günlüğü ▴" : "Kapat ▾";
+      toggle.setAttribute("aria-expanded", String(!open));
+      box.querySelector("[data-klinot-log-action-label]").textContent = open ? "Günlüğü aç" : "Kapat";
+      box.querySelector("[data-klinot-log-chevron]").textContent = open ? "▴" : "▾";
     });
     document.body.appendChild(box);
     return box;
@@ -170,15 +172,28 @@
     const toggle = box.querySelector("[data-klinot-log-toggle]");
     toggle.style.background = color;
     box.querySelector("[data-klinot-log-title]").textContent = `Klinot · ${text}`;
-    const panel = box.querySelector("[data-klinot-log-panel]");
-    panel.replaceChildren(...bridgeLogs().slice().reverse().map((entry) => {
+    const logs = bridgeLogs().slice().reverse();
+    box.querySelector("[data-klinot-log-count]").textContent = String(logs.length);
+    box.querySelector("[data-klinot-log-panel-count]").textContent = `${logs.length} işlem`;
+    const list = box.querySelector("[data-klinot-log-list]");
+    list.replaceChildren(...logs.map((entry) => {
       const row = document.createElement("div");
-      row.style.cssText = "display:grid;grid-template-columns:9px 1fr;gap:8px;padding:7px 5px;border-bottom:1px solid #edf2f3;font-weight:500;line-height:1.35";
+      row.style.cssText = "display:grid;grid-template-columns:10px minmax(0,1fr) auto;align-items:start;gap:9px;padding:9px 4px;border-bottom:1px solid #edf2f3;font-weight:500;line-height:1.35";
       const dot = document.createElement("i");
       dot.style.cssText = `width:8px;height:8px;margin-top:4px;border-radius:50%;background:${entry.state === "bad" ? "#c73b34" : entry.state === "ok" ? "#078d83" : "#5976da"}`;
-      const copy = document.createElement("span");
-      copy.textContent = `${entry.time} · ${entry.text}`;
-      row.append(dot, copy);
+      const copy = document.createElement("div");
+      copy.style.cssText = "min-width:0";
+      const title = document.createElement("div");
+      title.textContent = entry.text;
+      title.style.cssText = "color:#173143;overflow-wrap:anywhere";
+      const state = document.createElement("small");
+      state.textContent = entry.state === "bad" ? "Kontrol gerekli" : entry.state === "ok" ? "Tamamlandı" : "İşleniyor";
+      state.style.cssText = `display:block;margin-top:2px;color:${entry.state === "bad" ? "#b5322d" : entry.state === "ok" ? "#087454" : "#5976da"};font-weight:700`;
+      copy.append(title, state);
+      const time = document.createElement("time");
+      time.textContent = entry.time;
+      time.style.cssText = "color:#789095;font-size:10px;font-weight:600;white-space:nowrap";
+      row.append(dot, copy, time);
       return row;
     }));
   }

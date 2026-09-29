@@ -49,6 +49,10 @@ class ComedExtensionTests(unittest.TestCase):
         self.assertIn("Aktarım bitti · Genel doktor kontrolü gerekli", source)
         self.assertIn("klinot_comed_bridge_log_v1", source)
         self.assertIn("İşlem günlüğü", source)
+        self.assertIn('right: "18px"', source)
+        self.assertNotIn('position: "fixed", left: "18px"', source)
+        self.assertIn("data-klinot-log-panel-count", source)
+        self.assertIn("Kontrol gerekli", source)
         self.assertIn("bridgeFieldStatus(field, ok)", source)
         self.assertIn("unresolved_count", source)
         self.assertIn("bu hastal[ıi]k hastaya ait bu protokol", source)
@@ -76,7 +80,7 @@ class ComedExtensionTests(unittest.TestCase):
 
     def test_manifest_declares_current_version(self):
         manifest = json.loads((EXTENSION / "manifest.json").read_text(encoding="utf-8"))
-        self.assertEqual(manifest["version"], "2.9.1")
+        self.assertEqual(manifest["version"], "2.9.2")
 
 
 if __name__ == "__main__":
