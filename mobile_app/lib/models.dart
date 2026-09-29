@@ -5,11 +5,13 @@ class UserSession {
     required this.token,
     required this.username,
     required this.role,
+    this.displayName = '',
   });
 
   final String token;
   final String username;
   final String role;
+  final String displayName;
 
   factory UserSession.fromJson(Map<String, dynamic> json) {
     final user = Map<String, dynamic>.from(json['user'] as Map? ?? const {});
@@ -17,6 +19,7 @@ class UserSession {
       token: json['access_token']?.toString() ?? '',
       username: user['username']?.toString() ?? '',
       role: user['role']?.toString() ?? 'doctor',
+      displayName: user['display_name']?.toString() ?? '',
     );
   }
 }

@@ -58,11 +58,23 @@ def oturum_var(request: Request) -> bool:
     return auth.token_gecerli(request.cookies.get(auth.COOKIE, ""))
 
 
+def web_session(request: Request) -> dict | None:
+    return auth.token_bilgisi(request.cookies.get(auth.COOKIE, ""))
+
+
 def admin_auth(request: Request):
     """API uçları için: oturum yoksa 401."""
-    if not oturum_var(request):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Oturum gerekli")
-    return auth.ADMIN_USER
+    session = web_session(request)
+    if not session or session.get("role") != "admin":
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Yonetici oturumu gerekli")
+    return session
+
+
+def doctor_auth(request: Request) -> dict:
+    session = web_session(request)
+    if not session or session.get("role") != "doctor":
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Doktor oturumu gerekli")
+    return session
 
 
 # ---- Ses, analizden önce yüklendiği için geçici olarak burada tutulur ----
@@ -143,6 +155,7 @@ class AnalyzeIn(BaseModel):
 class MobileLoginIn(BaseModel):
     username: str
     password: str
+    client_type: str | None = None
 
 
 class PdfIn(BaseModel):
@@ -203,6 +216,12 @@ def mobile_admin(user: dict = Depends(mobile_auth)) -> dict:
     return user
 
 
+def mobile_doctor(user: dict = Depends(mobile_auth)) -> dict:
+    if user.get("role") != "doctor":
+        raise HTTPException(status_code=403, detail="Doktor hesabi gerekli")
+    return user
+
+
 _TRACE_SECRET_KEY = re.compile(
     r"authorization|cookie|password|passwd|secret|token|session",
     re.IGNORECASE,
@@ -245,6 +264,7 @@ def _store_analysis(body: AnalyzeIn, text: str, result: dict) -> dict:
             ses=ses, ses_mime=mime, ses_ad=ad,
             source=body.source, client_version=body.client_version,
             metadata=body.metadata,
+            owner_user=(body.metadata or {}).get("api_user"),
         )
         if body.audio_id and ses:
             db.bekleyen_ses_al(body.audio_id, sil=True)
@@ -257,9 +277,18 @@ def _store_analysis(body: AnalyzeIn, text: str, result: dict) -> dict:
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
+    session = web_session(request)
+    if session and session.get("role") == "admin":
+        return RedirectResponse("/admin", status_code=303)
+    if session and session.get("role") == "doctor":
+        return RedirectResponse("/doctor", status_code=303)
+    return RedirectResponse("/doctor/login", status_code=303)
+
+
+@app.get("/legacy", response_class=HTMLResponse)
+async def legacy_index(request: Request):
     return templates.TemplateResponse(
-        request,
-        "index.html",
+        request, "index.html",
         {"provider": config.label(), "version": config.APP_VERSION},
     )
 
@@ -392,12 +421,21 @@ async def mobile_login(body: MobileLoginIn):
     role = auth.api_giris_rolu(body.username.strip(), body.password)
     if not role:
         raise HTTPException(status_code=401, detail="Kullanıcı adı veya şifre hatalı")
+    if role != "doctor":
+        raise HTTPException(
+            status_code=403,
+            detail="Yönetici hesabı yalnızca /admin panelinde kullanılabilir",
+        )
     user = body.username.strip()
     return {
         "access_token": auth.api_token_uret(user, role),
         "token_type": "bearer",
         "expires_in": auth.MOBILE_API_MAX_AGE,
-        "user": {"username": user, "role": role},
+        "user": {
+            "username": user,
+            "role": role,
+            "display_name": auth.kullanici_adi(user, role),
+        },
         "api_version": "v1",
     }
 
@@ -407,7 +445,11 @@ async def mobile_session(user: dict = Depends(mobile_auth)):
     """Uygulama açılışında saklanan mobil oturumu doğrula."""
     return {
         "valid": True,
-        "user": {"username": user["user"], "role": user["role"]},
+        "user": {
+            "username": user["user"],
+            "role": user["role"],
+            "display_name": user.get("display_name") or user["user"],
+        },
         "expires_in": auth.MOBILE_API_MAX_AGE,
     }
 
@@ -421,7 +463,7 @@ async def mobile_health():
 @app.post("/api/v1/mobile/transcribe")
 async def mobile_transcribe(
     file: UploadFile = File(...),
-    _user: dict = Depends(mobile_auth),
+    _user: dict = Depends(mobile_doctor),
 ):
     return await transcribe(file)
 
@@ -429,7 +471,7 @@ async def mobile_transcribe(
 @app.post("/api/v1/mobile/transcriptions")
 async def mobile_transcription_start(
     file: UploadFile = File(...),
-    user: dict = Depends(mobile_auth),
+    user: dict = Depends(mobile_doctor),
 ):
     """Sesi hızla teslim al; uzun STT işini bağlantıdan bağımsız yürüt."""
     data = await file.read()
@@ -472,7 +514,7 @@ async def mobile_transcription_start(
 @app.get("/api/v1/mobile/transcriptions/{job_id}")
 async def mobile_transcription_status(
     job_id: str,
-    user: dict = Depends(mobile_auth),
+    user: dict = Depends(mobile_doctor),
 ):
     job = db.transcription_job_get(job_id)
     if not job or job.get("requested_by") != user["user"]:
@@ -487,7 +529,7 @@ async def mobile_transcription_status(
 @app.post("/api/v1/mobile/analyze/stream")
 async def mobile_analyze_stream(
     body: AnalyzeIn,
-    user: dict = Depends(mobile_auth),
+    user: dict = Depends(mobile_doctor),
 ):
     metadata = {**(body.metadata or {}), "api_user": user["user"]}
     mobile_body = body.model_copy(update={"source": "mobile", "metadata": metadata})
@@ -497,7 +539,7 @@ async def mobile_analyze_stream(
 @app.post("/api/v1/mobile/pdf/epikriz")
 async def mobile_epikriz_pdf(
     body: MobileEpikrizPdfIn,
-    _user: dict = Depends(mobile_auth),
+    _user: dict = Depends(mobile_doctor),
 ):
     """Doktor uygulamasındaki güncel epikrizi mevcut PDF şablonuyla üret."""
     try:
@@ -515,7 +557,7 @@ async def mobile_epikriz_pdf(
 
 
 @app.get("/api/v1/mobile/comed/worklist")
-async def mobile_comed_worklist(user: dict = Depends(mobile_auth)):
+async def mobile_comed_worklist(user: dict = Depends(mobile_doctor)):
     """Kurumsal ağdaki tarayıcı köprüsünün son eşitlediği doktor iş listesi."""
     return {
         "items": db.comed_worklist(synced_by=user["user"]),
@@ -526,7 +568,7 @@ async def mobile_comed_worklist(user: dict = Depends(mobile_auth)):
 @app.post("/api/v1/mobile/comed/worklist/sync")
 async def mobile_comed_worklist_sync(
     body: ComedWorklistSyncIn,
-    user: dict = Depends(mobile_auth),
+    user: dict = Depends(mobile_doctor),
 ):
     count = db.comed_worklist_sync(
         body.items[:200], synced_by=user["user"], replace=body.replace
@@ -534,12 +576,28 @@ async def mobile_comed_worklist_sync(
     return {"synced": count}
 
 
-def _create_comed_transfer(record_id: int, patient: dict, requested_by: str) -> dict:
-    record = db.getir(record_id)
+def _create_comed_transfer(
+    record_id: int,
+    patient: dict,
+    requested_by: str,
+    *,
+    admin: bool = False,
+) -> dict:
+    record = db.getir(record_id, None if admin else requested_by)
     if not record:
         raise HTTPException(status_code=404, detail="Kayıt bulunamadı")
     if not patient.get("visit_id"):
         raise HTTPException(status_code=422, detail="COMED hasta/protokol bilgisi eksik")
+    if not admin:
+        owned_visits = {
+            str(item.get("visit_id") or "")
+            for item in db.comed_worklist(synced_by=requested_by)
+        }
+        if str(patient.get("visit_id")) not in owned_visits:
+            raise HTTPException(
+                status_code=403,
+                detail="Hasta bu doktorun COMED iş listesinde değil",
+            )
     trace_templates = db.comed_trace_list(
         limit=2000,
         captured_by=requested_by,
@@ -556,7 +614,7 @@ def _create_comed_transfer(record_id: int, patient: dict, requested_by: str) -> 
 @app.post("/api/v1/mobile/comed/transfers")
 async def mobile_comed_transfer_create(
     body: ComedTransferIn,
-    user: dict = Depends(mobile_auth),
+    user: dict = Depends(mobile_doctor),
 ):
     return _create_comed_transfer(body.record_id, body.patient, user["user"])
 
@@ -564,10 +622,10 @@ async def mobile_comed_transfer_create(
 @app.get("/api/v1/mobile/comed/transfers/{transfer_id}")
 async def mobile_comed_transfer_get(
     transfer_id: int,
-    _user: dict = Depends(mobile_auth),
+    user: dict = Depends(mobile_doctor),
 ):
     transfer = db.comed_transfer_get(transfer_id)
-    if not transfer:
+    if not transfer or transfer.get("requested_by") != user["user"]:
         raise HTTPException(status_code=404, detail="COMED aktarımı bulunamadı")
     return transfer
 
@@ -575,7 +633,7 @@ async def mobile_comed_transfer_get(
 @app.get("/api/v1/mobile/comed/bridge/transfers")
 async def mobile_comed_bridge_pending(
     visit_id: str | None = Query(default=None),
-    user: dict = Depends(mobile_auth),
+    user: dict = Depends(mobile_doctor),
 ):
     """Tarayıcı köprüsüne yalnız bekleyen taslakları verir; COMED tokenı almaz."""
     return {
@@ -589,7 +647,7 @@ async def mobile_comed_bridge_pending(
 async def mobile_comed_bridge_status(
     transfer_id: int,
     body: ComedTransferStatusIn,
-    user: dict = Depends(mobile_auth),
+    user: dict = Depends(mobile_doctor),
 ):
     existing = db.comed_transfer_get(transfer_id)
     if not existing or (
@@ -611,7 +669,7 @@ async def mobile_comed_bridge_status(
 @app.post("/api/v1/mobile/comed/request-log")
 async def mobile_comed_trace_capture(
     body: ComedTraceBatchIn,
-    user: dict = Depends(mobile_auth),
+    user: dict = Depends(mobile_doctor),
 ):
     """Capture sanitized API shapes from the authorized COMED test host only."""
     events = []
@@ -642,7 +700,7 @@ async def mobile_comed_trace_list(
     limit: int = Query(default=250, ge=1, le=2000),
     method: str | None = Query(default=None),
     path_contains: str | None = Query(default=None),
-    user: dict = Depends(mobile_auth),
+    user: dict = Depends(mobile_doctor),
 ):
     """Return only the signed-in Klinot user's sanitized COMED test traces."""
     return {
@@ -658,14 +716,19 @@ async def mobile_comed_trace_list(
 @app.get("/api/v1/mobile/records")
 async def mobile_records(
     limit: int = Query(default=100, ge=1, le=200),
-    _user: dict = Depends(mobile_admin),
+    user: dict = Depends(mobile_auth),
 ):
-    return {"records": db.liste(limit=limit), "stats": db.istatistik()}
+    owner = None if user.get("role") == "admin" else user["user"]
+    return {
+        "records": db.liste(limit=limit, owner_user=owner),
+        "stats": db.istatistik(owner_user=owner),
+    }
 
 
 @app.get("/api/v1/mobile/records/{kid}")
-async def mobile_record(kid: int, _user: dict = Depends(mobile_admin)):
-    record = db.getir(kid)
+async def mobile_record(kid: int, user: dict = Depends(mobile_auth)):
+    owner = None if user.get("role") == "admin" else user["user"]
+    record = db.getir(kid, owner_user=owner)
     if not record:
         raise HTTPException(status_code=404, detail="Kayıt bulunamadı")
     return record
@@ -678,11 +741,141 @@ async def mobile_record_delete(kid: int, _user: dict = Depends(mobile_admin)):
     return {"deleted": True, "id": kid}
 
 
+# ============================== DOCTOR ==============================
+@app.get("/doctor/login", response_class=HTMLResponse)
+async def doctor_login_page(request: Request):
+    session = web_session(request)
+    if session and session.get("role") == "doctor":
+        return RedirectResponse("/doctor", status_code=303)
+    if session and session.get("role") == "admin":
+        return RedirectResponse("/admin", status_code=303)
+    return templates.TemplateResponse(
+        request, "doctor_login.html", {"hata": None, "version": config.APP_VERSION}
+    )
+
+
+@app.post("/doctor/login")
+async def doctor_login(
+    request: Request,
+    user: str = Form(""),
+    password: str = Form(""),
+):
+    role = auth.api_giris_rolu(user.strip(), password)
+    if role != "doctor":
+        return templates.TemplateResponse(
+            request,
+            "doctor_login.html",
+            {
+                "hata": "Doktor kullanıcı adı veya şifresi hatalı.",
+                "version": config.APP_VERSION,
+            },
+            status_code=401,
+        )
+    username = user.strip()
+    response = RedirectResponse("/doctor", status_code=303)
+    response.set_cookie(
+        auth.COOKIE,
+        auth.token_uret(username, "doctor"),
+        max_age=auth.MAX_AGE,
+        httponly=True,
+        samesite="lax",
+    )
+    return response
+
+
+@app.get("/doctor/logout")
+async def doctor_logout():
+    response = RedirectResponse("/doctor/login", status_code=303)
+    response.delete_cookie(auth.COOKIE)
+    return response
+
+
+@app.get("/doctor", response_class=HTMLResponse)
+async def doctor_panel(request: Request):
+    session = web_session(request)
+    if not session or session.get("role") != "doctor":
+        return RedirectResponse("/doctor/login", status_code=303)
+    return templates.TemplateResponse(
+        request,
+        "doctor.html",
+        {"user": session, "version": config.APP_VERSION},
+    )
+
+
+@app.get("/doctor/api/overview")
+async def doctor_overview(request: Request):
+    session = doctor_auth(request)
+    username = session["user"]
+    return {
+        "user": session,
+        "records": db.liste(limit=200, owner_user=username),
+        "stats": db.istatistik(owner_user=username),
+        "worklist": db.comed_worklist(limit=200, synced_by=username),
+    }
+
+
+@app.get("/doctor/api/records/{kid}")
+async def doctor_record(kid: int, request: Request):
+    session = doctor_auth(request)
+    record = db.getir(kid, owner_user=session["user"])
+    if not record:
+        raise HTTPException(status_code=404, detail="Kayıt bulunamadı")
+    return record
+
+
+@app.post("/doctor/api/comed/transfers")
+async def doctor_transfer(body: ComedTransferIn, request: Request):
+    session = doctor_auth(request)
+    return _create_comed_transfer(body.record_id, body.patient, session["user"])
+
+
+@app.get("/doctor/api/comed/transfers/{transfer_id}")
+async def doctor_transfer_status(transfer_id: int, request: Request):
+    session = doctor_auth(request)
+    transfer = db.comed_transfer_get(transfer_id)
+    if not transfer or transfer.get("requested_by") != session["user"]:
+        raise HTTPException(status_code=404, detail="COMED aktarımı bulunamadı")
+    return transfer
+
+
+@app.api_route("/doctor/audio/{kid}", methods=["GET", "HEAD"])
+async def doctor_audio(kid: int, request: Request):
+    session = doctor_auth(request)
+    got = db.ses_getir(kid, owner_user=session["user"])
+    if not got:
+        raise HTTPException(status_code=404, detail="Bu kayıtta ses yok")
+    data, mime, name = got
+    headers = {
+        "Content-Disposition": f'inline; filename*=UTF-8\'\'{quote(name)}',
+        "Content-Length": str(len(data)),
+    }
+    if request.method == "HEAD":
+        return Response(status_code=200, media_type=mime, headers=headers)
+    return Response(content=data, media_type=mime, headers=headers)
+
+
+@app.get("/doctor/pdf/{kid}")
+async def doctor_pdf(kid: int, request: Request):
+    session = doctor_auth(request)
+    record = db.getir(kid, owner_user=session["user"])
+    if not record:
+        raise HTTPException(status_code=404, detail="Kayıt bulunamadı")
+    content, filename = pdf_report.build_pdf("doktor", record["doktor"])
+    return Response(
+        content=content,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
 # ============================== ADMIN ==============================
 @app.get("/admin/login", response_class=HTMLResponse)
 async def admin_login_sayfa(request: Request):
-    if oturum_var(request):
+    session = web_session(request)
+    if session and session.get("role") == "admin":
         return RedirectResponse("/admin", status_code=303)
+    if session and session.get("role") == "doctor":
+        return RedirectResponse("/doctor", status_code=303)
     return templates.TemplateResponse(request, "login.html", {"hata": None})
 
 
@@ -693,7 +886,7 @@ async def admin_login(request: Request, user: str = Form(""), password: str = Fo
             request, "login.html",
             {"hata": "Kullanıcı adı veya şifre hatalı."}, status_code=401)
     resp = RedirectResponse("/admin", status_code=303)
-    resp.set_cookie(auth.COOKIE, auth.token_uret(user), max_age=auth.MAX_AGE,
+    resp.set_cookie(auth.COOKIE, auth.token_uret(user, "admin"), max_age=auth.MAX_AGE,
                     httponly=True, samesite="lax")
     return resp
 
@@ -707,7 +900,8 @@ async def admin_logout():
 
 @app.get("/admin", response_class=HTMLResponse)
 async def admin(request: Request):
-    if not oturum_var(request):
+    session = web_session(request)
+    if not session or session.get("role") != "admin":
         return RedirectResponse("/admin/login", status_code=303)
     return templates.TemplateResponse(
         request, "admin.html",
@@ -732,7 +926,7 @@ async def admin_comed_transfer(kid: int, request: Request):
     if not record:
         raise HTTPException(status_code=404, detail="Kayıt bulunamadı")
     patient = (record.get("metadata") or {}).get("comed_patient") or {}
-    return _create_comed_transfer(kid, patient, "admin")
+    return _create_comed_transfer(kid, patient, "admin", admin=True)
 
 
 @app.get("/admin/comed/request-log")

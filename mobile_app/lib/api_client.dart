@@ -87,7 +87,11 @@ class ApiClient implements KlinotApi {
         .post(
           _uri('/api/v1/mobile/auth/login'),
           headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({'username': username, 'password': password}),
+          body: jsonEncode({
+            'username': username,
+            'password': password,
+            'client_type': 'mobile',
+          }),
         )
         .timeout(const Duration(seconds: 70));
     return UserSession.fromJson(_decodeResponse(response));
@@ -258,7 +262,7 @@ class ApiClient implements KlinotApi {
         'audio_id': transcription.audioId,
         'stt_usage': transcription.usage,
         'source': 'mobile',
-        'client_version': '2.8.7',
+        'client_version': '2.9.0',
         'metadata': {
           'platform': Platform.operatingSystem,
           if (comedPatient != null) 'comed_patient': comedPatient.toJson(),

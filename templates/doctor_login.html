@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Klinot Doktor Girişi</title>
+  <link rel="stylesheet" href="/static/doctor.css?v={{ version }}">
+</head>
+<body class="login-page">
+  <main class="login-card">
+    <div class="brand-mark">K</div>
+    <h1>Klinot Doktor</h1>
+    <p>Kendi COMED iş listeniz ve görüşme raporlarınız için giriş yapın.</p>
+    {% if hata %}<div class="alert">{{ hata }}</div>{% endif %}
+    <form method="post" action="/doctor/login">
+      <label>Kullanıcı adı<input name="user" autocomplete="username" required autofocus></label>
+      <label>Şifre<input name="password" type="password" autocomplete="current-password" required></label>
+      <button type="submit">Doktor paneline gir</button>
+    </form>
+    <a class="admin-link" href="/admin/login">Yönetici girişi</a>
+  </main>
+</body>
+</html>

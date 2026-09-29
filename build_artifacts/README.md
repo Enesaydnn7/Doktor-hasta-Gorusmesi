@@ -1,8 +1,8 @@
 # Klinot COMED Köprüsü kurulumu
 
-Kurulacak dosya: `klinot-comed-bridge-v2.8.7.zip`
+Kurulacak dosya: `klinot-comed-bridge-v2.9.0.zip`
 
-Android uygulaması: `Klinot-v2.8.7.apk`
+Android uygulaması: `Klinot-v2.9.0.apk`
 
 1. ZIP dosyasını bilgisayarda bir klasöre çıkarın.
 2. Chrome adres çubuğunda `chrome://extensions` sayfasını açın.
@@ -14,5 +14,14 @@ Android uygulaması: `Klinot-v2.8.7.apk`
 8. Eklentiyi açıp mobil Klinot'ta kullandığınız **Klinot kullanıcı adı ve şifresiyle** bağlayın. COMED parolasını eklentiye yazmayın.
 9. Göztepe COMED iş listesini yenileyin. Sağ altta yeşil Klinot eşitleme mesajı görünmelidir.
 10. Telefonda Klinot uygulamasındaki COMED iş listesinin yenile düğmesine basın.
+
+Mobil uygulama, doktor web paneli ve eklentide aynı doktor hesabını kullanın. Her doktor yalnızca kendi COMED iş listesini ve raporlarını görür. Yönetici hesabı mobil uygulama ve eklentiye kabul edilmez; yalnızca `/admin` paneli içindir.
+
+Test doktor hesapları:
+
+- `adnan.kaya;enes.aydin1|tracer` / `1`
+- `sami.sokucu;enes.aydin1|tracer` / `1`
+
+Yönetim hesabı: `admin` / `admin`.
 
 Chrome ZIP dosyasını doğrudan yüklemez; önce klasöre çıkarmak zorunludur.

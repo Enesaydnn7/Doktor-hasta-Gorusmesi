@@ -40,11 +40,13 @@ class _KlinotAppState extends State<KlinotApp> {
       final token = await _storage.read(key: 'token');
       final username = await _storage.read(key: 'username');
       final role = await _storage.read(key: 'role');
+      final displayName = await _storage.read(key: 'display_name');
       if (token != null && username != null && role != null) {
         final stored = UserSession(
           token: token,
           username: username,
           role: role,
+          displayName: displayName ?? '',
         );
         try {
           await _api.validateSession(token);
@@ -75,6 +77,7 @@ class _KlinotAppState extends State<KlinotApp> {
       await _storage.write(key: 'token', value: session.token);
       await _storage.write(key: 'username', value: session.username);
       await _storage.write(key: 'role', value: session.role);
+      await _storage.write(key: 'display_name', value: session.displayName);
     } catch (_) {}
   }
 
@@ -130,7 +133,9 @@ class HomeShell extends StatelessWidget {
             padding: const EdgeInsets.only(right: 4),
             child: Center(
               child: Text(
-                session.username,
+                session.displayName.isNotEmpty
+                    ? session.displayName
+                    : session.username.split(';').first,
                 style: const TextStyle(fontWeight: FontWeight.w600),
               ),
             ),

@@ -1,5 +1,13 @@
 # Sürüm Geçmişi
 
+## v2.9.0 — 29 Eylül 2026
+
+- İki ayrı doktor hesabı ve yalnız yönetim ekranına erişen admin rolü eklendi.
+- Mobil uygulama, doktor web paneli ve COMED eklentisi aynı doktor hesabıyla çalışıyor.
+- Kayıtlar, COMED iş listeleri, API izleri ve aktarım kuyrukları doktor bazında ayrıldı.
+- Doktorun rapor seçip COMED hasta kartını açarak aktarım başlatabildiği web paneli eklendi.
+- `|tracer` içeren COMED kullanıcı adları için token biçimi güvenli hale getirildi.
+
 ## v2.8.7 — 24 Eylül 2026
 
 - Sistem Sorgulama gibi alt belgelerin `Kaydet` düğmeleri artık ana COMED muayenesinin tamamlandığı şeklinde yorumlanmıyor.

@@ -18,7 +18,7 @@ class MobileApiTests(unittest.TestCase):
     def tearDown(self):
         self.client.close()
 
-    def test_admin_login_returns_signed_bearer_token(self):
+    def test_admin_login_is_rejected_by_mobile_api(self):
         with (
             patch.object(auth, "ADMIN_USER", "yonetici"),
             patch.object(auth, "ADMIN_PASS", "guvenli-sifre"),
@@ -28,12 +28,8 @@ class MobileApiTests(unittest.TestCase):
                 json={"username": "yonetici", "password": "guvenli-sifre"},
             )
 
-        self.assertEqual(response.status_code, 200)
-        payload = response.json()
-        self.assertEqual(payload["token_type"], "bearer")
-        self.assertEqual(payload["user"]["role"], "admin")
-        self.assertEqual(payload["expires_in"], auth.MOBILE_API_MAX_AGE)
-        self.assertEqual(auth.api_token_bilgisi(payload["access_token"])["role"], "admin")
+        self.assertEqual(response.status_code, 403)
+        self.assertIn("/admin", response.json()["detail"])
 
     def test_mobile_session_endpoint_validates_saved_token(self):
         token = auth.api_token_uret("dr-enes", "doctor")
@@ -73,7 +69,7 @@ class MobileApiTests(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 401)
 
-    def test_admin_can_list_records_but_doctor_cannot(self):
+    def test_admin_lists_all_records_and_doctor_lists_only_own_records(self):
         admin_token = auth.api_token_uret("admin", "admin")
         doctor_token = auth.api_token_uret("doctor", "doctor")
         with (
@@ -91,7 +87,8 @@ class MobileApiTests(unittest.TestCase):
 
         self.assertEqual(admin_response.status_code, 200)
         self.assertEqual(admin_response.json()["records"], [{"id": 9}])
-        self.assertEqual(doctor_response.status_code, 403)
+        self.assertEqual(doctor_response.status_code, 200)
+        self.assertEqual(doctor_response.json()["records"], [{"id": 9}])
 
     def test_mobile_analysis_is_stored_with_mobile_source_and_user(self):
         async def fake_analyze(_text, progress=None):

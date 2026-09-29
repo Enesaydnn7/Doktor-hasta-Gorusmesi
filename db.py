@@ -72,7 +72,24 @@ def init():
             c.execute("ALTER TABLE kayitlar ADD COLUMN metadata TEXT")
         if "comed" not in columns:
             c.execute("ALTER TABLE kayitlar ADD COLUMN comed TEXT")
+        if "owner_user" not in columns:
+            c.execute("ALTER TABLE kayitlar ADD COLUMN owner_user TEXT")
+        # v2.8.x mobil kayıtlarında sahip metadata.api_user içinde tutuluyordu.
+        # Yeni doktor paneli için bunu sorgulanabilir ayrı bir kolona taşı.
+        for row in c.execute(
+            "SELECT id, metadata FROM kayitlar WHERE COALESCE(owner_user,'')=''"
+        ).fetchall():
+            try:
+                owner = str((json.loads(row["metadata"] or "{}") or {}).get("api_user") or "")
+            except (TypeError, json.JSONDecodeError):
+                owner = ""
+            if owner:
+                c.execute("UPDATE kayitlar SET owner_user=? WHERE id=?", (owner, row["id"]))
         c.execute("CREATE INDEX IF NOT EXISTS ix_olusturma ON kayitlar(olusturma DESC)")
+        c.execute(
+            "CREATE INDEX IF NOT EXISTS ix_kayitlar_owner "
+            "ON kayitlar(owner_user, id DESC)"
+        )
         c.execute(
             "CREATE UNIQUE INDEX IF NOT EXISTS ux_demo_key ON kayitlar(demo_key) "
             "WHERE demo_key IS NOT NULL"
@@ -109,7 +126,7 @@ def init():
         )
         c.execute("""
             CREATE TABLE IF NOT EXISTS comed_worklist (
-                visit_id TEXT PRIMARY KEY,
+                visit_id TEXT NOT NULL,
                 clinical_card_id TEXT NOT NULL,
                 patient_id TEXT,
                 patient_name TEXT NOT NULL,
@@ -121,9 +138,44 @@ def init():
                 status TEXT,
                 clinical_card_url TEXT NOT NULL,
                 synced_at TEXT NOT NULL,
-                synced_by TEXT
+                synced_by TEXT NOT NULL DEFAULT '',
+                PRIMARY KEY (visit_id, synced_by)
             )
         """)
+        worklist_pk = [
+            row[1] for row in sorted(
+                c.execute("PRAGMA table_info(comed_worklist)").fetchall(),
+                key=lambda item: item[5] or 999,
+            ) if row[5]
+        ]
+        if worklist_pk != ["visit_id", "synced_by"]:
+            c.execute("ALTER TABLE comed_worklist RENAME TO comed_worklist_legacy")
+            c.execute("""
+                CREATE TABLE comed_worklist (
+                    visit_id TEXT NOT NULL,
+                    clinical_card_id TEXT NOT NULL,
+                    patient_id TEXT,
+                    patient_name TEXT NOT NULL,
+                    patient_no TEXT,
+                    protocol_no TEXT,
+                    department TEXT,
+                    doctor_name TEXT,
+                    task TEXT,
+                    status TEXT,
+                    clinical_card_url TEXT NOT NULL,
+                    synced_at TEXT NOT NULL,
+                    synced_by TEXT NOT NULL DEFAULT '',
+                    PRIMARY KEY (visit_id, synced_by)
+                )
+            """)
+            c.execute("""
+                INSERT OR REPLACE INTO comed_worklist
+                SELECT visit_id, clinical_card_id, patient_id, patient_name,
+                       patient_no, protocol_no, department, doctor_name, task,
+                       status, clinical_card_url, synced_at, COALESCE(synced_by,'')
+                FROM comed_worklist_legacy
+            """)
+            c.execute("DROP TABLE comed_worklist_legacy")
         c.execute(
             "CREATE INDEX IF NOT EXISTS ix_comed_worklist_synced "
             "ON comed_worklist(synced_at DESC)"
@@ -278,33 +330,37 @@ def kaydet(transkript: str, hasta: dict, doktor: dict, yonetim: dict,
            usage: dict = None, ses: bytes = None,
            ses_mime: str = None, ses_ad: str = None,
            source: str = "web", client_version: str = None,
-           metadata: dict = None) -> int:
+           metadata: dict = None, owner_user: str = None) -> int:
     j = lambda d: json.dumps(d or {}, ensure_ascii=False)
     with _lock, _conn() as c:
         cur = c.execute(
             """INSERT INTO kayitlar
                (olusturma, transkript, hasta, doktor, yonetim, comed, usage, ses, ses_mime,
-                ses_ad, ozet, source, client_version, metadata)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                ses_ad, ozet, source, client_version, metadata, owner_user)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (datetime.now().isoformat(timespec="seconds"), transkript,
              j(hasta), j(doktor), j(yonetim), j(comed), j(usage),
              ses, ses_mime, ses_ad, _kisa_ozet(doktor, transkript),
              (source or "web")[:30], (client_version or "")[:30] or None,
-             j(metadata)),
+             j(metadata), (owner_user or "")[:200] or None),
         )
         return cur.lastrowid
 
 
-def liste(limit: int = 200):
+def liste(limit: int = 200, owner_user: str | None = None):
     """Admin listesi için özet satırlar (ses baytları hariç — hafif olsun)."""
     with _lock, _conn() as c:
+        owner_clause = "WHERE k.owner_user=?" if owner_user is not None else ""
+        params = (owner_user, limit) if owner_user is not None else (limit,)
         rows = c.execute(
             """SELECT k.id, k.olusturma, k.ozet, k.ses_mime, k.ses_ad, k.usage,
-                      k.source, k.client_version,
+                      k.source, k.client_version, k.owner_user,
                       (k.ses IS NOT NULL) AS ses_var, LENGTH(k.transkript) AS uzunluk,
                       (SELECT status FROM comed_transfers t
                        WHERE t.record_id=k.id ORDER BY t.id DESC LIMIT 1) AS comed_status
-               FROM kayitlar k ORDER BY k.id DESC LIMIT ?""", (limit,)
+               FROM kayitlar k {owner_clause} ORDER BY k.id DESC LIMIT ?""".format(
+                   owner_clause=owner_clause
+               ), params
         ).fetchall()
     out = []
     for r in rows:
@@ -317,13 +373,17 @@ def liste(limit: int = 200):
     return out
 
 
-def getir(kid: int):
+def getir(kid: int, owner_user: str | None = None):
     with _lock, _conn() as c:
+        owner_clause = " AND owner_user=?" if owner_user is not None else ""
+        params = (kid, owner_user) if owner_user is not None else (kid,)
         r = c.execute(
             """SELECT id, olusturma, transkript, hasta, doktor, yonetim, comed, usage,
-                      source, client_version, metadata,
+                      source, client_version, metadata, owner_user,
                       ses_mime, ses_ad, (ses IS NOT NULL) AS ses_var
-               FROM kayitlar WHERE id=?""", (kid,)
+               FROM kayitlar WHERE id=?{owner_clause}""".format(
+                   owner_clause=owner_clause
+               ), params
         ).fetchone()
     if not r:
         return None
@@ -357,7 +417,7 @@ def comed_worklist_sync(items: list[dict], synced_by: str = "",
                     protocol_no, department, doctor_name, task, status,
                     clinical_card_url, synced_at, synced_by)
                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
-                   ON CONFLICT(visit_id) DO UPDATE SET
+                   ON CONFLICT(visit_id, synced_by) DO UPDATE SET
                      clinical_card_id=COALESCE(NULLIF(excluded.clinical_card_id,''), comed_worklist.clinical_card_id),
                      patient_id=excluded.patient_id,
                      patient_name=excluded.patient_name,
@@ -733,9 +793,14 @@ def _transcription_job_dict(row) -> dict:
     return item
 
 
-def ses_getir(kid: int):
+def ses_getir(kid: int, owner_user: str | None = None):
     with _lock, _conn() as c:
-        r = c.execute("SELECT ses, ses_mime, ses_ad FROM kayitlar WHERE id=?", (kid,)).fetchone()
+        owner_clause = " AND owner_user=?" if owner_user is not None else ""
+        params = (kid, owner_user) if owner_user is not None else (kid,)
+        r = c.execute(
+            f"SELECT ses, ses_mime, ses_ad FROM kayitlar WHERE id=?{owner_clause}",
+            params,
+        ).fetchone()
     if not r or not r["ses"]:
         return None
     return r["ses"], (r["ses_mime"] or "audio/mpeg"), (r["ses_ad"] or f"kayit_{kid}")
@@ -747,10 +812,15 @@ def sil(kid: int) -> bool:
         return cur.rowcount > 0
 
 
-def istatistik():
+def istatistik(owner_user: str | None = None):
     """Admin üst şeridi: toplam kayıt, toplam token, toplam maliyet."""
     with _lock, _conn() as c:
-        rows = c.execute("SELECT usage FROM kayitlar").fetchall()
+        if owner_user is None:
+            rows = c.execute("SELECT usage FROM kayitlar").fetchall()
+        else:
+            rows = c.execute(
+                "SELECT usage FROM kayitlar WHERE owner_user=?", (owner_user,)
+            ).fetchall()
     tok = 0
     cost = 0.0
     for r in rows:

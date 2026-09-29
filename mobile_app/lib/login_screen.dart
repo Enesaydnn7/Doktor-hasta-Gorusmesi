@@ -40,6 +40,11 @@ class _LoginScreenState extends State<LoginScreen> {
         _username.text.trim(),
         _password.text,
       );
+      if (session.role != 'doctor') {
+        throw const ApiException(
+          'Mobil uygulamaya doktor hesabıyla giriş yapın.',
+        );
+      }
       widget.onLoggedIn(session);
     } catch (error) {
       if (mounted) setState(() => _error = error.toString());
@@ -154,7 +159,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         const SizedBox(height: 18),
                         const Text(
-                          'Klinot doktor · v2.8.7',
+                          'Klinot doktor · v2.9.0',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 12,

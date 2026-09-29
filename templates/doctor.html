@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Klinot · Doktor Paneli</title>
+  <link rel="stylesheet" href="/static/doctor.css?v={{ version }}">
+</head>
+<body>
+  <header class="topbar">
+    <div><b>Klinot</b><small>Doktor çalışma alanı · {{ version }}</small></div>
+    <div class="doctor-identity"><span>{{ user.display_name }}</span><a href="/doctor/logout">Çıkış</a></div>
+  </header>
+  <main class="workspace">
+    <section class="hero">
+      <div><p class="eyebrow">GÜVENLİ DOKTOR ALANI</p><h1>Görüşmeler ve COMED aktarımı</h1><p>Yalnızca size ait raporları ve COMED iş listesini görürsünüz.</p></div>
+      <button id="refresh">Yenile</button>
+    </section>
+    <section class="stats" id="stats"></section>
+    <section class="columns">
+      <article class="panel">
+        <div class="panel-head"><div><h2>COMED iş listem</h2><p>Aktarılacak hastayı seçin.</p></div><span id="worklist-count" class="badge">0</span></div>
+        <div id="worklist" class="card-list"><div class="empty">Yükleniyor…</div></div>
+      </article>
+      <article class="panel">
+        <div class="panel-head"><div><h2>Görüşme raporlarım</h2><p>Epikrizi inceleyip COMED'e gönderin.</p></div><span id="record-count" class="badge">0</span></div>
+        <div id="records" class="card-list"><div class="empty">Yükleniyor…</div></div>
+      </article>
+    </section>
+    <section class="panel transfer-panel">
+      <div class="panel-head"><div><h2>Seçili aktarım</h2><p>Bir hasta ve bir görüşme kaydı seçin.</p></div><span id="transfer-state" class="status">Hazır</span></div>
+      <div class="selection-grid"><div><small>HASTA</small><strong id="selected-patient">Seçilmedi</strong></div><div><small>RAPOR</small><strong id="selected-record">Seçilmedi</strong></div></div>
+      <div id="report-preview" class="report-preview">Rapor seçildiğinde epikriz özeti burada görünür.</div>
+      <div class="actions"><a id="pdf-link" class="secondary disabled" href="#">Epikriz PDF</a><button id="transfer" disabled>COMED'e aktar ve kartı aç</button></div>
+      <p class="hint">Kart yeni sekmede hemen açılır. Eklenti, bu doktor hesabına ait aktarım taslağını COMED formuna doldurur; son kontrol ve imza doktordadır.</p>
+    </section>
+  </main>
+  <div id="toast" role="status"></div>
+  <script src="/static/doctor.js?v={{ version }}"></script>
+</body>
+</html>
