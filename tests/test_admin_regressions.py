@@ -28,6 +28,15 @@ class BrowserStateRegressionTests(unittest.TestCase):
         self.assertIn("/static/app.js?v={{ version }}", index)
         self.assertIn("/static/admin.js?v={{ version }}", admin)
 
+    def test_doctor_score_uses_risk_aware_colors(self):
+        css = (ROOT / "static" / "style.css").read_text(encoding="utf-8")
+        admin_js = (ROOT / "static" / "admin.js").read_text(encoding="utf-8")
+        app_js = (ROOT / "static" / "app.js").read_text(encoding="utf-8")
+        for name in ("score-low", "score-mid", "score-high"):
+            self.assertIn(name, css)
+            self.assertIn(name, admin_js)
+            self.assertIn(name, app_js)
+
     def test_admin_repairs_infinite_webm_duration(self):
         js = (ROOT / "static" / "admin.js").read_text(encoding="utf-8")
         self.assertIn('preload="metadata"', js)

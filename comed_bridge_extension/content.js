@@ -119,20 +119,80 @@
     });
   }
 
-  function bridgeStatus(text, state = "idle") {
+  const BRIDGE_LOG_KEY = "klinot_comed_bridge_log_v1";
+
+  function bridgeLogs() {
+    try { return JSON.parse(sessionStorage.getItem(BRIDGE_LOG_KEY) || "[]"); }
+    catch (_) { return []; }
+  }
+
+  function bridgeFieldLabel(field) {
+    const labels = {
+      patient_complaint: "Hasta yakınması", patient_story: "Öykü",
+      complaint_start_date: "Başlangıç tarihi", review_of_system_simple: "Sistem sorgusu özeti",
+      exam_simple_textarea: "Muayene notu", treatment_note_v2: "İzlem ve tedavi planı",
+      profile_and_family_history: "Özgeçmiş ve soygeçmiş", psychological_status: "Psikolojik durum",
+      fall_risk: "Düşme riski", pain: "Ağrı değerlendirmesi", diagnoses: "Tanılar (ICD-10)",
+      treatment_plan_label: "Tedavi türü", is_surgery_will_planned: "Ameliyat planı",
+      is_control_suggested: "Kontrol önerisi", "review_of_system.document": "Sistem sorgulama belgesi",
+    };
+    if (labels[field]) return labels[field];
+    if (field.startsWith("vitals.")) return `Vital bulgu · ${field.slice(7)}`;
+    if (field.startsWith("review_of_system.")) return `Sistem sorgusu · ${field.split(".").at(-1)}`;
+    return field.replaceAll("_", " ");
+  }
+
+  function ensureBridgeBox() {
     let box = document.getElementById("klinot-comed-bridge");
-    if (!box) {
-      box = document.createElement("div");
-      box.id = "klinot-comed-bridge";
-      Object.assign(box.style, {
-        position: "fixed", right: "18px", bottom: "66px", zIndex: "2147483647",
-        padding: "10px 13px", borderRadius: "12px", color: "#fff",
-        font: "600 12px system-ui", boxShadow: "0 8px 28px #0003", maxWidth: "340px",
-      });
-      document.body.appendChild(box);
-    }
-    box.style.background = state === "ok" ? "#087454" : state === "bad" ? "#b5322d" : "#3158c8";
-    box.textContent = `Klinot · ${text}`;
+    if (box) return box;
+    box = document.createElement("div");
+    box.id = "klinot-comed-bridge";
+    Object.assign(box.style, {
+      position: "fixed", left: "18px", bottom: "18px", zIndex: "2147483647",
+      width: "min(390px, calc(100vw - 36px))", color: "#fff",
+      font: "600 12px system-ui", filter: "drop-shadow(0 10px 28px #0004)",
+    });
+    box.innerHTML = `<div data-klinot-log-panel style="display:none;max-height:310px;overflow:auto;background:#fff;color:#173143;border:1px solid #cddfe2;border-radius:14px 14px 0 0;padding:10px"></div><button data-klinot-log-toggle type="button" style="width:100%;border:0;border-radius:12px;padding:11px 14px;color:#fff;text-align:left;font:700 12px system-ui;cursor:pointer"><span data-klinot-log-title>Klinot</span><span style="float:right">İşlem günlüğü ▴</span></button>`;
+    const toggle = box.querySelector("[data-klinot-log-toggle]");
+    toggle.addEventListener("click", () => {
+      const panel = box.querySelector("[data-klinot-log-panel]");
+      const open = panel.style.display !== "none";
+      panel.style.display = open ? "none" : "block";
+      toggle.querySelector("span:last-child").textContent = open ? "İşlem günlüğü ▴" : "Kapat ▾";
+    });
+    document.body.appendChild(box);
+    return box;
+  }
+
+  function renderBridgeStatus(text, state) {
+    const box = ensureBridgeBox();
+    const color = state === "ok" ? "#087454" : state === "bad" ? "#b5322d" : "#3158c8";
+    const toggle = box.querySelector("[data-klinot-log-toggle]");
+    toggle.style.background = color;
+    box.querySelector("[data-klinot-log-title]").textContent = `Klinot · ${text}`;
+    const panel = box.querySelector("[data-klinot-log-panel]");
+    panel.replaceChildren(...bridgeLogs().slice().reverse().map((entry) => {
+      const row = document.createElement("div");
+      row.style.cssText = "display:grid;grid-template-columns:9px 1fr;gap:8px;padding:7px 5px;border-bottom:1px solid #edf2f3;font-weight:500;line-height:1.35";
+      const dot = document.createElement("i");
+      dot.style.cssText = `width:8px;height:8px;margin-top:4px;border-radius:50%;background:${entry.state === "bad" ? "#c73b34" : entry.state === "ok" ? "#078d83" : "#5976da"}`;
+      const copy = document.createElement("span");
+      copy.textContent = `${entry.time} · ${entry.text}`;
+      row.append(dot, copy);
+      return row;
+    }));
+  }
+
+  function bridgeStatus(text, state = "idle") {
+    const logs = bridgeLogs();
+    const entry = {text: String(text), state, time: new Date().toLocaleTimeString("tr-TR", {hour: "2-digit", minute: "2-digit", second: "2-digit"})};
+    if (logs.at(-1)?.text !== entry.text) logs.push(entry);
+    sessionStorage.setItem(BRIDGE_LOG_KEY, JSON.stringify(logs.slice(-120)));
+    renderBridgeStatus(text, state);
+  }
+
+  function bridgeFieldStatus(field, ok) {
+    bridgeStatus(`${bridgeFieldLabel(field)} ${ok ? "dolduruldu" : "bulunamadı"}`, ok ? "ok" : "bad");
   }
 
   function textOf(root) {
@@ -939,6 +999,7 @@
         detail,
       });
       if (ok) filled += 1;
+      bridgeFieldStatus(field, ok);
       return ok;
     };
     const write = (field, element, value) => {
@@ -946,11 +1007,14 @@
     };
 
     const systemResult = await fillSystemInquiry(fields.review_of_system || {});
-    systemResult.fields.forEach((field) => fieldResults.push({
-      field, channel: "extension", status: "filled",
-      source: fallbackFields.has(field.split(".").slice(0, 2).join("."))
-        ? "operational_default" : "analysis",
-    }));
+    systemResult.fields.forEach((field) => {
+      fieldResults.push({
+        field, channel: "extension", status: "filled",
+        source: fallbackFields.has(field.split(".").slice(0, 2).join("."))
+          ? "operational_default" : "analysis",
+      });
+      bridgeFieldStatus(field, true);
+    });
     filled += systemResult.filled;
     fieldResults.push({
       field: "review_of_system.document",
@@ -1125,9 +1189,7 @@
       await updateStatus(transfer.id, "ready_for_review", note, debug);
       sessionStorage.setItem(ACTIVE_TRANSFER_KEY, String(transfer.id));
       activeTransferId = transfer.id;
-      bridgeStatus(unresolved.length
-        ? `Aktarım bitti · ${unresolved.length} alan doktor kontrolünde`
-        : "Aktarım bitti · doktor kontrolü bekleniyor", "ok");
+      bridgeStatus("Aktarım bitti · Genel doktor kontrolü gerekli", "ok");
     } catch (error) {
       await updateStatus(transfer.id, "failed", error.message, {
         started_at: startedAt,

@@ -747,8 +747,6 @@ async def doctor_login_page(request: Request):
     session = web_session(request)
     if session and session.get("role") == "doctor":
         return RedirectResponse("/doctor", status_code=303)
-    if session and session.get("role") == "admin":
-        return RedirectResponse("/admin", status_code=303)
     return templates.TemplateResponse(
         request, "doctor_login.html", {"hata": None, "version": config.APP_VERSION}
     )
@@ -806,9 +804,16 @@ async def doctor_panel(request: Request):
 async def doctor_overview(request: Request):
     session = doctor_auth(request)
     username = session["user"]
+    records = db.liste(limit=200, owner_user=username)
+    # Doktor paneli hastaya tıklanınca yalnız o hastaya bağlı görüşmeleri
+    # gösterebilsin. Yönetim listesini hafif tutmak için metadata normalde
+    # özet satırda yok; doktor panelinin sınırlı listesinde burada ekliyoruz.
+    for summary in records:
+        full = db.getir(summary["id"], owner_user=username)
+        summary["metadata"] = (full or {}).get("metadata", {})
     return {
         "user": session,
-        "records": db.liste(limit=200, owner_user=username),
+        "records": records,
         "stats": db.istatistik(owner_user=username),
         "worklist": db.comed_worklist(limit=200, synced_by=username),
     }
@@ -874,8 +879,6 @@ async def admin_login_sayfa(request: Request):
     session = web_session(request)
     if session and session.get("role") == "admin":
         return RedirectResponse("/admin", status_code=303)
-    if session and session.get("role") == "doctor":
-        return RedirectResponse("/doctor", status_code=303)
     return templates.TemplateResponse(request, "login.html", {"hata": None})
 
 

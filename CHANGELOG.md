@@ -1,5 +1,15 @@
 # Sürüm Geçmişi
 
+## v2.9.1 — 29 Eylül 2026
+
+- Doktor paneli COMED iş listesini açılış ekranı yaptı; hasta seçimi ayrı aktarım görünümünü açıyor ve token göstergesi kaldırıldı.
+- Yeni analizler panel yenilenmeden otomatik görünür, hastaya bağlı rapor otomatik seçilir ve COMED aktarım düğmesi etkinleşir.
+- Yönetici ve doktor giriş adresleri birbirinden bağımsız çalışır; açık doktor oturumu `/admin/login` sayfasını engellemez.
+- COMED köprüsü kalıcı, tıklanabilir işlem günlüğü gösterir; doldurulan ve bulunamayan alanları adım adım listeler.
+- Aktarım sonu metni uygulama, doktor paneli ve eklentide “Aktarım bitti · Genel doktor kontrolü gerekli” olarak birleştirildi.
+- Mobil epikrizde uzun güçlü yön ve geçmiş metinleri yatay taşmadan aşağı doğru sarılır.
+- Doktor skoru ve alt ölçütleri düşükte kırmızı, ortada turuncu, yüksekte yeşil gösterilir.
+
 ## v2.9.0 — 29 Eylül 2026
 
 - İki ayrı doktor hesabı ve yalnız yönetim ekranına erişen admin rolü eklendi.

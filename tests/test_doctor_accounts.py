@@ -64,6 +64,33 @@ class DoctorAccountTests(unittest.TestCase):
         self.assertIn("Prof. Dr. Adnan Kaya", panel.text)
         self.assertEqual(self.client.get("/admin", follow_redirects=False).status_code, 303)
 
+    def test_role_login_pages_remain_reachable_when_other_role_is_signed_in(self):
+        self.client.post(
+            "/doctor/login",
+            data={"user": "adnan.kaya;enes.aydin1|tracer", "password": "1"},
+        )
+        admin_login = self.client.get("/admin/login", follow_redirects=False)
+        self.assertEqual(admin_login.status_code, 200)
+        self.assertIn("Admin Girişi", admin_login.text)
+
+        self.client.post(
+            "/admin/login", data={"user": "admin", "password": "admin"}
+        )
+        doctor_login = self.client.get("/doctor/login", follow_redirects=False)
+        self.assertEqual(doctor_login.status_code, 200)
+        self.assertIn("Doktor", doctor_login.text)
+
+    def test_doctor_panel_starts_with_worklist_and_has_no_token_stat(self):
+        self.client.post(
+            "/doctor/login",
+            data={"user": "adnan.kaya;enes.aydin1|tracer", "password": "1"},
+        )
+        panel = self.client.get("/doctor")
+        self.assertEqual(panel.status_code, 200)
+        self.assertIn("Bugünkü hastalarım", panel.text)
+        self.assertIn("COMED aktarımı", panel.text)
+        self.assertNotIn("Toplam token", panel.text)
+
     def test_worklist_same_visit_is_isolated_between_doctors(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "doctors.db"

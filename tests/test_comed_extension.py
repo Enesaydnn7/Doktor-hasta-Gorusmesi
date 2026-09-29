@@ -46,7 +46,10 @@ class ComedExtensionTests(unittest.TestCase):
         self.assertIn("profileEntryAlreadyPresent", source)
         self.assertIn("waitForDomQuiet", source)
         self.assertIn("Özgeçmiş son kontrolleri yapılıyor", source)
-        self.assertIn("Aktarım bitti · doktor kontrolü bekleniyor", source)
+        self.assertIn("Aktarım bitti · Genel doktor kontrolü gerekli", source)
+        self.assertIn("klinot_comed_bridge_log_v1", source)
+        self.assertIn("İşlem günlüğü", source)
+        self.assertIn("bridgeFieldStatus(field, ok)", source)
         self.assertIn("unresolved_count", source)
         self.assertIn("bu hastal[ıi]k hastaya ait bu protokol", source)
         self.assertIn("function isMainClinicalSaveButton", source)
@@ -71,9 +74,9 @@ class ComedExtensionTests(unittest.TestCase):
         self.assertNotIn('window.__klinotComedTraceEvents', source)
         self.assertNotIn("saveAndSign", source)
 
-    def test_manifest_declares_v287(self):
+    def test_manifest_declares_current_version(self):
         manifest = json.loads((EXTENSION / "manifest.json").read_text(encoding="utf-8"))
-        self.assertEqual(manifest["version"], "2.9.0")
+        self.assertEqual(manifest["version"], "2.9.1")
 
 
 if __name__ == "__main__":

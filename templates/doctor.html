@@ -11,28 +11,38 @@
     <div><b>Klinot</b><small>Doktor çalışma alanı · {{ version }}</small></div>
     <div class="doctor-identity"><span>{{ user.display_name }}</span><a href="/doctor/logout">Çıkış</a></div>
   </header>
+
   <main class="workspace">
-    <section class="hero">
-      <div><p class="eyebrow">GÜVENLİ DOKTOR ALANI</p><h1>Görüşmeler ve COMED aktarımı</h1><p>Yalnızca size ait raporları ve COMED iş listesini görürsünüz.</p></div>
-      <button id="refresh">Yenile</button>
-    </section>
-    <section class="stats" id="stats"></section>
-    <section class="columns">
-      <article class="panel">
-        <div class="panel-head"><div><h2>COMED iş listem</h2><p>Aktarılacak hastayı seçin.</p></div><span id="worklist-count" class="badge">0</span></div>
-        <div id="worklist" class="card-list"><div class="empty">Yükleniyor…</div></div>
-      </article>
-      <article class="panel">
-        <div class="panel-head"><div><h2>Görüşme raporlarım</h2><p>Epikrizi inceleyip COMED'e gönderin.</p></div><span id="record-count" class="badge">0</span></div>
-        <div id="records" class="card-list"><div class="empty">Yükleniyor…</div></div>
+    <section id="worklist-view">
+      <section class="hero">
+        <div><p class="eyebrow">COMED İŞ LİSTESİ</p><h1>Bugünkü hastalarım</h1><p>Görüşmeye veya aktarıma başlayacağınız hastayı seçin.</p></div>
+        <button id="refresh" class="secondary">Yenile</button>
+      </section>
+      <section class="stats" id="stats"></section>
+      <article class="panel worklist-panel">
+        <div class="panel-head"><div><h2>Hasta iş listesi</h2><p>Liste eklenti tarafından otomatik güncellenir.</p></div><span id="worklist-count" class="badge">0</span></div>
+        <div id="worklist" class="worklist-grid"><div class="empty">Yükleniyor…</div></div>
       </article>
     </section>
-    <section class="panel transfer-panel">
-      <div class="panel-head"><div><h2>Seçili aktarım</h2><p>Bir hasta ve bir görüşme kaydı seçin.</p></div><span id="transfer-state" class="status">Hazır</span></div>
-      <div class="selection-grid"><div><small>HASTA</small><strong id="selected-patient">Seçilmedi</strong></div><div><small>RAPOR</small><strong id="selected-record">Seçilmedi</strong></div></div>
-      <div id="report-preview" class="report-preview">Rapor seçildiğinde epikriz özeti burada görünür.</div>
-      <div class="actions"><a id="pdf-link" class="secondary disabled" href="#">Epikriz PDF</a><button id="transfer" disabled>COMED'e aktar ve kartı aç</button></div>
-      <p class="hint">Kart yeni sekmede hemen açılır. Eklenti, bu doktor hesabına ait aktarım taslağını COMED formuna doldurur; son kontrol ve imza doktordadır.</p>
+
+    <section id="patient-view" class="hidden">
+      <button id="back-to-worklist" class="back-button">← İş listesine dön</button>
+      <section class="patient-hero panel">
+        <div><p class="eyebrow">SEÇİLİ HASTA</p><h1 id="patient-title">Hasta</h1><p id="patient-meta"></p></div>
+        <span id="transfer-state" class="status">Rapor seçin</span>
+      </section>
+      <section class="detail-grid">
+        <article class="panel">
+          <div class="panel-head"><div><h2>Görüşme raporları</h2><p>Aktarılacak epikrizi seçin.</p></div><span id="record-count" class="badge">0</span></div>
+          <div id="records" class="card-list"><div class="empty">Yükleniyor…</div></div>
+        </article>
+        <article class="panel transfer-panel">
+          <div class="panel-head"><div><h2>COMED aktarımı</h2><p>Seçili raporu kontrol edip aktarın.</p></div></div>
+          <div id="report-preview" class="report-preview">Rapor yükleniyor…</div>
+          <div class="actions"><a id="pdf-link" class="secondary disabled" href="#">Epikriz PDF</a><button id="transfer" disabled>COMED'e aktar ve kartı aç</button></div>
+          <p class="hint">Hasta kartı yeni sekmede açılır. Eklenti alanları doldurur; son kontrol ve imza doktordadır.</p>
+        </article>
+      </section>
     </section>
   </main>
   <div id="toast" role="status"></div>

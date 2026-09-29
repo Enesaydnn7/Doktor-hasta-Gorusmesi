@@ -208,7 +208,7 @@ void main() {
     );
 
     expect(find.text('Klinot'), findsOneWidget);
-    expect(find.textContaining('v2.9.0'), findsOneWidget);
+    expect(find.textContaining('v2.9.1'), findsOneWidget);
     await tester.enterText(find.byKey(const Key('usernameField')), 'admin');
     await tester.enterText(find.byKey(const Key('passwordField')), 'secret');
     await tester.tap(find.byKey(const Key('loginButton')));
@@ -396,7 +396,10 @@ void main() {
         await tester.pump(const Duration(seconds: 3));
       }
       expect(api.statusCalls, greaterThanOrEqualTo(12));
-      expect(find.text('COMED’e aktarıldı · Kontrol bekliyor'), findsOneWidget);
+      expect(
+        find.text('Aktarım bitti · Genel doktor kontrolü gerekli'),
+        findsOneWidget,
+      );
       await tester.pumpWidget(const SizedBox.shrink());
     },
   );

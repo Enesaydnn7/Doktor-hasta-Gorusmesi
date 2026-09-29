@@ -124,7 +124,7 @@ function drawDetail(id, sekme) {
 function comedStatusHTML(status) {
   const labels = {
     queued: ["Aktarım sırasında", "pending"], filling: ["Alanlar dolduruluyor", "pending"],
-    ready_for_review: ["Aktarıldı · doktor kontrolü bekliyor", "review"],
+    ready_for_review: ["Aktarım bitti · genel doktor kontrolü gerekli", "review"],
     completed: ["COMED kaydı tamamlandı", "done"], failed: ["Aktarım başarısız", "failed"]
   };
   const item = labels[status] || ["Henüz aktarılmadı", "idle"];
@@ -322,11 +322,12 @@ function doktorHTML(d) {
 
 function yonetimHTML(d) {
   const g = d.guvenlik || {}, s = d.skor || {};
+  const scoreTone = value => Number(value || 0) < 50 ? "score-low" : Number(value || 0) < 75 ? "score-mid" : "score-high";
   const durum = (g.durum || "temiz").toLowerCase();
   const dL = { temiz: "Temiz", dikkat: "Dikkat", sorun: "Sorun" }[durum] || g.durum || "—";
   const dI = { temiz: "shield-check", dikkat: "shield-exclamation", sorun: "shield-x" }[durum] || "shield";
   const bar = (l, v) => `<div class="bar-row"><span class="br-lbl">${l}</span>
-    <div class="bar-track"><div class="bar-fill" style="width:${Math.round(v || 0)}%"></div></div>
+    <div class="bar-track"><div class="bar-fill ${scoreTone(v)}" style="width:${Math.round(v || 0)}%"></div></div>
     <span class="br-val">${Math.round(v || 0)}</span></div>`;
   const risk = (d.risk || "yok").toLowerCase();
   const rI = { yok: "check-circle", "düşük": "info-circle", orta: "exclamation-triangle", "yüksek": "exclamation-octagon" }[risk] || "info-circle";
@@ -340,7 +341,7 @@ function yonetimHTML(d) {
         ? `<ul class="checklist">${g.tespitler.map(t => `<li><i class="bi bi-exclamation-circle" style="color:var(--bad)"></i><span>${esc(t)}</span></li>`).join("")}</ul>`
         : `<div class="empty-mut">Uygunsuz / argo ifade saptanmadı.</div>`}</div></div>
     <div class="sec"><div class="sec-title"><i class="bi bi-speedometer2"></i> Doktor skoru <span class="scale">(0-100)</span></div>
-      <div class="score-top"><div class="score-big"><div class="sb-num">${Math.round(s.genel || 0)}</div><div class="sb-lbl">GENEL</div></div>
+      <div class="score-top"><div class="score-big ${scoreTone(s.genel)}"><div class="sb-num">${Math.round(s.genel || 0)}</div><div class="sb-lbl">GENEL</div></div>
         <div class="score-bars">${bar("Empati", s.empati)}${bar("Netlik", s.netlik)}${bar("Dinleme", s.dinleme)}${bar("Verimlilik", s.verimlilik)}</div></div>
       ${d.verimlilikNotu ? `<div class="vr-note"><i class="bi bi-stopwatch"></i> <strong>Verimlilik notu:</strong> ${esc(d.verimlilikNotu)}</div>` : ""}</div>
     <div class="sec"><div class="sec-title"><i class="bi bi-clipboard2-data"></i> Genel değerlendirme</div><div>${esc(d.degerlendirme)}</div></div>

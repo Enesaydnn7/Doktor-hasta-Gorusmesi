@@ -154,7 +154,7 @@ class _ReportsScreenState extends State<ReportsScreen>
         if (_notifiedTerminalStatus != current.status) {
           _notifiedTerminalStatus = current.status;
           if (current.status == 'ready_for_review') {
-            _notice('COMED alanları hazırlandı. Doktor kontrolü bekleniyor.');
+            _notice('Aktarım bitti. Genel doktor kontrolü gerekli.');
           } else if (current.status == 'completed') {
             _notice('COMED kaydı tamamlandı.');
           } else {
@@ -352,7 +352,7 @@ class _ReportActions extends StatelessWidget {
 
   String get _transferText => switch (transfer?.status) {
     'filling' => 'COMED alanları dolduruluyor…',
-    'ready_for_review' => 'COMED’e aktarıldı · Kontrol bekliyor',
+    'ready_for_review' => 'Aktarım bitti · Genel doktor kontrolü gerekli',
     'completed' => 'COMED kaydı tamamlandı',
     'failed' => 'Aktarım başarısız · Tekrar dene',
     'queued' =>
@@ -395,14 +395,6 @@ class _ReportActions extends StatelessWidget {
                 ),
           label: Text(_transferText),
         ),
-        if (transfer?.missingRequired.isNotEmpty == true) ...[
-          const SizedBox(height: 7),
-          Text(
-            '${transfer!.missingRequired.length} zorunlu alan doktor kontrolünde tamamlanacak.',
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: Color(0xFF8A5B00), fontSize: 12),
-          ),
-        ],
         const SizedBox(height: 8),
         Row(
           children: [
@@ -681,14 +673,25 @@ class _TagGroup extends StatelessWidget {
                     fontStyle: FontStyle.italic,
                   ),
                 )
-              : Wrap(
-                  spacing: 7,
-                  runSpacing: 7,
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: items
                       .map(
-                        (item) => Chip(
-                          label: Text(_display(item)),
-                          visualDensity: VisualDensity.compact,
+                        (item) => Container(
+                          margin: const EdgeInsets.only(bottom: 7),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 9,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF2F6F6),
+                            borderRadius: BorderRadius.circular(11),
+                          ),
+                          child: Text(
+                            _display(item),
+                            softWrap: true,
+                            overflow: TextOverflow.visible,
+                          ),
                         ),
                       )
                       .toList(),
@@ -793,22 +796,36 @@ class _CommunicationSection extends StatelessWidget {
             ),
             if (strengths.isNotEmpty) ...[
               const SizedBox(height: 16),
-              Wrap(
-                spacing: 7,
-                runSpacing: 7,
-                children: strengths
-                    .map(
-                      (item) => Chip(
-                        avatar: const Icon(
-                          Icons.check_circle,
-                          color: klinotTeal,
-                          size: 18,
-                        ),
-                        label: Text(_display(item)),
-                        backgroundColor: const Color(0xFFE8F6F3),
+              ...strengths.map(
+                (item) => Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.all(11),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE8F6F3),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFC7E5E0)),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(
+                        Icons.check_circle,
+                        color: klinotTeal,
+                        size: 19,
                       ),
-                    )
-                    .toList(),
+                      const SizedBox(width: 9),
+                      Expanded(
+                        child: Text(
+                          _display(item),
+                          softWrap: true,
+                          overflow: TextOverflow.visible,
+                          style: const TextStyle(height: 1.4),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ],
             const SizedBox(height: 14),

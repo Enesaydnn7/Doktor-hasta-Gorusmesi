@@ -268,6 +268,7 @@ function renderDoktor(d) {
 // ---------------- YÖNETİM ----------------
 function renderYonetim(d) {
   d = d || {}; const g = d.guvenlik || {}, s = d.skor || {};
+  const scoreTone = value => Number(value || 0) < 50 ? "score-low" : Number(value || 0) < 75 ? "score-mid" : "score-high";
   const durum = (g.durum || "temiz").toLowerCase();
   const durumLabel = { temiz: "Temiz", dikkat: "Dikkat", sorun: "Sorun" }[durum] || g.durum || "—";
   const durumIcon = { temiz: "shield-check", dikkat: "shield-exclamation", sorun: "shield-x" }[durum] || "shield";
@@ -275,7 +276,7 @@ function renderYonetim(d) {
     ? `<ul class="checklist">${g.tespitler.map(t => `<li><i class="bi bi-exclamation-circle" style="color:var(--bad)"></i><span>${esc(t)}</span></li>`).join("")}</ul>`
     : `<div class="empty-mut">Uygunsuz / argo ifade saptanmadı.</div>`;
   const bar = (lbl, v, extra = "") => `<div class="bar-row ${extra}"><span class="br-lbl">${lbl}</span>
-    <div class="bar-track"><div class="bar-fill" style="width:${Math.round(v || 0)}%"></div></div>
+    <div class="bar-track"><div class="bar-fill ${scoreTone(v)}" style="width:${Math.round(v || 0)}%"></div></div>
     <span class="br-val">${Math.round(v || 0)}</span></div>`;
   const risk = (d.risk || "yok").toLowerCase();
   const riskIcon = { yok: "check-circle", "düşük": "info-circle", orta: "exclamation-triangle", "yüksek": "exclamation-octagon" }[risk] || "info-circle";
@@ -294,7 +295,7 @@ function renderYonetim(d) {
 
       <div class="sec"><div class="sec-title"><i class="bi bi-speedometer2"></i> Doktor skoru <span class="scale">(0-100)</span></div>
         <div class="score-top">
-          <div class="score-big"><div class="sb-num">${Math.round(s.genel || 0)}</div><div class="sb-lbl">GENEL</div></div>
+          <div class="score-big ${scoreTone(s.genel)}"><div class="sb-num">${Math.round(s.genel || 0)}</div><div class="sb-lbl">GENEL</div></div>
           <div class="score-bars">
             ${bar("Empati", s.empati)}
             ${bar("Netlik", s.netlik)}
