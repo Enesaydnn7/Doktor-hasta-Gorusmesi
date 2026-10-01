@@ -23,6 +23,11 @@ class ComedExtensionTests(unittest.TestCase):
         self.assertIn("const editorAlreadyVisible", source)
         self.assertIn("controlSwitch.checked !== fields.is_control_suggested", source)
         self.assertIn("async function fillSystemInquiry", source)
+        self.assertIn("waitForClinicalFormReady", source)
+        self.assertIn("await waitFor(systemInquiryOpener, 30000)", source)
+        self.assertIn("clearLastKlinotDraft", source)
+        self.assertIn("LAST_DRAFT_SNAPSHOT_KEY", source)
+        self.assertIn('message?.type !== "klinot-clear-last-transfer"', source)
         self.assertIn("SYSTEM_REVIEW_DEFAULTS", source)
         self.assertIn('labelNode.control', source)
         self.assertIn('input.click()', source)
@@ -80,7 +85,33 @@ class ComedExtensionTests(unittest.TestCase):
 
     def test_manifest_declares_current_version(self):
         manifest = json.loads((EXTENSION / "manifest.json").read_text(encoding="utf-8"))
-        self.assertEqual(manifest["version"], "2.10.1")
+        self.assertEqual(manifest["version"], "2.10.2")
+        self.assertIn("tabs", manifest["permissions"])
+        scripts = [item for item in manifest["content_scripts"]
+                   if "doctor_bridge.js" in item.get("js", [])]
+        self.assertEqual(len(scripts), 1)
+
+    def test_doctor_panel_reuses_comed_tab_and_resumes_after_login(self):
+        background = (EXTENSION / "background.js").read_text(encoding="utf-8")
+        doctor_bridge = (EXTENSION / "doctor_bridge.js").read_text(encoding="utf-8")
+        doctor_panel = (ROOT / "static" / "doctor.js").read_text(encoding="utf-8")
+
+        self.assertIn("chrome.tabs.query({})", background)
+        self.assertIn("chrome.tabs.update(tab.id", background)
+        self.assertIn("chrome.tabs.onUpdated.addListener", background)
+        self.assertIn("pendingComedNavigation", background)
+        self.assertIn("isComedAuthUrl(tab.url)", background)
+        self.assertIn("klinot-open-comed", doctor_bridge)
+        self.assertIn("klinot-doctor-comed-open-v1", doctor_panel)
+        self.assertIn("openComedWithBridge", doctor_panel)
+        self.assertNotIn("const opened=window.open(selectedPatient.clinical_card_url", doctor_panel)
+
+    def test_popup_exposes_safe_draft_cleanup(self):
+        popup = (EXTENSION / "popup.html").read_text(encoding="utf-8")
+        popup_script = (EXTENSION / "popup.js").read_text(encoding="utf-8")
+        self.assertIn('id="clear-draft"', popup)
+        self.assertIn("klinot-clear-last-transfer", popup_script)
+        self.assertIn("chrome.tabs.sendMessage", popup_script)
 
 
 if __name__ == "__main__":

@@ -4,6 +4,7 @@ const password = document.getElementById("password");
 const button = document.getElementById("connect");
 const status = document.getElementById("status");
 const traceEnabled = document.getElementById("trace-enabled");
+const clearDraft = document.getElementById("clear-draft");
 
 chrome.storage.local.get(["apiBase", "username", "displayName", "token", "traceEnabled"], (saved) => {
   if (saved.apiBase) api.value = saved.apiBase;
@@ -51,5 +52,23 @@ button.addEventListener("click", async () => {
     show(error.message);
   } finally {
     button.disabled = false;
+  }
+});
+
+clearDraft.addEventListener("click", async () => {
+  if (!confirm("Son Klinot aktarımının kaydedilmemiş form değişiklikleri temizlensin mi?")) return;
+  clearDraft.disabled = true;
+  try {
+    const [tab] = await chrome.tabs.query({active: true, currentWindow: true});
+    if (!tab?.id || !/^https?:\/\/goztepe\.comedtest\.mlpcare\.com\/tr-tr\/medical\//i.test(tab.url || "")) {
+      throw new Error("Önce temizlenecek COMED hasta kartını açın");
+    }
+    const response = await chrome.tabs.sendMessage(tab.id, {type: "klinot-clear-last-transfer"});
+    if (!response?.ok) throw new Error(response?.error || "Taslak temizlenemedi");
+    show("Klinot taslağı temizleniyor; COMED kartı yenilenecek.", true);
+  } catch (error) {
+    show(error.message);
+  } finally {
+    clearDraft.disabled = false;
   }
 });

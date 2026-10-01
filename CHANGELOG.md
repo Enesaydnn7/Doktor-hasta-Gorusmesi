@@ -1,5 +1,12 @@
 # Sürüm Geçmişi
 
+## v2.10.2 — 1 Ekim 2026
+
+- Doktor panelindeki COMED aktarımı yeni sekme açmak yerine aynı Chrome penceresindeki mevcut COMED sekmesini bulup yeniden kullanır.
+- COMED oturumu kapalıysa giriş tamamlandıktan sonra bekleyen hasta kartı otomatik açılır ve aktarım ikinci kez düğmeye basmadan devam eder.
+- Hasta kartının bileşenleri ve Sistem Sorgulama bağlantısı yüklenene kadar kontrollü bekleme eklendi; erken yükleme kaynaklı “Sistem Sorgulama düğmesi bulunamadı” hatası önlendi.
+- Eklentiye, yalnızca son Klinot aktarımının kaydedilmemiş taslağını geri alan “Bu karttaki Klinot taslağını temizle” düğmesi eklendi.
+
 ## v2.10.1 — 1 Ekim 2026
 
 - Hasta uygulamasında seçilen randevu için oluşturulan ses analizi artık hasta numarası ve ziyaret kimliğiyle randevudaki doktora otomatik atanır.

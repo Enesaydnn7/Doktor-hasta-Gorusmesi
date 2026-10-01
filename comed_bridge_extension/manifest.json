@@ -1,11 +1,12 @@
 {
   "manifest_version": 3,
   "name": "Klinot COMED Köprüsü",
-  "version": "2.10.1",
+  "version": "2.10.2",
   "description": "Klinot taslaklarını doğrulanmış POST veya güvenli form doldurma ile COMED test kartına aktarır.",
-  "permissions": ["storage"],
+  "permissions": ["storage", "tabs"],
   "host_permissions": [
     "http://goztepe.comedtest.mlpcare.com/*",
+    "https://goztepe.comedtest.mlpcare.com/*",
     "http://goztepe.comedtestapi.mlpcare.com/*",
     "https://doktor-hasta-gorusmesi.onrender.com/*",
     "http://127.0.0.1:8000/*",
@@ -18,13 +19,28 @@
   },
   "content_scripts": [
     {
-      "matches": ["http://goztepe.comedtest.mlpcare.com/tr-tr/medical/*"],
+      "matches": [
+        "https://doktor-hasta-gorusmesi.onrender.com/*",
+        "http://127.0.0.1:8000/*",
+        "http://localhost:8000/*"
+      ],
+      "js": ["doctor_bridge.js"],
+      "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "http://goztepe.comedtest.mlpcare.com/tr-tr/medical/*",
+        "https://goztepe.comedtest.mlpcare.com/tr-tr/medical/*"
+      ],
       "js": ["page_trace.js"],
       "run_at": "document_start",
       "world": "MAIN"
     },
     {
-      "matches": ["http://goztepe.comedtest.mlpcare.com/tr-tr/medical/*"],
+      "matches": [
+        "http://goztepe.comedtest.mlpcare.com/tr-tr/medical/*",
+        "https://goztepe.comedtest.mlpcare.com/tr-tr/medical/*"
+      ],
       "js": ["content.js"],
       "run_at": "document_idle"
     }

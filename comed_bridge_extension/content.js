@@ -3,6 +3,7 @@
   const WORKLIST_RE = /\/medical(?:\/hasta-tibbi-karti)?\/?$/;
   const SELECTED_PATIENT_KEY = "klinot-comed-selected-patient";
   const ACTIVE_TRANSFER_KEY = "klinot-comed-active-transfer";
+  const LAST_DRAFT_SNAPSHOT_KEY = "klinot-comed-last-draft-snapshot";
   const TRACE_SOURCE = "klinot-comed-trace-v1";
   const NATIVE_COMMAND_SOURCE = "klinot-comed-native-command-v1";
   const NATIVE_RESULT_SOURCE = "klinot-comed-native-result-v1";
@@ -476,6 +477,23 @@
     return null;
   }
 
+  async function waitForClinicalFormReady(timeoutMs = 45000) {
+    bridgeStatus("COMED hasta kartının yüklenmesi bekleniyor");
+    return waitFor(() => {
+      if (!CARD_RE.test(location.pathname)) return null;
+      const complaint = cardByTitle("Yakınması");
+      const system = cardByTitle("Sistem Sorgusu");
+      const examination = cardByTitle("Fizik Muayene Bulguları");
+      return complaint && system && examination ? true : null;
+    }, timeoutMs);
+  }
+
+  function systemInquiryOpener() {
+    return [...document.querySelectorAll("button,a,[role=button]")]
+      .find((node) => node.offsetParent !== null
+        && normalizedText(textOf(node)).includes("sistem sorgulama")) || null;
+  }
+
   function normalizedText(value) {
     return String(value || "")
       .normalize("NFKC")
@@ -852,6 +870,69 @@
       .find((label) => label.htmlFor === input.id) || null;
   }
 
+  function readDraftSnapshot() {
+    try { return JSON.parse(sessionStorage.getItem(LAST_DRAFT_SNAPSHOT_KEY) || "null"); }
+    catch (_) { return null; }
+  }
+
+  function writeDraftSnapshot(value) {
+    sessionStorage.setItem(LAST_DRAFT_SNAPSHOT_KEY, JSON.stringify(value));
+  }
+
+  function captureSystemInquirySnapshot(cards) {
+    const snapshot = readDraftSnapshot();
+    if (!snapshot || snapshot.system_inquiry) return;
+    snapshot.system_inquiry = Object.fromEntries([...cards.entries()].map(([group, card]) => [
+      group,
+      [...card.querySelectorAll('input[type="checkbox"]:checked')]
+        .map((input) => textOf(checkboxLabel(input, card))).filter(Boolean),
+    ]));
+    writeDraftSnapshot(snapshot);
+  }
+
+  async function restoreSystemInquiry(snapshot) {
+    if (!snapshot?.system_inquiry) return;
+    let modal = visibleSystemInquiryModal();
+    if (!modal) {
+      const opener = await waitFor(systemInquiryOpener, 10000);
+      if (!opener) throw new Error("Sistem Sorgulama düğmesi bulunamadı");
+      opener.click();
+    }
+    modal = await waitFor(() => visibleSystemInquiryModal(), 10000);
+    if (!modal) throw new Error("Sistem Sorgulama penceresi açılamadı");
+    const cards = systemInquiryCards(modal);
+    for (const [group, card] of cards.entries()) {
+      const original = snapshot.system_inquiry[group] || [];
+      for (const input of card.querySelectorAll('input[type="checkbox"]:checked')) input.click();
+      const selections = original.length ? original : [SYSTEM_REVIEW_DEFAULTS[group]].filter(Boolean);
+      selections.forEach((label) => setCheckboxByLabel(card, label, true));
+    }
+    const save = modal.querySelector('.document-fill__footer button[data-test="co-button-Kaydet"]');
+    if (!save || save.disabled) throw new Error("Sistem Sorgulama Kaydet düğmesi bulunamadı");
+    save.click();
+    const closed = await waitFor(() => !modal.isConnected || modal.offsetParent === null, 12000);
+    if (!closed) throw new Error("Sistem Sorgulama eski haline getirilemedi");
+  }
+
+  async function clearLastKlinotDraft() {
+    if (busy) throw new Error("Aktarım sürerken taslak temizlenemez");
+    const snapshot = readDraftSnapshot();
+    const visitId = location.pathname.match(CARD_RE)?.[1];
+    if (!snapshot || String(snapshot.visit_id) !== String(visitId)) {
+      throw new Error("Bu kartta temizlenebilecek bir Klinot taslağı yok");
+    }
+    if (snapshot.native_post_applied) {
+      throw new Error("Bu aktarım COMED POST ile kaydedildi; güvenli otomatik geri alma yapılamaz");
+    }
+    bridgeStatus("Klinot taslağı geri alınıyor");
+    await restoreSystemInquiry(snapshot);
+    sessionStorage.removeItem(LAST_DRAFT_SNAPSHOT_KEY);
+    sessionStorage.removeItem(ACTIVE_TRANSFER_KEY);
+    activeTransferId = null;
+    bridgeStatus("Klinot taslağı temizlendi", "ok");
+    setTimeout(() => location.reload(), 350);
+  }
+
   async function fillSystemInquiry(review = {}) {
     const expectedGroups = Object.keys(SYSTEM_REVIEW_DEFAULTS);
     const existingCard = cardByTitle("Sistem Sorgusu");
@@ -879,8 +960,7 @@
     }
     let modal = visibleSystemInquiryModal();
     if (!modal) {
-      const opener = [...document.querySelectorAll("button")]
-        .find((button) => textOf(button) === "Sistem Sorgulama" && button.offsetParent !== null);
+      const opener = await waitFor(systemInquiryOpener, 30000);
       if (!opener) return {filled: 0, saved: false, fields: [], error: "Sistem Sorgulama düğmesi bulunamadı"};
       opener.click();
     }
@@ -902,6 +982,7 @@
     const fields = [];
     let filled = 0;
     const cards = systemInquiryCards(modal);
+    captureSystemInquirySnapshot(cards);
     for (const group of expectedGroups) {
       const card = cards.get(group);
       if (!card) continue;
@@ -1132,6 +1213,16 @@
         started_at: startedAt,
         stage: "starting",
       });
+      if (!await waitForClinicalFormReady()) {
+        throw new Error("COMED hasta kartı 45 saniye içinde hazır olmadı");
+      }
+      writeDraftSnapshot({
+        visit_id: String(transfer.visit_id),
+        transfer_id: transfer.id,
+        created_at: new Date().toISOString(),
+        system_inquiry: null,
+        native_post_applied: false,
+      });
       const nativeRequests = transfer.bundle.native_requests || [];
       const hasMainPost = nativeRequests.some(
         (item) => item.endpoint === "forms/document/saveDocumentProcesses",
@@ -1145,6 +1236,11 @@
         bridgeStatus("Doğrulanmış COMED POST'ları gönderiliyor");
         try {
           postResults = await executeNativePosts(transfer.visit_id, nativeRequests);
+          const snapshot = readDraftSnapshot();
+          if (snapshot) {
+            snapshot.native_post_applied = postResults.length > 0;
+            writeDraftSnapshot(snapshot);
+          }
         } catch (error) {
           postError = error;
           bridgeStatus("POST tamamlanamadı · alanlar eklentiyle dolduruluyor");
@@ -1274,10 +1370,19 @@
         updateStatus(id, "completed").catch(() => {});
         bridgeStatus("COMED kaydı tamamlandı", "ok");
         sessionStorage.removeItem(ACTIVE_TRANSFER_KEY);
+        sessionStorage.removeItem(LAST_DRAFT_SNAPSHOT_KEY);
         activeTransferId = null;
       }
     }, 1800);
   }, true);
+
+  chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+    if (message?.type !== "klinot-clear-last-transfer") return false;
+    clearLastKlinotDraft()
+      .then(() => sendResponse({ok: true}))
+      .catch((error) => sendResponse({ok: false, error: error.message}));
+    return true;
+  });
 
   setTimeout(monitorRoute, 1500);
   setInterval(monitorRoute, 5000);
