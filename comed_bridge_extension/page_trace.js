@@ -10,6 +10,7 @@
   const TRACE_SOURCE = "klinot-comed-trace-v1";
   const NATIVE_COMMAND_SOURCE = "klinot-comed-native-command-v1";
   const NATIVE_RESULT_SOURCE = "klinot-comed-native-result-v1";
+  const SUPPRESS_RELOAD_PROMPT_KEY = "klinot-comed-suppress-reload-prompt-once";
   const API_HOST = "goztepe.comedtestapi.mlpcare.com";
   const API_BASE = `http://${API_HOST}/tr-tr/api/json/`;
   const NATIVE_ENDPOINTS = new Set([
@@ -29,6 +30,16 @@
   const sessionHeaders = new Map();
   const traceEvents = [];
   let nativeFetch = null;
+
+  // Klinot'un güvenli geri alma işlemi bittikten sonra yaptığı tek yenilemede
+  // COMED'in "kaydedilmemiş değişiklik" uyarısını bastır. Bu dinleyici
+  // document_start'ta, uygulama dinleyicilerinden önce kurulur ve yalnızca
+  // sessionStorage bayrağının bulunduğu bir sonraki yenilemede devreye girer.
+  window.addEventListener("beforeunload", (event) => {
+    if (sessionStorage.getItem(SUPPRESS_RELOAD_PROMPT_KEY) !== "1") return;
+    sessionStorage.removeItem(SUPPRESS_RELOAD_PROMPT_KEY);
+    event.stopImmediatePropagation();
+  }, {capture: true});
 
   function clip(value) {
     const text = String(value ?? "");

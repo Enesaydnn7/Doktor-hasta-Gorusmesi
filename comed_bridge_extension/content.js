@@ -4,6 +4,7 @@
   const SELECTED_PATIENT_KEY = "klinot-comed-selected-patient";
   const ACTIVE_TRANSFER_KEY = "klinot-comed-active-transfer";
   const LAST_DRAFT_SNAPSHOT_KEY = "klinot-comed-last-draft-snapshot";
+  const SUPPRESS_RELOAD_PROMPT_KEY = "klinot-comed-suppress-reload-prompt-once";
   const TRACE_SOURCE = "klinot-comed-trace-v1";
   const NATIVE_COMMAND_SOURCE = "klinot-comed-native-command-v1";
   const NATIVE_RESULT_SOURCE = "klinot-comed-native-result-v1";
@@ -879,6 +880,159 @@
     sessionStorage.setItem(LAST_DRAFT_SNAPSHOT_KEY, JSON.stringify(value));
   }
 
+  function compactEntryParts(item) {
+    const label = textOf(item.querySelector(".compact-item__header,.compact-item__label"));
+    const explicitValue = textOf(item.querySelector(
+      ".compact-item__value,.compact-item__content,.compact-item__description",
+    ));
+    const whole = textOf(item);
+    const value = explicitValue || whole.slice(label.length).trim();
+    if (!label || !value) return null;
+    return {
+      label,
+      value,
+      key: `${normalizedText(label)}|${normalizedText(value)}`,
+      element: item,
+    };
+  }
+
+  function compactEntries(cardTitle) {
+    const card = cardByTitle(cardTitle);
+    if (!card) return [];
+    return [...card.querySelectorAll(".compact-item")]
+      .map(compactEntryParts).filter(Boolean);
+  }
+
+  function diagnosisEntries() {
+    const card = cardByTitle("Tanılar (ICD - 10)");
+    if (!card) return [];
+    return [...card.querySelectorAll("table tbody tr")].map((row) => {
+      const code = textOf(row.querySelector("td"))
+        .toUpperCase().match(/^[A-Z][0-9][0-9A-Z.\-]*/)?.[0] || "";
+      return code ? {code, row} : null;
+    }).filter(Boolean);
+  }
+
+  async function capturePersistedDraftBaseline() {
+    const ready = await waitFor(() => cardByTitle("Özgeçmiş")
+      && cardByTitle("Soygeçmiş") && cardByTitle("Tanılar (ICD - 10)"), 6000);
+    if (!ready) throw new Error("Kalıcı COMED alanları temizleme için hazırlanamadı");
+    return {
+      captured: true,
+      diagnoses: diagnosisEntries().map((entry) => entry.code),
+      profile: compactEntries("Özgeçmiş").map((entry) => entry.key),
+      family_history: compactEntries("Soygeçmiş").map((entry) => entry.key),
+    };
+  }
+
+  function visibleRemovalDialog() {
+    return [...document.querySelectorAll(
+      ".co-modal,[role=dialog],.swal2-container,.modal,.co-message-box",
+    )].filter((item) => item.getClientRects().length)
+      .sort((a, b) => textOf(a).length - textOf(b).length)[0] || null;
+  }
+
+  async function confirmRemovalIfNeeded() {
+    const dialog = await waitFor(visibleRemovalDialog, 650);
+    if (!dialog) return;
+    const confirm = [...dialog.querySelectorAll("button,[role=button]")]
+      .find((button) => /^(sil|evet|tamam|onayla)$/i.test(textOf(button)) && !button.disabled);
+    if (!confirm) throw new Error("COMED silme onayı bulunamadı");
+    confirm.click();
+    await waitFor(() => !dialog.isConnected || dialog.offsetParent === null, 5000);
+  }
+
+  async function removeDiagnosis(code) {
+    const entry = diagnosisEntries().find((item) => item.code === code);
+    if (!entry) return true;
+    const trash = entry.row.querySelector('[data-test="co-button-icon-trash"]');
+    if (!trash || trash.disabled) return false;
+    trash.click();
+    await confirmRemovalIfNeeded();
+    return Boolean(await waitFor(
+      () => !diagnosisEntries().some((item) => item.code === code), 7000,
+    ));
+  }
+
+  function profilePlaceholder(label) {
+    return ({
+      "kullandığı ilaç": "İlaç",
+      "diğer": "Özel Durumlar",
+      "vücuda takılan cihaz": "Cihaz (Vücuda Takılan)",
+    })[normalizedText(label)] || label;
+  }
+
+  async function turnOffProfileNoValue(entry) {
+    const card = await ensureCardOpen("Özgeçmiş", "Meslek");
+    if (!card) return false;
+    const input = byPlaceholder(profilePlaceholder(entry.label), card);
+    const row = input ? smallestFieldRow(input, card) : null;
+    const noButton = [...(row?.querySelectorAll("button,label") || [])]
+      .find((node) => textOf(node) === "Yok" && node.offsetParent !== null);
+    if (!noButton || !/primary|active|selected/i.test(noButton.className)) return false;
+    activateNode(noButton);
+    return Boolean(await waitFor(
+      () => !compactEntries("Özgeçmiş").some((item) => item.key === entry.key), 5000,
+    ));
+  }
+
+  async function removeCompactEntry(cardTitle, key) {
+    const entry = compactEntries(cardTitle).find((item) => item.key === key);
+    if (!entry) return true;
+    entry.element.click();
+    const menu = await waitFor(() => [...document.querySelectorAll(
+      ".co-menu__content,.co-popover,[role=menu]",
+    )].filter((item) => item.getClientRects().length)
+      .find((item) => normalizedText(textOf(item)).includes(normalizedText(entry.value))), 1600);
+    const trash = menu?.querySelector('[data-test="co-button-icon-trash"]');
+    if (trash && !trash.disabled) {
+      trash.click();
+      await confirmRemovalIfNeeded();
+    } else {
+      document.dispatchEvent(new KeyboardEvent("keydown", {
+        key: "Escape", code: "Escape", bubbles: true,
+      }));
+      if (cardTitle !== "Özgeçmiş" || normalizedText(entry.value) !== "özellik yok"
+        || !await turnOffProfileNoValue(entry)) return false;
+    }
+    return Boolean(await waitFor(
+      () => !compactEntries(cardTitle).some((item) => item.key === key), 7000,
+    ));
+  }
+
+  async function restorePersistedDraft(snapshot) {
+    const baseline = snapshot?.persisted_baseline;
+    if (!baseline?.captured) {
+      throw new Error("Bu eski taslakta güvenli ICD/özgeçmiş geri alma bilgisi yok");
+    }
+    const diagnosisBaseline = new Set(baseline.diagnoses || []);
+    const profileBaseline = new Set(baseline.profile || []);
+    const familyBaseline = new Set(baseline.family_history || []);
+    const addedDiagnoses = diagnosisEntries()
+      .map((entry) => entry.code).filter((code) => !diagnosisBaseline.has(code));
+    const addedProfile = compactEntries("Özgeçmiş")
+      .map((entry) => entry.key).filter((key) => !profileBaseline.has(key));
+    const addedFamily = compactEntries("Soygeçmiş")
+      .map((entry) => entry.key).filter((key) => !familyBaseline.has(key));
+
+    bridgeStatus("Klinot tanıları geri alınıyor");
+    for (const code of addedDiagnoses) {
+      if (!await removeDiagnosis(code)) throw new Error(`${code} tanısı geri alınamadı`);
+    }
+    bridgeStatus("Klinot özgeçmiş kayıtları geri alınıyor");
+    for (const key of addedProfile) {
+      if (!await removeCompactEntry("Özgeçmiş", key)) {
+        throw new Error("Özgeçmiş kaydı geri alınamadı");
+      }
+    }
+    bridgeStatus("Klinot soygeçmiş kayıtları geri alınıyor");
+    for (const key of addedFamily) {
+      if (!await removeCompactEntry("Soygeçmiş", key)) {
+        throw new Error("Soygeçmiş kaydı geri alınamadı");
+      }
+    }
+  }
+
   function captureSystemInquirySnapshot(cards) {
     const snapshot = readDraftSnapshot();
     if (!snapshot || snapshot.system_inquiry) return;
@@ -925,12 +1079,14 @@
       throw new Error("Bu aktarım COMED POST ile kaydedildi; güvenli otomatik geri alma yapılamaz");
     }
     bridgeStatus("Klinot taslağı geri alınıyor");
+    await restorePersistedDraft(snapshot);
     await restoreSystemInquiry(snapshot);
     sessionStorage.removeItem(LAST_DRAFT_SNAPSHOT_KEY);
     sessionStorage.removeItem(ACTIVE_TRANSFER_KEY);
     activeTransferId = null;
-    bridgeStatus("Klinot taslağı temizlendi", "ok");
-    setTimeout(() => location.reload(), 350);
+    bridgeStatus("Klinot taslağı tamamen temizlendi · kart yenileniyor", "ok");
+    sessionStorage.setItem(SUPPRESS_RELOAD_PROMPT_KEY, "1");
+    setTimeout(() => location.reload(), 450);
   }
 
   async function fillSystemInquiry(review = {}) {
@@ -1216,11 +1372,13 @@
       if (!await waitForClinicalFormReady()) {
         throw new Error("COMED hasta kartı 45 saniye içinde hazır olmadı");
       }
+      const persistedBaseline = await capturePersistedDraftBaseline();
       writeDraftSnapshot({
         visit_id: String(transfer.visit_id),
         transfer_id: transfer.id,
         created_at: new Date().toISOString(),
         system_inquiry: null,
+        persisted_baseline: persistedBaseline,
         native_post_applied: false,
       });
       const nativeRequests = transfer.bundle.native_requests || [];

@@ -276,7 +276,7 @@ class ApiClient implements KlinotApi {
         'audio_id': transcription.audioId,
         'stt_usage': transcription.usage,
         'source': 'mobile',
-        'client_version': '2.10.2',
+        'client_version': '2.10.3',
         'metadata': {
           'platform': Platform.operatingSystem,
           if (comedPatient != null) 'comed_patient': comedPatient.toJson(),

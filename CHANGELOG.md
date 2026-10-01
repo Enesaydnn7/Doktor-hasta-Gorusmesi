@@ -1,5 +1,11 @@
 # Sürüm Geçmişi
 
+## v2.10.3 — 1 Ekim 2026
+
+- Taslak temizleme, aktarım öncesi kalıcı COMED kayıtlarını fotoğraflar ve yalnızca son Klinot aktarımının eklediği ICD, Özgeçmiş ve Soygeçmiş kayıtlarını çöp kutusu işlemleriyle geri alır.
+- Doktorun aktarım öncesinde bulunan tanı ve geçmiş bilgileri güvenli karşılaştırmayla korunur.
+- Sistem Sorgulama eski hâline getirildikten sonra COMED kartı otomatik yenilenir; bu tek yenilemede “kaydedilmemiş değişiklik” tarayıcı uyarısı gösterilmez.
+
 ## v2.10.2 — 1 Ekim 2026
 
 - Doktor panelindeki COMED aktarımı yeni sekme açmak yerine aynı Chrome penceresindeki mevcut COMED sekmesini bulup yeniden kullanır.

@@ -65,7 +65,7 @@ clearDraft.addEventListener("click", async () => {
     }
     const response = await chrome.tabs.sendMessage(tab.id, {type: "klinot-clear-last-transfer"});
     if (!response?.ok) throw new Error(response?.error || "Taslak temizlenemedi");
-    show("Klinot taslağı temizleniyor; COMED kartı yenilenecek.", true);
+    show("ICD ve özgeçmiş dâhil Klinot taslağı temizleniyor; kart otomatik yenilenecek.", true);
   } catch (error) {
     show(error.message);
   } finally {

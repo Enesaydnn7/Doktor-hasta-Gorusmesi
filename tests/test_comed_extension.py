@@ -27,6 +27,11 @@ class ComedExtensionTests(unittest.TestCase):
         self.assertIn("await waitFor(systemInquiryOpener, 30000)", source)
         self.assertIn("clearLastKlinotDraft", source)
         self.assertIn("LAST_DRAFT_SNAPSHOT_KEY", source)
+        self.assertIn("capturePersistedDraftBaseline", source)
+        self.assertIn("restorePersistedDraft", source)
+        self.assertIn('removeCompactEntry("Özgeçmiş", key)', source)
+        self.assertIn("removeDiagnosis(code)", source)
+        self.assertIn("persisted_baseline: persistedBaseline", source)
         self.assertIn('message?.type !== "klinot-clear-last-transfer"', source)
         self.assertIn("SYSTEM_REVIEW_DEFAULTS", source)
         self.assertIn('labelNode.control', source)
@@ -78,6 +83,9 @@ class ComedExtensionTests(unittest.TestCase):
         self.assertIn('"medical/treatment/savevisitdiagnoses"', source)
         self.assertIn('"x-authentication-token"', source)
         self.assertIn('/delete|remove|sign|unsign/i', source)
+        self.assertIn("klinot-comed-suppress-reload-prompt-once", source)
+        self.assertIn('window.addEventListener("beforeunload"', source)
+        self.assertIn("event.stopImmediatePropagation()", source)
         self.assertIn('data-klinot-comed-trace-installed', source)
         self.assertNotIn('window.__klinotComedTraceInstalled', source)
         self.assertNotIn('window.__klinotComedTraceEvents', source)
@@ -85,7 +93,7 @@ class ComedExtensionTests(unittest.TestCase):
 
     def test_manifest_declares_current_version(self):
         manifest = json.loads((EXTENSION / "manifest.json").read_text(encoding="utf-8"))
-        self.assertEqual(manifest["version"], "2.10.2")
+        self.assertEqual(manifest["version"], "2.10.3")
         self.assertIn("tabs", manifest["permissions"])
         scripts = [item for item in manifest["content_scripts"]
                    if "doctor_bridge.js" in item.get("js", [])]
@@ -112,6 +120,7 @@ class ComedExtensionTests(unittest.TestCase):
         self.assertIn('id="clear-draft"', popup)
         self.assertIn("klinot-clear-last-transfer", popup_script)
         self.assertIn("chrome.tabs.sendMessage", popup_script)
+        self.assertIn("ICD ve özgeçmiş dâhil", popup_script)
 
 
 if __name__ == "__main__":
