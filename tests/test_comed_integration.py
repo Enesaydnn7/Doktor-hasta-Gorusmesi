@@ -351,7 +351,11 @@ class ComedIntegrationTests(unittest.TestCase):
 
         with (
             patch.object(main.db, "comed_worklist", return_value=[patient]),
-            patch.object(main.db, "getir", return_value={"id": 55, "comed": {}}),
+            patch.object(
+                main.db,
+                "getir_for_doctor",
+                return_value={"id": 55, "comed": {}},
+            ),
             patch.object(main.db, "comed_trace_list", return_value=[]),
             patch.object(main.comed_integration, "build_transfer_bundle", return_value={"auto_sign": False}),
             patch.object(main.db, "comed_transfer_create", return_value=transfer),

@@ -1,5 +1,11 @@
 # Sürüm Geçmişi
 
+## v2.10.1 — 1 Ekim 2026
+
+- Hasta uygulamasında seçilen randevu için oluşturulan ses analizi artık hasta numarası ve ziyaret kimliğiyle randevudaki doktora otomatik atanır.
+- Doktor panelinde hastadan gelen görüşmeler etiketlenir; doğru doktor raporu, sesi ve COMED aktarımını görebilir, diğer doktorlar erişemez.
+- Hasta uygulamasının mevcut sağlık raporu deneyimi korunur ve hastaya COMED aktarım kontrolleri gösterilmez.
+
 ## v2.10.0 — 29 Eylül 2026
 
 - Mobil girişe doktor/hasta rol seçimi ve hasta numarasıyla giriş eklendi.

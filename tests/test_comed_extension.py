@@ -80,7 +80,7 @@ class ComedExtensionTests(unittest.TestCase):
 
     def test_manifest_declares_current_version(self):
         manifest = json.loads((EXTENSION / "manifest.json").read_text(encoding="utf-8"))
-        self.assertEqual(manifest["version"], "2.10.0")
+        self.assertEqual(manifest["version"], "2.10.1")
 
 
 if __name__ == "__main__":

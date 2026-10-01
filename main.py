@@ -268,6 +268,15 @@ def _store_analysis(body: AnalyzeIn, text: str, result: dict) -> dict:
         got = db.bekleyen_ses_al(body.audio_id, sil=False)
         if got:
             ses, mime, ad = got
+    metadata = body.metadata or {}
+    owner_user = metadata.get("api_user")
+    assigned_doctor_user = None
+    if metadata.get("api_role") == "patient":
+        selected_patient = metadata.get("comed_patient") or {}
+        assigned_doctor_user = db.comed_assigned_doctor(
+            owner_user,
+            selected_patient.get("visit_id"),
+        )
     try:
         kid = db.kaydet(
             transkript=text,
@@ -276,8 +285,9 @@ def _store_analysis(body: AnalyzeIn, text: str, result: dict) -> dict:
             usage={"analiz": result.get("usage") or {}, "ses": body.stt_usage or {}},
             ses=ses, ses_mime=mime, ses_ad=ad,
             source=body.source, client_version=body.client_version,
-            metadata=body.metadata,
-            owner_user=(body.metadata or {}).get("api_user"),
+            metadata=metadata,
+            owner_user=owner_user,
+            assigned_doctor_user=assigned_doctor_user,
         )
         if body.audio_id and ses:
             db.bekleyen_ses_al(body.audio_id, sil=True)
@@ -644,7 +654,11 @@ def _create_comed_transfer(
     *,
     admin: bool = False,
 ) -> dict:
-    record = db.getir(record_id, None if admin else requested_by)
+    record = (
+        db.getir(record_id)
+        if admin
+        else db.getir_for_doctor(record_id, requested_by)
+    )
     if not record:
         raise HTTPException(status_code=404, detail="Kayıt bulunamadı")
     if not patient.get("visit_id"):
@@ -865,17 +879,17 @@ async def doctor_panel(request: Request):
 async def doctor_overview(request: Request):
     session = doctor_auth(request)
     username = session["user"]
-    records = db.liste(limit=200, owner_user=username)
+    records = db.liste_for_doctor(username, limit=200)
     # Doktor paneli hastaya tıklanınca yalnız o hastaya bağlı görüşmeleri
     # gösterebilsin. Yönetim listesini hafif tutmak için metadata normalde
     # özet satırda yok; doktor panelinin sınırlı listesinde burada ekliyoruz.
     for summary in records:
-        full = db.getir(summary["id"], owner_user=username)
+        full = db.getir_for_doctor(summary["id"], username)
         summary["metadata"] = (full or {}).get("metadata", {})
     return {
         "user": session,
         "records": records,
-        "stats": db.istatistik(owner_user=username),
+        "stats": db.istatistik_for_doctor(username),
         "worklist": db.comed_worklist(limit=200, synced_by=username),
     }
 
@@ -883,7 +897,7 @@ async def doctor_overview(request: Request):
 @app.get("/doctor/api/records/{kid}")
 async def doctor_record(kid: int, request: Request):
     session = doctor_auth(request)
-    record = db.getir(kid, owner_user=session["user"])
+    record = db.getir_for_doctor(kid, session["user"])
     if not record:
         raise HTTPException(status_code=404, detail="Kayıt bulunamadı")
     return record
@@ -907,7 +921,7 @@ async def doctor_transfer_status(transfer_id: int, request: Request):
 @app.api_route("/doctor/audio/{kid}", methods=["GET", "HEAD"])
 async def doctor_audio(kid: int, request: Request):
     session = doctor_auth(request)
-    got = db.ses_getir(kid, owner_user=session["user"])
+    got = db.ses_getir_for_doctor(kid, session["user"])
     if not got:
         raise HTTPException(status_code=404, detail="Bu kayıtta ses yok")
     data, mime, name = got
@@ -923,7 +937,7 @@ async def doctor_audio(kid: int, request: Request):
 @app.get("/doctor/pdf/{kid}")
 async def doctor_pdf(kid: int, request: Request):
     session = doctor_auth(request)
-    record = db.getir(kid, owner_user=session["user"])
+    record = db.getir_for_doctor(kid, session["user"])
     if not record:
         raise HTTPException(status_code=404, detail="Kayıt bulunamadı")
     content, filename = pdf_report.build_pdf("doktor", record["doktor"])

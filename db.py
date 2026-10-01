@@ -74,6 +74,8 @@ def init():
             c.execute("ALTER TABLE kayitlar ADD COLUMN comed TEXT")
         if "owner_user" not in columns:
             c.execute("ALTER TABLE kayitlar ADD COLUMN owner_user TEXT")
+        if "assigned_doctor_user" not in columns:
+            c.execute("ALTER TABLE kayitlar ADD COLUMN assigned_doctor_user TEXT")
         # v2.8.x mobil kayıtlarında sahip metadata.api_user içinde tutuluyordu.
         # Yeni doktor paneli için bunu sorgulanabilir ayrı bir kolona taşı.
         for row in c.execute(
@@ -89,6 +91,10 @@ def init():
         c.execute(
             "CREATE INDEX IF NOT EXISTS ix_kayitlar_owner "
             "ON kayitlar(owner_user, id DESC)"
+        )
+        c.execute(
+            "CREATE INDEX IF NOT EXISTS ix_kayitlar_assigned_doctor "
+            "ON kayitlar(assigned_doctor_user, id DESC)"
         )
         c.execute(
             "CREATE UNIQUE INDEX IF NOT EXISTS ux_demo_key ON kayitlar(demo_key) "
@@ -180,6 +186,36 @@ def init():
             "CREATE INDEX IF NOT EXISTS ix_comed_worklist_synced "
             "ON comed_worklist(synced_at DESC)"
         )
+        # Hasta uygulamasından daha önce alınmış kayıtları da randevunun COMED
+        # iş listesindeki doktoruna bağla. Böylece sürüm yükseltildiğinde son
+        # hasta kaydı kaybolmadan ilgili doktor panelinde görünür.
+        pending_assignments = c.execute(
+            """SELECT id, owner_user, metadata FROM kayitlar
+               WHERE COALESCE(assigned_doctor_user,'')=''"""
+        ).fetchall()
+        for record in pending_assignments:
+            try:
+                metadata = json.loads(record["metadata"] or "{}") or {}
+            except (TypeError, json.JSONDecodeError):
+                continue
+            if metadata.get("api_role") != "patient":
+                continue
+            patient = metadata.get("comed_patient") or {}
+            visit_id = str(patient.get("visit_id") or "").strip()
+            patient_no = str(record["owner_user"] or "").strip()
+            if not visit_id or not patient_no:
+                continue
+            assignment = c.execute(
+                """SELECT synced_by FROM comed_worklist
+                   WHERE patient_no=? AND visit_id=? AND COALESCE(synced_by,'')<>''
+                   ORDER BY synced_at DESC LIMIT 1""",
+                (patient_no, visit_id),
+            ).fetchone()
+            if assignment:
+                c.execute(
+                    "UPDATE kayitlar SET assigned_doctor_user=? WHERE id=?",
+                    (assignment["synced_by"], record["id"]),
+                )
         c.execute("""
             CREATE TABLE IF NOT EXISTS comed_transfers (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -330,19 +366,22 @@ def kaydet(transkript: str, hasta: dict, doktor: dict, yonetim: dict,
            usage: dict = None, ses: bytes = None,
            ses_mime: str = None, ses_ad: str = None,
            source: str = "web", client_version: str = None,
-           metadata: dict = None, owner_user: str = None) -> int:
+           metadata: dict = None, owner_user: str = None,
+           assigned_doctor_user: str = None) -> int:
     j = lambda d: json.dumps(d or {}, ensure_ascii=False)
     with _lock, _conn() as c:
         cur = c.execute(
             """INSERT INTO kayitlar
                (olusturma, transkript, hasta, doktor, yonetim, comed, usage, ses, ses_mime,
-                ses_ad, ozet, source, client_version, metadata, owner_user)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                 ses_ad, ozet, source, client_version, metadata, owner_user,
+                 assigned_doctor_user)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (datetime.now().isoformat(timespec="seconds"), transkript,
              j(hasta), j(doktor), j(yonetim), j(comed), j(usage),
              ses, ses_mime, ses_ad, _kisa_ozet(doktor, transkript),
              (source or "web")[:30], (client_version or "")[:30] or None,
-             j(metadata), (owner_user or "")[:200] or None),
+              j(metadata), (owner_user or "")[:200] or None,
+              (assigned_doctor_user or "")[:200] or None),
         )
         return cur.lastrowid
 
@@ -354,7 +393,7 @@ def liste(limit: int = 200, owner_user: str | None = None):
         params = (owner_user, limit) if owner_user is not None else (limit,)
         rows = c.execute(
             """SELECT k.id, k.olusturma, k.ozet, k.ses_mime, k.ses_ad, k.usage,
-                      k.source, k.client_version, k.owner_user,
+                       k.source, k.client_version, k.owner_user, k.assigned_doctor_user,
                       (k.ses IS NOT NULL) AS ses_var, LENGTH(k.transkript) AS uzunluk,
                       (SELECT status FROM comed_transfers t
                        WHERE t.record_id=k.id ORDER BY t.id DESC LIMIT 1) AS comed_status
@@ -379,7 +418,7 @@ def getir(kid: int, owner_user: str | None = None):
         params = (kid, owner_user) if owner_user is not None else (kid,)
         r = c.execute(
             """SELECT id, olusturma, transkript, hasta, doktor, yonetim, comed, usage,
-                      source, client_version, metadata, owner_user,
+                       source, client_version, metadata, owner_user, assigned_doctor_user,
                       ses_mime, ses_ad, (ses IS NOT NULL) AS ses_var
                FROM kayitlar WHERE id=?{owner_clause}""".format(
                    owner_clause=owner_clause
@@ -395,6 +434,62 @@ def getir(kid: int, owner_user: str | None = None):
             d[k] = {}
     d["comed_transfer"] = comed_transfer_latest_for_record(kid)
     return d
+
+
+def liste_for_doctor(doctor_user: str, limit: int = 200) -> list[dict]:
+    """Doktorun kendi kayıtlarıyla ona randevu üzerinden atanmış hasta kayıtları."""
+    with _lock, _conn() as c:
+        rows = c.execute(
+            """SELECT k.id, k.olusturma, k.ozet, k.ses_mime, k.ses_ad, k.usage,
+                      k.source, k.client_version, k.owner_user, k.assigned_doctor_user,
+                      (k.ses IS NOT NULL) AS ses_var, LENGTH(k.transkript) AS uzunluk,
+                      (SELECT status FROM comed_transfers t
+                       WHERE t.record_id=k.id ORDER BY t.id DESC LIMIT 1) AS comed_status
+               FROM kayitlar k
+               WHERE k.owner_user=? OR k.assigned_doctor_user=?
+               ORDER BY k.id DESC LIMIT ?""",
+            (doctor_user, doctor_user, limit),
+        ).fetchall()
+    output = []
+    for row in rows:
+        item = dict(row)
+        try:
+            item["usage"] = json.loads(item.get("usage") or "{}")
+        except (TypeError, json.JSONDecodeError):
+            item["usage"] = {}
+        item["patient_submitted"] = bool(
+            item.get("assigned_doctor_user") == doctor_user
+            and item.get("owner_user") != doctor_user
+        )
+        output.append(item)
+    return output
+
+
+def getir_for_doctor(kid: int, doctor_user: str) -> dict | None:
+    """Kaydı yalnız sahibi veya randevuyla atanmış doktor okuyabilir."""
+    with _lock, _conn() as c:
+        row = c.execute(
+            """SELECT id, olusturma, transkript, hasta, doktor, yonetim, comed, usage,
+                      source, client_version, metadata, owner_user, assigned_doctor_user,
+                      ses_mime, ses_ad, (ses IS NOT NULL) AS ses_var
+               FROM kayitlar
+               WHERE id=? AND (owner_user=? OR assigned_doctor_user=?)""",
+            (kid, doctor_user, doctor_user),
+        ).fetchone()
+    if not row:
+        return None
+    item = dict(row)
+    for key in ("hasta", "doktor", "yonetim", "comed", "usage", "metadata"):
+        try:
+            item[key] = json.loads(item.get(key) or "{}")
+        except (TypeError, json.JSONDecodeError):
+            item[key] = {}
+    item["patient_submitted"] = bool(
+        item.get("assigned_doctor_user") == doctor_user
+        and item.get("owner_user") != doctor_user
+    )
+    item["comed_transfer"] = comed_transfer_latest_for_record(kid)
+    return item
 
 
 def comed_worklist_sync(items: list[dict], synced_by: str = "",
@@ -494,6 +589,22 @@ def comed_patient_appointments(patient_no: str, limit: int = 100) -> list[dict]:
             seen.add(key)
         appointments.append(item)
     return appointments
+
+
+def comed_assigned_doctor(patient_no: str, visit_id: str) -> str | None:
+    """Hasta+randevu eşleşmesinin COMED köprüsünü açan doktor hesabını bul."""
+    patient_no = str(patient_no or "").strip()
+    visit_id = str(visit_id or "").strip()
+    if not patient_no or not visit_id:
+        return None
+    with _lock, _conn() as c:
+        row = c.execute(
+            """SELECT synced_by FROM comed_worklist
+               WHERE patient_no=? AND visit_id=? AND COALESCE(synced_by,'')<>''
+               ORDER BY synced_at DESC LIMIT 1""",
+            (patient_no, visit_id),
+        ).fetchone()
+    return str(row["synced_by"]) if row else None
 
 
 def comed_transfer_create(record_id: int, patient: dict, bundle: dict,
@@ -827,6 +938,22 @@ def ses_getir(kid: int, owner_user: str | None = None):
     return r["ses"], (r["ses_mime"] or "audio/mpeg"), (r["ses_ad"] or f"kayit_{kid}")
 
 
+def ses_getir_for_doctor(kid: int, doctor_user: str):
+    with _lock, _conn() as c:
+        row = c.execute(
+            """SELECT ses, ses_mime, ses_ad FROM kayitlar
+               WHERE id=? AND (owner_user=? OR assigned_doctor_user=?)""",
+            (kid, doctor_user, doctor_user),
+        ).fetchone()
+    if not row or not row["ses"]:
+        return None
+    return (
+        row["ses"],
+        row["ses_mime"] or "audio/mpeg",
+        row["ses_ad"] or f"kayit_{kid}",
+    )
+
+
 def sil(kid: int) -> bool:
     with _lock, _conn() as c:
         cur = c.execute("DELETE FROM kayitlar WHERE id=?", (kid,))
@@ -861,3 +988,30 @@ def istatistik(owner_user: str | None = None):
                 tok += int(fallback.get("total") or 0)
                 cost += float(fallback.get("cost_usd") or 0)
     return {"kayit": len(rows), "token": tok, "cost_usd": round(cost, 6)}
+
+
+def istatistik_for_doctor(doctor_user: str) -> dict:
+    """Doktor panelindeki sayaç için kendi ve kendisine atanmış kayıtları say."""
+    with _lock, _conn() as c:
+        rows = c.execute(
+            """SELECT usage FROM kayitlar
+               WHERE owner_user=? OR assigned_doctor_user=?""",
+            (doctor_user, doctor_user),
+        ).fetchall()
+    token = 0
+    cost = 0.0
+    for row in rows:
+        try:
+            usage = json.loads(row["usage"] or "{}")
+        except (TypeError, json.JSONDecodeError):
+            continue
+        for part in ("analiz", "ses"):
+            details = usage.get(part) or {}
+            token += int(details.get("total") or 0)
+            cost += float(details.get("cost_usd") or 0)
+            if part == "ses":
+                for nested in ("role_usage", "fallback_usage"):
+                    nested_usage = details.get(nested) or {}
+                    token += int(nested_usage.get("total") or 0)
+                    cost += float(nested_usage.get("cost_usd") or 0)
+    return {"kayit": len(rows), "token": token, "cost_usd": round(cost, 6)}

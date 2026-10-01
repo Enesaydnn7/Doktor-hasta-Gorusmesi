@@ -187,12 +187,20 @@ class MobileApiTests(unittest.TestCase):
         with (
             patch.object(main.llm, "analyze_all", side_effect=fake_analyze),
             patch.object(main.db, "bekleyen_ses_al", return_value=None),
-            patch.object(main.db, "kaydet", return_value=56),
+            patch.object(
+                main.db,
+                "comed_assigned_doctor",
+                return_value="adnan.kaya;enes.aydin1|tracer",
+            ) as assignment,
+            patch.object(main.db, "kaydet", return_value=56) as save,
         ):
             response = self.client.post(
                 "/api/v1/mobile/analyze/stream",
                 headers={"Authorization": f"Bearer {token}"},
-                json={"transcript": "Hasta: Göğsüm ağrıyor"},
+                json={
+                    "transcript": "Hasta: Göğsüm ağrıyor",
+                    "metadata": {"comed_patient": {"visit_id": "visit-476644"}},
+                },
             )
 
         self.assertEqual(response.status_code, 200)
@@ -203,6 +211,12 @@ class MobileApiTests(unittest.TestCase):
         self.assertNotIn("doktor", result)
         self.assertNotIn("yonetim", result)
         self.assertNotIn("comed", result)
+        assignment.assert_called_once_with("476644", "visit-476644")
+        self.assertEqual(save.call_args.kwargs["owner_user"], "476644")
+        self.assertEqual(
+            save.call_args.kwargs["assigned_doctor_user"],
+            "adnan.kaya;enes.aydin1|tracer",
+        )
 
     def test_mobile_health_does_not_require_login(self):
         response = self.client.get("/api/v1/mobile/health")

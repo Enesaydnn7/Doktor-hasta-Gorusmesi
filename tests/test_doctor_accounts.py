@@ -116,6 +116,54 @@ class DoctorAccountTests(unittest.TestCase):
         self.assertEqual(first[0]["patient_name"], "Adnan Hastası")
         self.assertEqual(second[0]["patient_name"], "Sami Hastası")
 
+    def test_patient_record_is_visible_only_to_appointment_doctor(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "patient-handoff.db"
+            with (
+                patch.object(db, "DB_PATH", str(path)),
+                patch.dict("os.environ", {"SEED_MANAGER_DEMO": "false"}),
+            ):
+                db.init()
+                doctor = "adnan.kaya;enes.aydin1|tracer"
+                other_doctor = "sami.sokucu;enes.aydin1|tracer"
+                patient = {
+                    "visit_id": "visit-476644",
+                    "clinical_card_id": "card-476644",
+                    "patient_name": "Dursun Kılıçarslan",
+                    "patient_no": "476644",
+                    "clinical_card_url": "http://comed/card-476644",
+                }
+                db.comed_worklist_sync([patient], synced_by=doctor)
+                assigned = db.comed_assigned_doctor("476644", "visit-476644")
+                record_id = db.kaydet(
+                    transkript="Hasta: Göğsüm ağrıyor",
+                    hasta={"ozet": "Hasta raporu"},
+                    doktor={"epikriz": {"onTani": "Göğüs ağrısı"}},
+                    yonetim={},
+                    comed={"fields": {}},
+                    metadata={
+                        "api_role": "patient",
+                        "api_user": "476644",
+                        "comed_patient": patient,
+                    },
+                    owner_user="476644",
+                    assigned_doctor_user=assigned,
+                )
+
+                patient_records = db.liste(owner_user="476644")
+                doctor_records = db.liste_for_doctor(doctor)
+                other_records = db.liste_for_doctor(other_doctor)
+                doctor_record = db.getir_for_doctor(record_id, doctor)
+                denied_record = db.getir_for_doctor(record_id, other_doctor)
+
+        self.assertEqual(assigned, doctor)
+        self.assertEqual(patient_records[0]["id"], record_id)
+        self.assertEqual(doctor_records[0]["id"], record_id)
+        self.assertTrue(doctor_records[0]["patient_submitted"])
+        self.assertTrue(doctor_record["patient_submitted"])
+        self.assertEqual(other_records, [])
+        self.assertIsNone(denied_record)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -18,7 +18,7 @@ function renderWorklist(){
 function renderRecords(){
   const records=visibleRecords();
   $("record-count").textContent=records.length;
-  $("records").innerHTML=records.length?records.map((r,i)=>`<button class="item ${selectedRecord?.id===r.id?'selected':''}" data-record="${i}"><strong>#${r.id} · ${esc(r.ozet||"Görüşme")}</strong><span>${esc(r.olusturma)}${r.ses_var?' · Ses kaydı var':''}</span></button>`).join(""):'<div class="empty">Bu doktora ait görüşme raporu henüz yok.</div>';
+  $("records").innerHTML=records.length?records.map((r,i)=>`<button class="item ${selectedRecord?.id===r.id?'selected':''}" data-record="${i}"><strong>#${r.id} · ${esc(r.ozet||"Görüşme")}</strong>${r.patient_submitted?'<em class="patient-submitted">Hastadan gelen görüşme</em>':''}<span>${esc(r.olusturma)}${r.ses_var?' · Ses kaydı var':''}</span></button>`).join(""):'<div class="empty">Bu hasta için aktarılabilir görüşme raporu henüz yok.</div>';
   document.querySelectorAll("[data-record]").forEach(el=>el.onclick=()=>selectRecord(records[+el.dataset.record]));
 }
 function render(){renderStats();renderWorklist();if(selectedPatient)renderRecords();updateSelection()}
