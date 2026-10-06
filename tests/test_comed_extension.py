@@ -26,6 +26,15 @@ class ComedExtensionTests(unittest.TestCase):
         self.assertIn("root?.textContent", source)
         self.assertIn("deepTextOf(document.body)", source)
 
+    def test_patient_name_strips_comed_header_metadata(self):
+        """COMED basligi isme cinsiyet/yas/dogum/hasta no yapistiriyor; ad temiz kalmali."""
+        source = (EXTENSION / "content.js").read_text(encoding="utf-8")
+
+        self.assertIn("function cleanPatientName", source)
+        self.assertIn("cleanPatientName(headerText.match", source)
+        # Ham 80 karakter kesme yontemi geri gelmemeli.
+        self.assertNotIn("headerText.match(/^([^|\\n]{3,80})/)?.[1]?.trim()", source)
+
     def test_empty_worklist_never_replaces_stored_patients(self):
         """Boş ayrıştırma sayfa yüklenmemiş demektir; kayıtlı liste silinmemeli."""
         source = (EXTENSION / "content.js").read_text(encoding="utf-8")

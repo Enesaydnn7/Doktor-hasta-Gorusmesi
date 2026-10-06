@@ -132,14 +132,24 @@ class HomeShell extends StatelessWidget {
       appBar: AppBar(
         title: const _Brand(),
         actions: [
+          // Hasta adi COMED'den uzun gelebildigi icin basligi disari itmesin:
+          // genislik ekranin %38'i ile sinirlanir ve tasan kisim ucnokta olur.
           Padding(
             padding: const EdgeInsets.only(right: 4),
             child: Center(
-              child: Text(
-                session.displayName.isNotEmpty
-                    ? session.displayName
-                    : session.username.split(';').first,
-                style: const TextStyle(fontWeight: FontWeight.w600),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: MediaQuery.sizeOf(context).width * .38,
+                ),
+                child: Text(
+                  session.displayName.isNotEmpty
+                      ? session.displayName
+                      : session.username.split(';').first,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.end,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
               ),
             ),
           ),

@@ -1,5 +1,10 @@
 # Sürüm Geçmişi
 
+## v2.13.2 — 6 Ekim 2026
+
+- **Hasta adı düzeltildi.** Köprü, COMED kart sayfasında ismi sayfa gövdesinin ilk 80 karakterinden alıyordu; COMED başlığı isme cinsiyet, yaş, doğum tarihi ve hasta numarasını boşluksuz eklediği için uygulamaya `Sena Nur Deneme Hastasıdır K28yıl22.10.1997 Hasta No:1300013` gibi bir metin düşüyordu. Ad artık ilk meta işaretinden kesiliyor.
+- **Üst şerit taşması giderildi.** Uygulama başlığındaki kullanıcı adının genişlik sınırı yoktu; uzun bir ad logoyu dışarı itip ekrandan taşıyordu. Ad artık ekranın en fazla %38'ini kaplıyor ve taşan kısım üç nokta ile kısaltılıyor.
+
 ## v2.13.1 — 6 Ekim 2026
 
 - SMS sağlayıcısı henüz bağlanmadığı için hasta girişindeki sabit test kodu (`000000`) geçici olarak varsayılan açık hâle getirildi; kimlik eşleşen hasta artık SMS beklemeden giriş yapabiliyor.

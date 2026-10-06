@@ -362,6 +362,22 @@
     }, 350);
   }
 
+  // COMED'in kart basligi ismin hemen ardindan cinsiyet, yas, dogum tarihi ve
+  // hasta numarasini bosluksuz ekler: "Sena Nur ... K28yil22.10.1997 Hasta No:1300013".
+  // Ilk meta isaretinden itibaren keserek yalnizca ad soyadi birak.
+  function cleanPatientName(value) {
+    const name = String(value || "")
+      .split(
+        // Cinsiyet kodu ancak bir harfin ardindan GELMIYORSA meta sayilir; aksi
+        // halde "Ayse 45yil" gibi bir metinde ismin son harfi kesilirdi. JS'te
+        // \b Turkce harflerde guvenilir olmadigi icin acik lookbehind kullanilir.
+        /\s*(?:(?<![A-Za-zÇĞİÖŞÜçğıöşü])[KE]\s*\d{1,3}\s*y[ıi]l|\d{2}[.\/-]\d{2}[.\/-]\d{4}|Hasta\s*No|Merkez\s*Hasta|Protokol|V-\d)/i,
+      )[0]
+      .replace(/[\s|·,;:-]+$/u, "")
+      .trim();
+    return name.length >= 3 ? name.slice(0, 80) : "";
+  }
+
   function parseRow(row, card = {}) {
     if (!row) return null;
     const cells = [...row.querySelectorAll(":scope > td, :scope > [role=cell]")];
@@ -374,8 +390,8 @@
       .split(/\r?\n/).map((value) => value.trim()).filter(Boolean);
     const patientNo = patientLines.findLast?.((value) => /^\d{4,}$/.test(value))
       || raw.match(/\b(\d{5,})\b/)?.[1] || "";
-    const patientName = patientCell?.querySelector("img[alt]")?.alt
-      || patientLines[0] || "COMED hastası";
+    const patientName = cleanPatientName(patientCell?.querySelector("img[alt]")?.alt)
+      || cleanPatientName(patientLines[0]) || "COMED hastası";
     const taskText = textOf(cells[6]) || raw;
     const doctorLines = (cells[9]?.innerText || "")
       .split(/\r?\n/).map((value) => value.trim()).filter(Boolean);
@@ -435,7 +451,7 @@
     const headerText = textOf(document.body).slice(0, 1600);
     const fallback = {
       visit_id: match[1],
-      patient_name: headerText.match(/^([^|\n]{3,80})/)?.[1]?.trim() || "COMED hastası",
+      patient_name: cleanPatientName(headerText.match(/^([^|\n]{3,120})/)?.[1]) || "COMED hastası",
       patient_no: headerText.match(/Hasta\s*No[:\s]*(\d+)/i)?.[1] || "",
       protocol_no: `V-${match[1]}`,
       task: "Açık hasta tıbbi kartı",
