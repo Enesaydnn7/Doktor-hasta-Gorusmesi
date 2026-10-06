@@ -569,15 +569,24 @@ def comed_worklist_sync(items: list[dict], synced_by: str = "",
                     (url, visit_id),
                 )
         if replace:
+            # A card opened from outside the current work-list can carry the
+            # verified patient identity needed by the mobile patient login.
+            # Keep that identity mapping even when a later empty/list refresh
+            # replaces the doctor's visible queue.
             if synced_visits:
                 placeholders = ",".join("?" for _ in synced_visits)
                 c.execute(
                     f"DELETE FROM comed_worklist WHERE synced_by=? "
-                    f"AND visit_id NOT IN ({placeholders})",
+                    f"AND visit_id NOT IN ({placeholders}) "
+                    f"AND COALESCE(patient_identity_hash,'')=''",
                     (synced_by, *synced_visits),
                 )
             else:
-                c.execute("DELETE FROM comed_worklist WHERE synced_by=?", (synced_by,))
+                c.execute(
+                    "DELETE FROM comed_worklist WHERE synced_by=? "
+                    "AND COALESCE(patient_identity_hash,'')=''",
+                    (synced_by,),
+                )
     return len(comed_worklist(synced_by=synced_by))
 
 

@@ -7,6 +7,32 @@ import db
 
 
 class MobileDatabaseTests(unittest.TestCase):
+    def test_identity_mapping_survives_a_later_empty_worklist_refresh(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "identity-refresh.db"
+            with (
+                patch.object(db, "DB_PATH", str(path)),
+                patch.dict("os.environ", {"SEED_MANAGER_DEMO": "false"}),
+            ):
+                db.init()
+                identity_hash = "b" * 64
+                db.comed_worklist_sync(
+                    [{
+                        "visit_id": "22207358",
+                        "patient_name": "Sena Nur Deneme Hastasıdır",
+                        "patient_no": "1300013",
+                        "patient_identity_hash": identity_hash,
+                    }],
+                    synced_by="doctor-a",
+                    replace=False,
+                )
+                db.comed_worklist_sync([], synced_by="doctor-a", replace=True)
+                matched = db.comed_patient_by_identity(identity_hash)
+
+        self.assertIsNotNone(matched)
+        self.assertEqual(matched["visit_id"], "22207358")
+        self.assertEqual(matched["patient_no"], "1300013")
+
     def test_comed_identity_keeps_only_hash_not_plain_birth_date(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "identity.db"
