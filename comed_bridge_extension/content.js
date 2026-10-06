@@ -175,28 +175,36 @@
     box.id = "klinot-comed-bridge";
     const widgetState = bridgeWidgetState();
     Object.assign(box.style, {
-      position: "fixed", right: "0", top: `${Math.max(72, Number(widgetState.top) || Math.round(innerHeight * .56))}px`,
+      position: "fixed", right: "20px", top: `${Math.max(72, Number(widgetState.top) || Math.round(innerHeight * .56))}px`,
       zIndex: "2147483647", color: "#fff", font: "600 12px system-ui",
       pointerEvents: "none",
     });
     box.innerHTML = `<style data-klinot-log-style>
       #klinot-comed-bridge *{box-sizing:border-box}
+      @keyframes klinot-orb-in{from{opacity:0;transform:translateY(10px) scale(.86)}to{opacity:1;transform:none}}
+      @keyframes klinot-pulse{0%{box-shadow:0 10px 30px #082c3855,0 0 0 0 #0b8c8233}70%{box-shadow:0 10px 30px #082c3855,0 0 0 15px #0b8c8200}100%{box-shadow:0 10px 30px #082c3855,0 0 0 0 #0b8c8200}}
       #klinot-comed-bridge [data-klinot-log-shell]{pointer-events:auto;position:relative;display:flex;align-items:center;justify-content:flex-end}
-      #klinot-comed-bridge [data-klinot-log-orb]{width:58px;height:58px;padding:0;border:0;border-radius:18px 0 0 18px;background:#087f78;color:#fff;display:flex;align-items:center;overflow:hidden;cursor:pointer;box-shadow:0 10px 28px #082c3852;transition:width .22s ease,background .2s ease,transform .2s ease;touch-action:none}
-      #klinot-comed-bridge [data-klinot-log-orb]:hover,#klinot-comed-bridge [data-klinot-log-orb]:focus-visible{width:178px;background:#066f69}
-      #klinot-comed-bridge [data-klinot-log-orb][aria-expanded="true"]{width:58px;background:#0b685f}
-      #klinot-comed-bridge [data-klinot-log-mark]{width:58px;min-width:58px;height:58px;display:grid;place-items:center;font:800 21px system-ui}
-      #klinot-comed-bridge [data-klinot-log-label]{padding-right:14px;white-space:nowrap;font:750 13px system-ui;opacity:0;transform:translateX(9px);transition:.18s ease}
+      #klinot-comed-bridge [data-klinot-log-orb]{position:relative;height:56px;width:56px;padding:0;border:0;border-radius:28px;background:linear-gradient(135deg,#0a9289,#06706c);color:#fff;display:flex;align-items:center;overflow:hidden;cursor:grab;box-shadow:0 10px 30px #082c3855;transition:width .26s cubic-bezier(.22,1,.36,1),border-radius .26s ease,background .2s ease,transform .18s ease;touch-action:none;animation:klinot-orb-in .32s cubic-bezier(.22,1,.36,1)}
+      #klinot-comed-bridge [data-klinot-log-orb]:active{cursor:grabbing;transform:scale(.96)}
+      #klinot-comed-bridge [data-klinot-log-orb][data-klinot-busy="1"]{animation:klinot-pulse 1.8s ease-out infinite}
+      #klinot-comed-bridge [data-klinot-log-orb]:hover,#klinot-comed-bridge [data-klinot-log-orb]:focus-visible{width:196px;border-radius:28px}
+      #klinot-comed-bridge [data-klinot-log-orb][aria-expanded="true"]{width:56px}
+      #klinot-comed-bridge [data-klinot-log-mark]{width:56px;min-width:56px;height:56px;display:grid;place-items:center;font:800 20px system-ui;letter-spacing:.5px}
+      #klinot-comed-bridge [data-klinot-log-label]{display:flex;flex-direction:column;align-items:flex-start;padding-right:18px;white-space:nowrap;opacity:0;transform:translateX(-10px);transition:opacity .2s ease .04s,transform .26s cubic-bezier(.22,1,.36,1) .04s}
+      #klinot-comed-bridge [data-klinot-log-label] b{font:800 13px system-ui;line-height:1.2}
+      #klinot-comed-bridge [data-klinot-log-label] i{font:600 11px system-ui;font-style:normal;opacity:.82;line-height:1.3}
       #klinot-comed-bridge [data-klinot-log-orb]:hover [data-klinot-log-label],#klinot-comed-bridge [data-klinot-log-orb]:focus-visible [data-klinot-log-label]{opacity:1;transform:none}
-      #klinot-comed-bridge [data-klinot-log-count]{position:absolute;right:40px;top:-7px;display:grid;place-items:center;min-width:22px;height:22px;padding:0 5px;border:2px solid #fff;border-radius:99px;background:#3158c8;color:#fff;font:800 10px system-ui;pointer-events:none}
-      #klinot-comed-bridge [data-klinot-log-panel]{position:absolute;right:70px;top:50%;width:min(430px,calc(100vw - 92px));max-height:min(520px,calc(100vh - 32px));overflow:hidden;background:#fff;color:#173143;border:1px solid #cddfe2;border-radius:18px;box-shadow:0 18px 48px #102b3a38;opacity:0;visibility:hidden;transform:translate(22px,-50%) scale(.96);transform-origin:right center;transition:opacity .2s ease,transform .2s ease,visibility .2s;pointer-events:none}
+      #klinot-comed-bridge [data-klinot-log-orb][aria-expanded="true"] [data-klinot-log-label]{opacity:0;transform:translateX(-10px)}
+      #klinot-comed-bridge [data-klinot-log-count]{position:absolute;right:-3px;top:-5px;display:grid;place-items:center;min-width:22px;height:22px;padding:0 6px;border:2px solid #fff;border-radius:99px;background:#3158c8;color:#fff;font:800 10px system-ui;pointer-events:none;box-shadow:0 3px 9px #0b253355}
+      #klinot-comed-bridge [data-klinot-log-panel]{position:absolute;right:72px;top:50%;width:min(420px,calc(100vw - 112px));max-height:min(520px,calc(100vh - 32px));display:flex;flex-direction:column;overflow:hidden;background:#fff;color:#173143;border:1px solid #d6e5e7;border-radius:20px;box-shadow:0 22px 56px #102b3a33;opacity:0;visibility:hidden;transform:translate(26px,-50%) scale(.94);transform-origin:right center;transition:opacity .24s ease,transform .3s cubic-bezier(.22,1,.36,1),visibility .24s;pointer-events:none}
       #klinot-comed-bridge [data-klinot-log-panel][aria-hidden="false"]{opacity:1;visibility:visible;transform:translate(0,-50%) scale(1);pointer-events:auto}
-      #klinot-comed-bridge [data-klinot-log-header]{display:flex;align-items:center;justify-content:space-between;padding:13px 14px;background:#f3f8f8;border-bottom:1px solid #dce9eb}
-      #klinot-comed-bridge [data-klinot-log-close]{width:30px;height:30px;border:0;border-radius:9px;background:#e4eeee;color:#36535a;font:800 18px system-ui;cursor:pointer}
-      #klinot-comed-bridge [data-klinot-log-summary]{padding:10px 14px;background:#087f78;color:#fff}
-      #klinot-comed-bridge [data-klinot-log-list]{max-height:min(385px,calc(100vh - 165px));overflow:auto;padding:5px 10px}
-      @media(max-width:620px){#klinot-comed-bridge [data-klinot-log-panel]{right:64px;width:calc(100vw - 76px)}}
-    </style><div data-klinot-log-shell><section data-klinot-log-panel aria-hidden="true"><div data-klinot-log-header><span><strong style="display:block;font-size:13px">İşlem günlüğü</strong><small data-klinot-log-panel-count style="color:#60777d;font-weight:600"></small></span><button data-klinot-log-close type="button" aria-label="İşlem günlüğünü kapat">×</button></div><div data-klinot-log-summary><strong data-klinot-log-title>Klinot hazır</strong><small data-klinot-log-context style="display:block;margin-top:3px;opacity:.82;font-weight:500;overflow-wrap:anywhere"></small></div><div data-klinot-log-list></div></section><button data-klinot-log-orb type="button" aria-expanded="false" aria-label="Klinot işlem günlüğünü aç"><span data-klinot-log-mark aria-hidden="true">K</span><span data-klinot-log-label>İşlem günlüğü</span></button><span data-klinot-log-count>0</span></div>`;
+      #klinot-comed-bridge [data-klinot-log-header]{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 15px;background:#f4f9f9;border-bottom:1px solid #e0edee}
+      #klinot-comed-bridge [data-klinot-log-close]{width:30px;height:30px;flex:0 0 auto;border:0;border-radius:10px;background:#e4eeee;color:#36535a;font:800 18px system-ui;cursor:pointer;transition:background .15s ease}
+      #klinot-comed-bridge [data-klinot-log-close]:hover{background:#d2e2e2}
+      #klinot-comed-bridge [data-klinot-log-summary]{padding:11px 15px;background:linear-gradient(135deg,#0a9289,#06706c);color:#fff}
+      #klinot-comed-bridge [data-klinot-log-list]{flex:1 1 auto;min-height:0;overflow:auto;padding:5px 11px;overscroll-behavior:contain}
+      @media(max-width:620px){#klinot-comed-bridge [data-klinot-log-panel]{right:66px;width:calc(100vw - 96px)}}
+    </style><div data-klinot-log-shell><section data-klinot-log-panel aria-hidden="true"><div data-klinot-log-header><span><strong style="display:block;font-size:13px">İşlem günlüğü</strong><small data-klinot-log-panel-count style="color:#60777d;font-weight:600"></small></span><button data-klinot-log-close type="button" aria-label="İşlem günlüğünü kapat">×</button></div><div data-klinot-log-summary><strong data-klinot-log-title>Klinot hazır</strong><small data-klinot-log-context style="display:block;margin-top:3px;opacity:.82;font-weight:500;overflow-wrap:anywhere"></small></div><div data-klinot-log-list></div></section><button data-klinot-log-orb type="button" aria-expanded="false" aria-label="Klinot işlem günlüğünü aç"><span data-klinot-log-mark aria-hidden="true">K</span><span data-klinot-log-label><b>Klinot</b><i data-klinot-log-tag>İşlem günlüğü</i></span></button><span data-klinot-log-count>0</span></div>`;
     const shell = box.querySelector("[data-klinot-log-shell]");
     const orb = box.querySelector("[data-klinot-log-orb]");
     const panel = box.querySelector("[data-klinot-log-panel]");
@@ -243,9 +251,17 @@
 
   function renderBridgeStatus(text, state) {
     const box = ensureBridgeBox();
-    const color = state === "ok" ? "#087454" : state === "bad" ? "#b5322d" : "#3158c8";
-    box.querySelector("[data-klinot-log-orb]").style.background = color;
-    box.querySelector("[data-klinot-log-count]").style.background = color;
+    const theme = state === "ok"
+      ? {solid: "#087454", grad: "linear-gradient(135deg,#0ea07e,#077053)", tag: "Tamamlandı"}
+      : state === "bad"
+        ? {solid: "#b5322d", grad: "linear-gradient(135deg,#d2514a,#a62b26)", tag: "Kontrol gerekli"}
+        : {solid: "#3158c8", grad: "linear-gradient(135deg,#4a71e0,#2a49ad)", tag: "İşleniyor"};
+    const orb = box.querySelector("[data-klinot-log-orb]");
+    orb.style.background = theme.grad;
+    orb.dataset.klinotBusy = state === "idle" ? "1" : "0";
+    box.querySelector("[data-klinot-log-tag]").textContent = theme.tag;
+    box.querySelector("[data-klinot-log-count]").style.background = theme.solid;
+    box.querySelector("[data-klinot-log-summary]").style.background = theme.grad;
     box.querySelector("[data-klinot-log-title]").textContent = `Klinot · ${text}`;
     box.querySelector("[data-klinot-log-context]").textContent = bridgeContext();
     const logs = bridgeLogs().slice().reverse();
@@ -296,10 +312,24 @@
     return (root?.innerText || "").replace(/\s+/g, " ").trim();
   }
 
+  // ``innerText`` yalnızca görünen metni döndürür; gizli paneldeki kimlik
+  // alanlarını da okuyabilmek için ham metin içeriğini verir.
+  function deepTextOf(root) {
+    return (root?.textContent || "").replace(/\s+/g, " ").trim();
+  }
+
   function parsePatientIdentity() {
     const identityRoots = [...document.querySelectorAll('[role="dialog"],.co-popover,.co-drawer,.patient-info')];
-    const raw = [identityRoots.map(textOf).join(" "), textOf(document.body)]
-      .join(" ").replace(/\u00a0/g, " ");
+    // COMED, hasta kimlik alanlar\u0131n\u0131 yaln\u0131zca "Hasta Bilgileri" a\u00e7\u0131l\u0131r panelinde
+    // g\u00f6sterir. ``innerText`` sadece g\u00f6r\u00fcnen metni verdi\u011fi i\u00e7in panel kapal\u0131yken
+    // TCKN ve do\u011fum tarihi okunam\u0131yor, hasta giri\u015fi de e\u015fle\u015femiyordu. Bu y\u00fczden
+    // g\u00f6r\u00fcn\u00fcr metne ek olarak gizli d\u00fc\u011f\u00fcmleri de kapsayan ``textContent`` taran\u0131r.
+    const raw = [
+      identityRoots.map(textOf).join(" "),
+      textOf(document.body),
+      identityRoots.map(deepTextOf).join(" "),
+      deepTextOf(document.body),
+    ].join(" ").replace(/\u00a0/g, " ");
     const phone = raw.match(/Telefon\s*[:\-]?\s*\(?0?(\d{3})\)?[\s-]*(\d{3})[\s-]*(\d{2})[\s-]*(\d{2})/i);
     const phoneDigits = phone ? phone.slice(1).join("") : "";
     const tckn = raw.match(/\b(?:T\.?\s*C\.?|TC)\s*(?:\/\s*(?:Pasaport|Passport))?\s*(?:No|Numarası|Kimlik\s*No)?\s*[:\-]?\s*(\d{11})\b/i)?.[1] || "";
@@ -427,12 +457,16 @@
   async function syncWorklist() {
     const items = parseWorklist();
     try {
+      // Boş ayrıştırma neredeyse her zaman "sayfa henüz yüklenmedi" demektir;
+      // doktorun gerçekten sıfır hastası olduğu anlamına gelmez. Bu durumda
+      // ``replace`` göndermeyiz, aksi halde sunucu mevcut iş listesini ve
+      // hastanın kimlik eşleşmesini siler.
       await request("/api/v1/mobile/comed/worklist/sync", {
-        method: "POST", body: JSON.stringify({items, replace: true}),
+        method: "POST", body: JSON.stringify({items, replace: items.length > 0}),
       });
       bridgeStatus(
-        items.length ? `${items.length} hasta iş listesine eşitlendi` : "İş listesi boş olarak eşitlendi",
-        "ok",
+        items.length ? `${items.length} hasta iş listesine eşitlendi` : "İş listesi okunamadı, mevcut liste korundu",
+        items.length ? "ok" : "idle",
       );
     } catch (error) {
       bridgeStatus(error.message, "bad");

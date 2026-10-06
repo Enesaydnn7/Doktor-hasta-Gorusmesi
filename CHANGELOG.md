@@ -1,5 +1,11 @@
 # Sürüm Geçmişi
 
+## v2.13.0 — 6 Ekim 2026
+
+- **Hasta girişi düzeltildi.** TCKN ve doğum tarihi COMED'de yalnızca "Hasta Bilgileri" açılır panelinde bulunuyor. Köprü bu alanları görünür metinden okuduğu için panel kapalıyken kimlik hiç yakalanmıyor, hasta uygulamasında "Kimlik bilgileriyle eşleşen aktif COMED randevusu bulunamadı" hatası çıkıyordu. Kimlik taraması artık gizli düğümleri de kapsıyor.
+- **İş listesi artık yanlışlıkla silinmiyor.** Sayfa henüz yüklenmemişken yapılan boş ayrıştırma `replace` ile gönderiliyor ve doktorun kayıtlı iş listesiyle birlikte hastanın kimlik eşleşmesini de siliyordu. Boş sonuç artık mevcut listeyi koruyor.
+- **COMED işlem günlüğü sohbet balonuna dönüştü.** Kenara yapışık dikdörtgen yerine ekrandan ayrık, yuvarlak ve sürüklenebilir bir balon; üzerine gelince yana doğru yumuşak açılıyor, tıklayınca günlük paneli ölçeklenerek beliriyor. İşlem sürerken balon nabız gibi atıyor, durum rengi gradyan olarak yansıyor.
+
 ## v2.10.3 — 1 Ekim 2026
 
 - Taslak temizleme, aktarım öncesi kalıcı COMED kayıtlarını fotoğraflar ve yalnızca son Klinot aktarımının eklediği ICD, Özgeçmiş ve Soygeçmiş kayıtlarını çöp kutusu işlemleriyle geri alır.

@@ -1,4 +1,5 @@
 import json
+import re
 import unittest
 from pathlib import Path
 
@@ -17,11 +18,31 @@ class ComedExtensionTests(unittest.TestCase):
         self.assertIn("async function fillFormDraft", source)
         self.assertIn("POST şablonu yok · alanlar eklentiyle dolduruluyor", source)
 
-    def test_operation_log_is_a_right_edge_expandable_bubble(self):
+    def test_patient_identity_is_read_even_when_info_panel_is_collapsed(self):
+        """TCKN ve doğum tarihi yalnız açılır panelde; gizliyken de okunmalı."""
+        source = (EXTENSION / "content.js").read_text(encoding="utf-8")
+
+        self.assertIn("function deepTextOf", source)
+        self.assertIn("root?.textContent", source)
+        self.assertIn("deepTextOf(document.body)", source)
+
+    def test_empty_worklist_never_replaces_stored_patients(self):
+        """Boş ayrıştırma sayfa yüklenmemiş demektir; kayıtlı liste silinmemeli."""
+        source = (EXTENSION / "content.js").read_text(encoding="utf-8")
+
+        self.assertIn("replace: items.length > 0", source)
+        self.assertNotIn("JSON.stringify({items, replace: true})", source)
+
+    def test_operation_log_is_a_floating_chat_bubble(self):
         source = (EXTENSION / "content.js").read_text(encoding="utf-8")
 
         self.assertIn("data-klinot-log-orb", source)
-        self.assertIn('right: "0"', source)
+        # Balon kenara yapışık değil; sohbet görüşmesi gibi ekrandan ayrık durur.
+        self.assertIn('right: "20px"', source)
+        self.assertIn("border-radius:28px", source)
+        self.assertIn("@keyframes klinot-orb-in", source)
+        self.assertIn("@keyframes klinot-pulse", source)
+        self.assertIn('data-klinot-busy="1"', source)
         self.assertIn('[data-klinot-log-orb]:hover', source)
         self.assertIn("saveBridgeWidgetState({top})", source)
         self.assertNotIn("saveBridgeWidgetState({left, top})", source)
@@ -106,8 +127,14 @@ class ComedExtensionTests(unittest.TestCase):
         self.assertNotIn("saveAndSign", source)
 
     def test_manifest_declares_current_version(self):
+        """Eklenti sürümü uygulama sürümüyle aynı kalmalı (elle senkron tutma)."""
         manifest = json.loads((EXTENSION / "manifest.json").read_text(encoding="utf-8"))
-        self.assertEqual(manifest["version"], "2.12.0")
+        app_version = re.search(
+            r'APP_VERSION\s*=\s*os\.getenv\(\s*"APP_VERSION"\s*,\s*"v([\d.]+)"',
+            (ROOT / "config.py").read_text(encoding="utf-8"),
+        )
+        self.assertIsNotNone(app_version, "config.py içinde APP_VERSION bulunamadı")
+        self.assertEqual(manifest["version"], app_version.group(1))
         self.assertIn("tabs", manifest["permissions"])
         scripts = [item for item in manifest["content_scripts"]
                    if "doctor_bridge.js" in item.get("js", [])]
