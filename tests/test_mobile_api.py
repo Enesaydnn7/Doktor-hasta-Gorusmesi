@@ -69,22 +69,35 @@ class MobileApiTests(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 401)
 
-    def test_patient_login_returns_patient_identity_and_rejects_wrong_role(self):
-        response = self.client.post(
-            "/api/v1/mobile/auth/login",
-            json={
-                "username": "476644",
-                "password": "1",
-                "requested_role": "patient",
-            },
-        )
+    def test_patient_otp_login_matches_comed_identity_and_returns_patient(self):
+        patient = {
+            "patient_no": "1300013",
+            "patient_name": "Sena Nur Deneme Hastasıdır",
+            "phone_masked": "*** *** 42 60",
+        }
+        with (
+            patch.object(auth, "PATIENT_TEST_OTP_ENABLED", True),
+            patch.object(main.db, "comed_patient_by_identity", return_value=patient),
+            patch.object(main.db, "comed_patient_appointments", return_value=[patient]),
+        ):
+            started = self.client.post(
+                "/api/v1/mobile/auth/patient/otp/start",
+                json={"tckn": "28411425816", "birth_date": "22.10.1997"},
+            )
+            self.assertEqual(started.status_code, 200)
+            challenge_id = started.json()["challenge_id"]
+            response = self.client.post(
+                "/api/v1/mobile/auth/patient/otp/verify",
+                json={"challenge_id": challenge_id, "code": "000000"},
+            )
+
         self.assertEqual(response.status_code, 200)
         payload = response.json()
         self.assertEqual(payload["user"]["role"], "patient")
-        self.assertEqual(payload["user"]["patient_no"], "476644")
-        self.assertEqual(payload["user"]["display_name"], "Dursun Kılıçarslan")
+        self.assertEqual(payload["user"]["patient_no"], "1300013")
+        self.assertEqual(payload["user"]["display_name"], "Sena Nur Deneme Hastasıdır")
         token_info = auth.api_token_bilgisi(payload["access_token"])
-        self.assertEqual(token_info["patient_no"], "476644")
+        self.assertEqual(token_info["patient_no"], "1300013")
 
         wrong_role = self.client.post(
             "/api/v1/mobile/auth/login",
@@ -94,7 +107,9 @@ class MobileApiTests(unittest.TestCase):
                 "requested_role": "doctor",
             },
         )
-        self.assertEqual(wrong_role.status_code, 403)
+        # Eski hasta-no/şifre yolu varsayılan olarak kapalıdır; doktor rolüyle
+        # denenen hasta numarası artık geçerli bir kullanıcı değildir.
+        self.assertEqual(wrong_role.status_code, 401)
 
     def test_patient_worklist_is_filtered_by_patient_number(self):
         token = auth.api_token_uret("476644", "patient")
@@ -116,6 +131,32 @@ class MobileApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["items"], appointments)
         patient_appointments.assert_called_once_with("476644")
+
+    def test_worklist_sync_hashes_identity_and_drops_raw_patient_data(self):
+        token = auth.api_token_uret("dr-enes", "doctor")
+        item = {
+            "visit_id": "visit-1",
+            "clinical_card_id": "card-1",
+            "patient_name": "Test Hasta",
+            "tckn": "28411425816",
+            "birth_date": "22.10.1997",
+            "phone": "05349744260",
+            "phone_masked": "*** *** 42 60",
+        }
+        with patch.object(main.db, "comed_worklist_sync", return_value=1) as sync:
+            response = self.client.post(
+                "/api/v1/mobile/comed/worklist/sync",
+                headers={"Authorization": f"Bearer {token}"},
+                json={"items": [item]},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        saved = sync.call_args.args[0][0]
+        self.assertNotIn("tckn", saved)
+        self.assertNotIn("birth_date", saved)
+        self.assertNotIn("phone", saved)
+        self.assertEqual(saved["phone_masked"], "*** *** 42 60")
+        self.assertRegex(saved["patient_identity_hash"], r"^[0-9a-f]{64}$")
 
     def test_admin_lists_all_records_and_doctor_lists_only_own_records(self):
         admin_token = auth.api_token_uret("admin", "admin")

@@ -16,6 +16,14 @@ class ComedExtensionTests(unittest.TestCase):
         self.assertIn("function setValue", source)
         self.assertIn("async function fillFormDraft", source)
         self.assertIn("POST şablonu yok · alanlar eklentiyle dolduruluyor", source)
+
+    def test_operation_log_can_collapse_and_drag_as_a_floating_orb(self):
+        source = (EXTENSION / "content.js").read_text(encoding="utf-8")
+
+        self.assertIn("data-klinot-log-orb", source)
+        self.assertIn("bindDrag(handle)", source)
+        self.assertIn("bindDrag(orb)", source)
+        self.assertIn("saveBridgeWidgetState({left, top})", source)
         self.assertIn("const hasMainPost", source)
         self.assertIn("POST tamamlanamadı · alanlar eklentiyle dolduruluyor", source)
         self.assertIn("throw postError || new Error", source)
@@ -59,8 +67,12 @@ class ComedExtensionTests(unittest.TestCase):
         self.assertIn("Aktarım bitti · Genel doktor kontrolü gerekli", source)
         self.assertIn("klinot_comed_bridge_log_v1", source)
         self.assertIn("İşlem günlüğü", source)
-        self.assertIn('right: "18px"', source)
+        self.assertIn('right: widgetState.left == null ? "18px"', source)
         self.assertNotIn('position: "fixed", left: "18px"', source)
+        self.assertIn("data-klinot-log-orb", source)
+        self.assertIn("data-klinot-log-drag", source)
+        self.assertIn("bridgeContext()", source)
+        self.assertIn("parsePatientIdentity()", source)
         self.assertIn("data-klinot-log-panel-count", source)
         self.assertIn("Kontrol gerekli", source)
         self.assertIn("bridgeFieldStatus(field, ok)", source)
@@ -93,7 +105,7 @@ class ComedExtensionTests(unittest.TestCase):
 
     def test_manifest_declares_current_version(self):
         manifest = json.loads((EXTENSION / "manifest.json").read_text(encoding="utf-8"))
-        self.assertEqual(manifest["version"], "2.10.3")
+        self.assertEqual(manifest["version"], "2.11.0")
         self.assertIn("tabs", manifest["permissions"])
         scripts = [item for item in manifest["content_scripts"]
                    if "doctor_bridge.js" in item.get("js", [])]

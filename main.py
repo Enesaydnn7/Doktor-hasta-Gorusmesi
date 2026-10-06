@@ -11,6 +11,7 @@ import asyncio
 import hashlib
 import json
 import logging
+import os
 import re
 import uuid
 from contextlib import suppress
@@ -26,6 +27,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, Response, RedirectResp
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
+import httpx
 
 import config
 import llm
@@ -48,7 +50,7 @@ print(
     f"[klinik-analiz] surum={config.APP_VERSION} analiz={config.GEMINI_MODEL} "
     f"({'anahtar var' if config.GEMINI_API_KEY else 'ANAHTAR YOK'}) | "
     f"stt={config.stt_label()} "
-    f"({'anahtar var' if config.ELEVENLABS_API_KEY else 'ANAHTAR YOK'}) | "
+    f"({'anahtar var' if config.OPENAI_API_KEY else 'ANAHTAR YOK'}) | "
     f"openai-yedek={config.OPENAI_STT_MODEL}/{config.OPENAI_STT_FALLBACK_MODEL} "
     f"({'anahtar var' if config.OPENAI_API_KEY else 'ANAHTAR YOK'}) | admin=/admin/login"
 )
@@ -157,6 +159,16 @@ class MobileLoginIn(BaseModel):
     password: str
     client_type: str | None = None
     requested_role: str | None = None
+
+
+class PatientOtpStartIn(BaseModel):
+    tckn: str
+    birth_date: str
+
+
+class PatientOtpVerifyIn(BaseModel):
+    challenge_id: str
+    code: str
 
 
 class PdfIn(BaseModel):
@@ -479,15 +491,86 @@ async def mobile_login(body: MobileLoginIn):
     }
 
 
+@app.post("/api/v1/mobile/auth/patient/otp/start")
+async def mobile_patient_otp_start(body: PatientOtpStartIn):
+    """T.C. kimlik + doğum tarihi eşleşmesinden tek kullanımlık SMS oturumu başlat."""
+    if not auth.valid_tckn(body.tckn):
+        raise HTTPException(status_code=422, detail="T.C. kimlik numarası geçersiz")
+    try:
+        identity_hash = auth.patient_identity_hash(body.tckn, body.birth_date)
+    except ValueError:
+        raise HTTPException(status_code=422, detail="Doğum tarihi geçersiz") from None
+    patient = db.comed_patient_by_identity(identity_hash)
+    if not patient:
+        raise HTTPException(
+            status_code=404,
+            detail="Kimlik bilgileriyle eşleşen aktif COMED randevusu bulunamadı",
+        )
+
+    challenge_id, otp_code, expires_in = auth.patient_otp_create(patient["patient_no"])
+    sms_webhook = os.getenv("PATIENT_SMS_WEBHOOK_URL", "").strip()
+    if sms_webhook:
+        try:
+            async with httpx.AsyncClient(timeout=20) as client:
+                response = await client.post(
+                    sms_webhook,
+                    json={
+                        "patient_no": patient["patient_no"],
+                        "phone_masked": patient.get("phone_masked") or "",
+                        "code": otp_code,
+                        "expires_in": expires_in,
+                    },
+                )
+                response.raise_for_status()
+        except Exception:
+            logger.exception("Hasta OTP SMS servisi çağrılamadı")
+            raise HTTPException(status_code=503, detail="SMS doğrulama servisine ulaşılamadı") from None
+    elif not auth.PATIENT_TEST_OTP_ENABLED:
+        raise HTTPException(status_code=503, detail="SMS doğrulama servisi yapılandırılmadı")
+
+    return {
+        "challenge_id": challenge_id,
+        "expires_in": expires_in,
+        "phone_masked": patient.get("phone_masked") or "kayıtlı telefon",
+        "test_mode": auth.PATIENT_TEST_OTP_ENABLED,
+    }
+
+
+@app.post("/api/v1/mobile/auth/patient/otp/verify")
+async def mobile_patient_otp_verify(body: PatientOtpVerifyIn):
+    patient_no = auth.patient_otp_verify(body.challenge_id, body.code)
+    if not patient_no:
+        raise HTTPException(status_code=401, detail="Doğrulama kodu hatalı veya süresi doldu")
+    appointments = db.comed_patient_appointments(patient_no, limit=1)
+    patient = appointments[0] if appointments else {}
+    display_name = str(patient.get("patient_name") or "Hasta")
+    return {
+        "access_token": auth.api_token_uret(patient_no, "patient"),
+        "token_type": "bearer",
+        "expires_in": auth.MOBILE_API_MAX_AGE,
+        "user": {
+            "username": patient_no,
+            "role": "patient",
+            "display_name": display_name,
+            "patient_no": patient_no,
+        },
+        "api_version": "v1",
+    }
+
+
 @app.get("/api/v1/mobile/auth/session")
 async def mobile_session(user: dict = Depends(mobile_auth)):
     """Uygulama açılışında saklanan mobil oturumu doğrula."""
+    patient_item = (
+        (db.comed_patient_appointments(user.get("patient_no", user["user"]), limit=1) or [{}])[0]
+        if user["role"] == "patient" else {}
+    )
     return {
         "valid": True,
         "user": {
             "username": user["user"],
             "role": user["role"],
-            "display_name": user.get("display_name") or user["user"],
+            "display_name": patient_item.get("patient_name") or user.get("display_name") or user["user"],
             **(
                 {"patient_no": user.get("patient_no", user["user"])}
                 if user["role"] == "patient" else {}
@@ -641,8 +724,20 @@ async def mobile_comed_worklist_sync(
     body: ComedWorklistSyncIn,
     user: dict = Depends(mobile_doctor),
 ):
+    sanitized_items = []
+    for raw_item in body.items[:200]:
+        item = dict(raw_item)
+        tckn = str(item.pop("tckn", item.pop("national_id", "")) or "")
+        birth_date = str(item.pop("birth_date", "") or "")
+        if tckn and birth_date:
+            try:
+                item["patient_identity_hash"] = auth.patient_identity_hash(tckn, birth_date)
+            except ValueError:
+                logger.warning("COMED hasta kimliği doğum tarihi geçersiz; visit=%s", item.get("visit_id"))
+        item.pop("phone", None)
+        sanitized_items.append(item)
     count = db.comed_worklist_sync(
-        body.items[:200], synced_by=user["user"], replace=body.replace
+        sanitized_items, synced_by=user["user"], replace=body.replace
     )
     return {"synced": count}
 
@@ -1142,24 +1237,19 @@ async def admin_sil(kid: int, request: Request):
 
 @app.get("/health")
 async def health():
-    elevenlabs_configured = bool(config.ELEVENLABS_API_KEY)
     openai_configured = bool(config.OPENAI_API_KEY)
     return {
         "status": "ok",
         "version": config.APP_VERSION,
         "model": config.GEMINI_MODEL,
-        "stt_provider": "ElevenLabs" if elevenlabs_configured else "OpenAI",
-        "stt_model": (
-            config.ELEVENLABS_STT_MODEL
-            if elevenlabs_configured
-            else config.OPENAI_STT_MODEL
-        ),
-        "stt_primary_model": config.ELEVENLABS_STT_MODEL,
-        "stt_provider_fallback_model": config.OPENAI_STT_MODEL,
+        "stt_provider": "OpenAI",
+        "stt_model": config.OPENAI_STT_MODEL,
+        "stt_primary_model": config.OPENAI_STT_MODEL,
+        "stt_provider_fallback_model": None,
         "stt_fallback_model": config.OPENAI_STT_FALLBACK_MODEL,
         "role_model": config.GEMINI_MODEL,
-        "stt_api_configured": elevenlabs_configured or openai_configured,
-        "elevenlabs_stt_configured": elevenlabs_configured,
+        "stt_api_configured": openai_configured,
+        "elevenlabs_stt_configured": False,
         "openai_stt_configured": openai_configured,
         "audio_converter": False,
     }

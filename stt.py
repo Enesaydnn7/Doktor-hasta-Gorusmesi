@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""ElevenLabs birincil, OpenAI yedek konuşmacı ayrımlı ses -> metin katmanı."""
+"""OpenAI konuşmacı ayrımlı ses -> metin katmanı."""
 from __future__ import annotations
 
 import os
@@ -402,28 +402,9 @@ def transcribe(data: bytes, mime: str = "audio/mpeg", filename: str = ""):
     source_mime = mime
     prepared_name, prepared_data, prepared_mime = _prepare_audio(data, mime, filename)
     started = time.monotonic()
-    if config.ELEVENLABS_API_KEY:
-        try:
-            text, usage = _elevenlabs_transcribe(
-                prepared_data, prepared_mime, prepared_name
-            )
-            if not text:
-                raise ValueError("Scribe kayıtta çevrilebilir konuşma bulamadı.")
-        except Exception as exc:
-            logger.exception("ElevenLabs STT başarısız; OpenAI yedeği denenecek")
-            if not config.OPENAI_API_KEY:
-                raise RuntimeError(
-                    "ElevenLabs ses dökümü başarısız oldu ve OPENAI_API_KEY yedeği ayarlı değil."
-                ) from exc
-            text, usage = _openai_transcribe(
-                prepared_data, prepared_mime, prepared_name
-            )
-            usage["provider_fallback_used"] = True
-            usage["provider_fallback_from"] = (
-                f"ElevenLabs · {config.ELEVENLABS_STT_MODEL}"
-            )
-    else:
-        text, usage = _openai_transcribe(prepared_data, prepared_mime, prepared_name)
+    if not config.OPENAI_API_KEY:
+        raise RuntimeError("OPENAI_API_KEY ayarlı değil; ses dökümü başlatılamadı.")
+    text, usage = _openai_transcribe(prepared_data, prepared_mime, prepared_name)
     usage["seconds"] = round(time.monotonic() - started, 1)
 
     if not text:

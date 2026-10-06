@@ -7,6 +7,28 @@ import db
 
 
 class MobileDatabaseTests(unittest.TestCase):
+    def test_comed_identity_keeps_only_hash_not_plain_birth_date(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "identity.db"
+            with (
+                patch.object(db, "DB_PATH", str(path)),
+                patch.dict("os.environ", {"SEED_MANAGER_DEMO": "false"}),
+            ):
+                db.init()
+                db.comed_worklist_sync(
+                    [{
+                        "visit_id": "visit-identity",
+                        "patient_name": "Test Hasta",
+                        "patient_identity_hash": "a" * 64,
+                        "birth_date": "22.10.1997",
+                    }],
+                    synced_by="doctor-a",
+                )
+                row = db.comed_worklist(synced_by="doctor-a")[0]
+
+        self.assertEqual(row["patient_identity_hash"], "a" * 64)
+        self.assertEqual(row["birth_date"], "")
+
     def test_patient_appointments_include_only_that_patient_and_deduplicate_visits(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "patient-worklist.db"

@@ -11,6 +11,9 @@ import base64
 import hashlib
 import json
 import secrets
+import re
+import threading
+from datetime import datetime
 
 COOKIE = "klinik_session"
 MAX_AGE = int(os.getenv("SESSION_HOURS", "12")) * 3600
@@ -112,6 +115,84 @@ _fallback_secret = hashlib.sha256(
 ).hexdigest()
 SECRET = (_configured_secret or _fallback_secret).encode()
 
+PATIENT_TEST_OTP_ENABLED = os.getenv("PATIENT_TEST_OTP_ENABLED", "false").strip().lower() in {
+    "1", "true", "yes", "on",
+}
+PATIENT_TEST_OTP = "000000"
+PATIENT_OTP_TTL_SECONDS = int(os.getenv("PATIENT_OTP_TTL_SECONDS", "300"))
+PATIENT_OTP_MAX_ATTEMPTS = int(os.getenv("PATIENT_OTP_MAX_ATTEMPTS", "5"))
+_PATIENT_OTP_LOCK = threading.Lock()
+_PATIENT_OTP_CHALLENGES: dict[str, dict] = {}
+
+
+def normalize_tckn(value: str) -> str:
+    return re.sub(r"\D", "", value or "")
+
+
+def valid_tckn(value: str) -> bool:
+    """T.C. kimlik numarasının biçim ve resmi kontrol basamaklarını doğrula."""
+    digits = normalize_tckn(value)
+    if len(digits) != 11 or digits[0] == "0":
+        return False
+    values = [int(char) for char in digits]
+    tenth = ((sum(values[0:9:2]) * 7) - sum(values[1:8:2])) % 10
+    eleventh = sum(values[:10]) % 10
+    return values[9] == tenth and values[10] == eleventh
+
+
+def normalize_birth_date(value: str) -> str:
+    raw = (value or "").strip()
+    for fmt in ("%d.%m.%Y", "%Y-%m-%d", "%d/%m/%Y"):
+        try:
+            return datetime.strptime(raw, fmt).date().isoformat()
+        except ValueError:
+            pass
+    raise ValueError("Doğum tarihi geçersiz")
+
+
+def patient_identity_hash(tckn: str, birth_date: str) -> str:
+    normalized = f"{normalize_tckn(tckn)}|{normalize_birth_date(birth_date)}"
+    return hmac.new(SECRET, normalized.encode("utf-8"), hashlib.sha256).hexdigest()
+
+
+def patient_otp_create(patient_no: str) -> tuple[str, str, int]:
+    """Tek kullanımlık OTP üret; düz kodu yalnız SMS göndericisine döndür."""
+    challenge_id = secrets.token_urlsafe(24)
+    code = f"{secrets.randbelow(1_000_000):06d}"
+    now = int(time.time())
+    with _PATIENT_OTP_LOCK:
+        for key, item in list(_PATIENT_OTP_CHALLENGES.items()):
+            if int(item.get("expires_at", 0)) <= now:
+                _PATIENT_OTP_CHALLENGES.pop(key, None)
+        _PATIENT_OTP_CHALLENGES[challenge_id] = {
+            "patient_no": str(patient_no),
+            "code_hash": hmac.new(SECRET, code.encode(), hashlib.sha256).hexdigest(),
+            "expires_at": now + PATIENT_OTP_TTL_SECONDS,
+            "attempts": 0,
+            "used": False,
+        }
+    return challenge_id, code, PATIENT_OTP_TTL_SECONDS
+
+
+def patient_otp_verify(challenge_id: str, code: str) -> str | None:
+    candidate = re.sub(r"\D", "", code or "")
+    now = int(time.time())
+    with _PATIENT_OTP_LOCK:
+        item = _PATIENT_OTP_CHALLENGES.get(challenge_id or "")
+        if not item or item["used"] or int(item["expires_at"]) <= now:
+            return None
+        item["attempts"] += 1
+        if item["attempts"] > PATIENT_OTP_MAX_ATTEMPTS:
+            return None
+        expected = hmac.new(SECRET, candidate.encode(), hashlib.sha256).hexdigest()
+        valid = hmac.compare_digest(expected, item["code_hash"])
+        if PATIENT_TEST_OTP_ENABLED and secrets.compare_digest(candidate, PATIENT_TEST_OTP):
+            valid = True
+        if not valid:
+            return None
+        item["used"] = True
+        return str(item["patient_no"])
+
 
 def _sign(msg: str) -> str:
     return base64.urlsafe_b64encode(
@@ -178,7 +259,10 @@ def api_giris_rolu(user: str, password: str) -> str | None:
     account = doktor_bilgisi(user)
     if account and secrets.compare_digest(password or "", account["password"]):
         return "doctor"
-    account = hasta_bilgisi(user)
+    legacy_patient_login = os.getenv("PATIENT_LEGACY_LOGIN_ENABLED", "false").strip().lower() in {
+        "1", "true", "yes", "on",
+    }
+    account = hasta_bilgisi(user) if legacy_patient_login else None
     if account and secrets.compare_digest(password or "", account["password"]):
         return "patient"
     return None

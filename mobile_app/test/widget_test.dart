@@ -15,6 +15,27 @@ import 'package:klinot/theme.dart';
 
 class FakeApi implements KlinotApi {
   @override
+  Future<PatientOtpChallenge> startPatientOtp(
+    String tckn,
+    String birthDate,
+  ) async => const PatientOtpChallenge(
+    challengeId: 'test-challenge',
+    expiresIn: 300,
+    phoneMasked: '*** ** 60',
+    testMode: true,
+  );
+
+  @override
+  Future<UserSession> verifyPatientOtp(String challengeId, String code) async =>
+      const UserSession(
+        token: 'patient-token',
+        username: '1300013',
+        role: 'patient',
+        displayName: 'Test Hasta',
+        patientNo: '1300013',
+      );
+
+  @override
   Future<UserSession> login(
     String username,
     String password, {
@@ -226,7 +247,7 @@ void main() {
     );
 
     expect(find.text('Klinot'), findsOneWidget);
-    expect(find.textContaining('v2.10.3'), findsOneWidget);
+    expect(find.textContaining('v2.11.0'), findsOneWidget);
     await tester.enterText(find.byKey(const Key('usernameField')), 'admin');
     await tester.enterText(find.byKey(const Key('passwordField')), 'secret');
     await tester.tap(find.byKey(const Key('loginButton')));
@@ -250,14 +271,27 @@ void main() {
 
     await tester.tap(find.text('Hasta'));
     await tester.pumpAndSettle();
-    await tester.enterText(find.byKey(const Key('usernameField')), '476644');
-    await tester.enterText(find.byKey(const Key('passwordField')), '1');
+    await tester.enterText(
+      find.byKey(const Key('patientTcknField')),
+      '28411425816',
+    );
+    await tester.enterText(
+      find.byKey(const Key('patientBirthDateField')),
+      '22.10.1997',
+    );
+    await tester.ensureVisible(find.byKey(const Key('loginButton')));
+    await tester.tap(find.byKey(const Key('loginButton')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('patientOtpField')), findsOneWidget);
+    await tester.ensureVisible(find.byKey(const Key('patientOtpField')));
+    await tester.enterText(find.byKey(const Key('patientOtpField')), '000000');
+    await tester.ensureVisible(find.byKey(const Key('loginButton')));
     await tester.tap(find.byKey(const Key('loginButton')));
     await tester.pumpAndSettle();
 
     expect(loggedIn?.role, 'patient');
-    expect(loggedIn?.patientNo, '476644');
-    expect(loggedIn?.displayName, 'Dursun Kılıçarslan');
+    expect(loggedIn?.patientNo, '1300013');
+    expect(loggedIn?.displayName, 'Test Hasta');
   });
 
   testWidgets('mobile shell never exposes a management panel', (tester) async {

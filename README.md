@@ -1,4 +1,4 @@
-# Klinik Görüşme Analiz Paneli — Scribe/OpenAI ses dökümü + Gemini analiz
+# Klinik Görüşme Analiz Paneli — OpenAI ses dökümü + Gemini analiz
 
 Doktor–hasta görüşmesinin metnini alır, **Gemini** ile aynı görüşmeden üç rapor ve COMED alan taslağını paralel üretir.
 Epikriz şeması, gerçek hastane epikrizlerinin yapısına göre kurulmuştur (sigorta/kayıt uyumlu).
@@ -52,16 +52,15 @@ Tarayıcı: **http://127.0.0.1:8000** → "Örnek yükle" → "Analiz et".
 
 GEMINI_API_KEY=...
 GEMINI_MODEL=gemini-2.5-flash
-APP_VERSION=v2.10.3
+APP_VERSION=v2.11.0
 COMED_WEB_BASE_URL=http://goztepe.comedtest.mlpcare.com/tr-tr/medical
 COMED_API_BASE_URL=http://goztepe.comedtestapi.mlpcare.com/tr-tr/api/json
 MOBILE_SESSION_DAYS=30
-ELEVENLABS_API_KEY=...
-ELEVENLABS_STT_MODEL=scribe_v2
-ELEVENLABS_STT_LANGUAGE=tr
 OPENAI_API_KEY=...
 OPENAI_STT_MODEL=gpt-4o-transcribe-diarize
 OPENAI_STT_FALLBACK_MODEL=gpt-transcribe
+PATIENT_SMS_WEBHOOK_URL=https://sms-servisiniz.example/send
+PATIENT_TEST_OTP_ENABLED=false
 ```
 
 ## Dosyalar
@@ -70,7 +69,7 @@ OPENAI_STT_FALLBACK_MODEL=gpt-transcribe
 |---|---|
 | `main.py` | FastAPI; `/analyze` |
 | `llm.py` | Gemini çağrısı; görüşme tarihini ekler; 3 rapor ile COMED taslağını paralel üretir |
-| `stt.py` | ElevenLabs Scribe v2, OpenAI yedeği ve konuşmacı etiketleme |
+| `stt.py` | OpenAI konuşmacı ayrımlı ses dökümü ve konuşmacı etiketleme |
 | `role_classifier.py` | Konuşmacı metinlerinden Gemini ile yalnızca doktor/hasta rol eşlemesi |
 | `prompts.py` | Hasta, doktor, yönetim ve COMED system promptları |
 | `comed_integration.py` | COMED taslağı normalizasyonu, zorunlu alan kontrolü ve aktarım paketi |
@@ -83,7 +82,7 @@ OPENAI_STT_FALLBACK_MODEL=gpt-transcribe
 
 ## Notlar
 
-- Giriş metin veya sestir; ses öncelikle Scribe v2, servis kullanılamazsa OpenAI API ile konuşmacı ayrımlı metne çevrilir.
+- Giriş metin veya sestir; ses yalnızca OpenAI API ile konuşmacı ayrımlı metne çevrilir.
 - KVKK: gerçek hasta verisinde kurum politikanıza göre ilerleyin; gerekirse `llm.py`'deki
   bağlantıyı kendi sunucunuzdaki bir modele çevirin.
 
@@ -123,11 +122,8 @@ OPENAI_STT_FALLBACK_MODEL=gpt-transcribe
 4. **Environment** sekmesinden değişkenleri gir:
    - `GEMINI_API_KEY` = (anahtarın)
    - `GEMINI_MODEL` = `gemini-2.5-flash`
-   - `APP_VERSION` = `v2.10.3`
+   - `APP_VERSION` = `v2.11.0`
    - `MOBILE_SESSION_DAYS` = `30`
-   - `ELEVENLABS_API_KEY` = (ElevenLabs API anahtarın)
-   - `ELEVENLABS_STT_MODEL` = `scribe_v2`
-   - `ELEVENLABS_STT_LANGUAGE` = `tr`
    - `OPENAI_API_KEY` = (OpenAI Platform anahtarın)
    - `OPENAI_STT_MODEL` = `gpt-4o-transcribe-diarize`
    - `OPENAI_STT_FALLBACK_MODEL` = `gpt-transcribe`
@@ -143,7 +139,6 @@ OPENAI_STT_FALLBACK_MODEL=gpt-transcribe
 3. Space'in dosyalarına bu projeyi yükle (yine `.env` hariç).
 4. Space **Settings  →  Secrets** kısmına ekle:
    - `GEMINI_API_KEY`, `GEMINI_MODEL=gemini-2.5-flash`
-   - `ELEVENLABS_API_KEY`, `ELEVENLABS_STT_MODEL=scribe_v2`, `ELEVENLABS_STT_LANGUAGE=tr`
    - `OPENAI_API_KEY`, `OPENAI_STT_MODEL=gpt-4o-transcribe-diarize`
 5. Space otomatik derlenir; `https://kullanici-adi-space-adi.hf.space` linkini paylaşırsın.
 
@@ -161,20 +156,19 @@ OPENAI_STT_FALLBACK_MODEL=gpt-transcribe
 Panelde metin kutusunun üstünde **Kaydet** ve **Ses dosyası yükle** var:
 1. Önce listeden mikrofonu seçip **Mikrofonu test et** düğmesine bas. Konuşurken canlı seviye çubuğu hareket etmeli.
 2. Görüşme sesini mikrofonla kaydet ya da hazır ses dosyası (mp3/wav/m4a/ogg...) yükle.
-3. Sistem sesi öncelikle ElevenLabs `scribe_v2` ile Türkçe metne döker; görüşmenin iki konuşmacılı olduğunu bildirir
-   ve tıbbi anahtar terimlerle kelime tanımayı güçlendirir.
-4. Scribe kullanılamazsa OpenAI `gpt-4o-transcribe-diarize` otomatik yedektir. Onun segment ve birleşik metni de
-   boşsa son kez OpenAI `gpt-transcribe` denenir. Bilgisayara veya Render'a model indirilmez.
+3. Sistem sesi doğrudan OpenAI `gpt-4o-transcribe-diarize` ile Türkçe metne ve konuşmacı segmentlerine dönüştürür.
+4. Diarization yanıtı boş kalırsa yalnızca OpenAI `gpt-transcribe` modeli denenir. ElevenLabs çağrısı yapılmaz;
+   bilgisayara veya Render'a yerel model indirilmez.
 5. Gemini yalnızca A/B konuşmacılarından hangisinin doktor, hangisinin hasta olduğunu cümlelerin anlamından seçer.
 6. Metin, düzenlenebilir kutuya düşer — kontrol edip düzeltirsin.
 7. "Analiz et" ile üç rapor ve COMED alan taslağı aynı anda üretilir.
 
 ### COMED Chrome köprüsü
 
-Hazır eklenti paketi: [`build_artifacts/klinot-comed-bridge-v2.10.3.zip`](build_artifacts/klinot-comed-bridge-v2.10.3.zip).
+Hazır eklenti paketi: [`build_artifacts/klinot-comed-bridge-v2.11.0.zip`](build_artifacts/klinot-comed-bridge-v2.11.0.zip).
 ZIP'i klasöre çıkardıktan sonra [`build_artifacts/README.md`](build_artifacts/README.md) içindeki adımları izleyin.
 COMED oturumu Chrome'da normal şekilde açılır; eklentiye COMED parolası değil, mobil Klinot hesabı girilir.
-v2.10.3 doktor panelinden aktarım başlatıldığında açık COMED sekmesini yeniden kullanır;
+v2.11.0 doktor panelinden aktarım başlatıldığında açık COMED sekmesini yeniden kullanır;
 COMED oturumu kapalıysa giriş tamamlandıktan sonra hedef hasta kartına otomatik dönüp aktarımı sürdürür.
 Aynı protokol için doğrulanmış COMED kayıt gövdesi varsa izin listeli POST'u
 kullanır; şablon yoksa açık hasta kartını ve ayrı Sistem Sorgulama belgesini eklenti
@@ -186,27 +180,20 @@ ardından kaydedilmemiş değişiklik uyarısı göstermeden otomatik yenilenir.
 
 ### STT model seçimi ve ücret
 
-- OpenAI, `gpt-transcribe` modelini yüksek doğruluklu STT modeli; `gpt-4o-transcribe-diarize` modelini ise
-  konuşmacıyı belirleyen model olarak belgeliyor.
-- ElevenLabs, Scribe v2 için Türkçeyi kendi ölçümünde **Excellent (≤%5 WER)** sınıfında gösteriyor ve modelde
-  32 konuşmacıya kadar diarization ile anahtar terim desteği bulunuyor. Bu oran üreticinin kendi ölçümüdür;
-  bağımsız klinik doğrulama değildir.
-- Bu projenin Türkçe + iki konuşmacı + tıbbi terim ihtiyacı nedeniyle Scribe v2 birincil seçildi.
-- Scribe v2 liste fiyatı `$0.22/saat`; etkin tıbbi anahtar terimler `$0.05/saat` ekler. Toplam yaklaşık
-  `$0.27/saat` (`$0.0045/dakika`). OpenAI yedeği yalnızca gerektiğinde ayrıca ücretlenir.
+- Tüm yeni ses kayıtları yalnız OpenAI'ye gönderilir. Birincil model konuşmacı ayrımlı
+  `gpt-4o-transcribe-diarize`, boş yanıt durumundaki güvenli yedek `gpt-transcribe` modelidir.
+- OpenAI segmentlerindeki klinik ifadeler uygulama tarafından yeniden yazılmaz; rol eşleme katmanı yalnızca
+  konuşmacıların doktor/hasta etiketini belirler.
 
-Kaynaklar: [Scribe v2 özellikleri](https://elevenlabs.io/docs/overview/capabilities/speech-to-text/),
-[Scribe API parametreleri](https://elevenlabs.io/docs/api-reference/speech-to-text/convert),
-[ElevenLabs API fiyatları](https://elevenlabs.io/pricing/api?price.section=speech_to_text),
-[OpenAI GPT-Transcribe](https://developers.openai.com/api/docs/models/gpt-transcribe),
+Kaynaklar: [OpenAI GPT-Transcribe](https://developers.openai.com/api/docs/models/gpt-transcribe),
 [OpenAI diarization modeli](https://developers.openai.com/api/docs/models/gpt-4o-transcribe-diarize).
 
-- Ses motoru ayrı bir dosyadadır: `stt.py`. Yerel model indirilmez; kayıt öncelikle Scribe API'ye gönderilir.
+- Ses motoru ayrı bir dosyadadır: `stt.py`. Yerel model indirilmez; kayıt doğrudan OpenAI API'ye gönderilir.
 - Tarayıcının ürettiği `.webm` dosyası dönüştürülmeden doğrudan API'ye gönderilir.
 - Kulaklık takılıp çıkarıldığında mikrofon listesi yenilenir. Sessiz/boş kayıt API'ye gönderilmez; böylece hem
   anlaşılır bir uyarı gösterilir hem de gereksiz STT isteği engellenir.
-- Yedek `gpt-transcribe` yalnızca ana model hem segment hem metin döndürmezse çağrılır; güncel liste fiyatı
-  yaklaşık `$0.0045/dakika`dır ve bu ek maliyet arayüzde ayrı gösterilir.
+- Yedek `gpt-transcribe` yalnızca ana model hem segment hem metin döndürmezse çağrılır ve maliyeti arayüzde
+  ayrı gösterilir.
 - OpenAI segmentlerindeki sözcükler yeniden yazılmaz. Rol sınıflandırıcısı yalnızca A/B eşlemesi döndürür;
   hasta ilk konuşsa bile cümlelerin anlamına göre `Doktor:` / `Hasta:` etiketi eklenir.
 - Demo sırasında tek kişi iki rolü aynı sesle okursa sözcükler numaralandırılır; Gemini yalnızca hangi
@@ -231,9 +218,8 @@ Ses yüklendiğinde de o dökümün token/maliyeti "metne döküldü" satırınd
 Doktor/hasta rol sınıflandırmasının Gemini token ve maliyeti ayrı satırda gösterilir. Sesli akışta
 Sesli akışta Gemini toplam beş kez çağrılır: bir rol tespiti; "Analiz et" sonrasında üç rapor ve paralel COMED taslağı.
 
-Fiyatlar `pricing.py` içindedir. Üç rapor ve COMED taslağı için Gemini 2.5 Flash; birincil ses dökümü için Scribe v2'nin
-ses süresine dayalı liste fiyatı kullanılır. OpenAI yedeği devreye girerse kendi token/süre fiyatı ayrıca
-hesaplanır. API yeterli süre veya kullanım bilgisi döndürmezse arayüz ses maliyetini `—` gösterir;
+Fiyatlar `pricing.py` içindedir. Üç rapor ve COMED taslağı için Gemini 2.5 Flash; ses dökümü için OpenAI modelinin
+kullanım bilgisi esas alınır. API yeterli süre veya kullanım bilgisi döndürmezse arayüz ses maliyetini `—` gösterir;
 sıfır dolar gibi yanıltıcı bir değer yazmaz.
 
 ---
@@ -249,7 +235,10 @@ Test hesapları:
 
 Hesaplar Render ortamında `DOCTOR_ACCOUNTS_JSON` ile değiştirilebilir. Yönetici hesabı mobil uygulama, doktor paneli ve eklentiye kabul edilmez.
 
-Mobil hasta girişi yalnız ilgili hasta numarasına ait eşitlenmiş COMED randevularını gösterir. MVP test hesabı `476644` / `1` (Dursun Kılıçarslan) olup hesaplar `PATIENT_ACCOUNTS_JSON` ile değiştirilebilir.
+Mobil hasta girişi T.C. kimlik numarası, doğum tarihi ve altı haneli SMS koduyla yapılır. Kimlik bilgileri
+COMED'den doktorun iş listesiyle eşitlenen aktif randevuyla eşleşir; ham T.C. kimlik numarası Klinot veritabanında
+saklanmaz. `000000` yalnız `PATIENT_TEST_OTP_ENABLED=true` olan kapalı test ortamında geçerlidir; canlı ortamda
+SMS sağlayıcısı `PATIENT_SMS_WEBHOOK_URL` ile yapılandırılmalıdır.
 
 ## Admin paneli (`/admin`)
 

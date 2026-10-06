@@ -156,24 +156,25 @@ class ElevenLabsTranscriptionTests(unittest.TestCase):
         self.assertNotIn("prompt", {name for name, _ in form})
         transport_class.assert_called_once_with(retries=2)
 
-    def test_transcribe_prefers_scribe_when_configured(self):
+    def test_transcribe_uses_openai_even_if_legacy_scribe_key_exists(self):
         usage = {
-            "provider": "ElevenLabs", "model": "scribe_v2", "input": 0,
-            "output": 0, "total": 0, "cost_usd": 0.001,
+            "provider": "OpenAI", "model": "gpt-4o-transcribe-diarize",
+            "input": 0, "output": 0, "total": 0, "cost_usd": 0.001,
         }
         with (
             patch.object(config, "ELEVENLABS_API_KEY", "eleven-test"),
-            patch.object(stt, "_elevenlabs_transcribe", return_value=("Doktor: Merhaba", usage)) as scribe,
-            patch.object(stt, "_openai_transcribe") as openai,
+            patch.object(config, "OPENAI_API_KEY", "openai-test"),
+            patch.object(stt, "_elevenlabs_transcribe") as scribe,
+            patch.object(stt, "_openai_transcribe", return_value=("Doktor: Merhaba", usage)) as openai,
         ):
             text, result_usage = stt.transcribe(b"audio", "audio/webm", "kayit.webm")
 
         self.assertEqual(text, "Doktor: Merhaba")
-        self.assertEqual(result_usage["provider"], "ElevenLabs")
-        scribe.assert_called_once()
-        openai.assert_not_called()
+        self.assertEqual(result_usage["provider"], "OpenAI")
+        scribe.assert_not_called()
+        openai.assert_called_once()
 
-    def test_scribe_failure_automatically_uses_openai(self):
+    def test_transcribe_never_calls_scribe(self):
         openai_usage = {
             "provider": "OpenAI", "model": "gpt-4o-transcribe-diarize",
             "input": 1, "output": 1, "total": 2, "cost_usd": 0.001,
@@ -181,9 +182,7 @@ class ElevenLabsTranscriptionTests(unittest.TestCase):
         with (
             patch.object(config, "ELEVENLABS_API_KEY", "eleven-test"),
             patch.object(config, "OPENAI_API_KEY", "openai-test"),
-            patch.object(
-                stt, "_elevenlabs_transcribe", side_effect=RuntimeError("temporary")
-            ),
+            patch.object(stt, "_elevenlabs_transcribe") as scribe,
             patch.object(
                 stt, "_openai_transcribe", return_value=("Hasta: Karnım ağrıyor", openai_usage)
             ) as openai,
@@ -192,8 +191,8 @@ class ElevenLabsTranscriptionTests(unittest.TestCase):
             text, usage = stt.transcribe(b"audio", "audio/webm", "kayit.webm")
 
         self.assertEqual(text, "Hasta: Karnım ağrıyor")
-        self.assertTrue(usage["provider_fallback_used"])
-        self.assertIn("ElevenLabs", usage["provider_fallback_from"])
+        self.assertEqual(usage["provider"], "OpenAI")
+        scribe.assert_not_called()
         openai.assert_called_once()
 
 
@@ -450,7 +449,7 @@ class OpenAiTranscriptionTests(unittest.TestCase):
     def test_empty_diarized_response_is_rejected(self):
         usage = {"input": 0, "output": 0, "total": 0, "cost_usd": None}
         with (
-            patch.object(config, "ELEVENLABS_API_KEY", ""),
+            patch.object(config, "OPENAI_API_KEY", "openai-test"),
             patch.object(stt, "_openai_transcribe", return_value=("", usage)),
         ):
             with self.assertRaisesRegex(ValueError, "Ses servisleri"):

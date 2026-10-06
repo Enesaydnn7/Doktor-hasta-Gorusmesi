@@ -26,6 +26,7 @@
   let routeBusy = false;
   let lastPath = "";
   let lastWorklistSyncAt = 0;
+  let lastCardSyncAt = 0;
   let openingVisitId = null;
   let traceEnabled = true;
   let traceFlushTimer = null;
@@ -122,10 +123,29 @@
   }
 
   const BRIDGE_LOG_KEY = "klinot_comed_bridge_log_v1";
+  const BRIDGE_WIDGET_KEY = "klinot_comed_bridge_widget_v2";
 
   function bridgeLogs() {
     try { return JSON.parse(sessionStorage.getItem(BRIDGE_LOG_KEY) || "[]"); }
     catch (_) { return []; }
+  }
+
+  function bridgeWidgetState() {
+    try { return JSON.parse(localStorage.getItem(BRIDGE_WIDGET_KEY) || "{}"); }
+    catch (_) { return {}; }
+  }
+
+  function saveBridgeWidgetState(patch) {
+    localStorage.setItem(BRIDGE_WIDGET_KEY, JSON.stringify({...bridgeWidgetState(), ...patch}));
+  }
+
+  function bridgeContext() {
+    const body = textOf(document.body).slice(0, 2200);
+    const match = location.pathname.match(CARD_RE);
+    const patientNo = body.match(/Hasta\s*No[:\s]*(\d+)/i)?.[1] || "";
+    const protocol = body.match(/\bV-(\d+)\b/)?.[0] || (match ? `V-${match[1]}` : "");
+    const patientName = body.match(/^(.{3,80}?)(?=\s+(?:K|E|\d{1,3}\s*y|Hasta\s*No|V-))/i)?.[1]?.trim() || "";
+    return [patientName, patientNo && `Hasta ${patientNo}`, protocol].filter(Boolean).join(" · ");
   }
 
   function bridgeFieldLabel(field) {
@@ -149,12 +169,18 @@
     if (box) return box;
     box = document.createElement("div");
     box.id = "klinot-comed-bridge";
+    const widgetState = bridgeWidgetState();
     Object.assign(box.style, {
-      position: "fixed", right: "18px", bottom: "18px", zIndex: "2147483647",
+      position: "fixed", right: widgetState.left == null ? "18px" : "auto",
+      bottom: widgetState.top == null ? "18px" : "auto",
+      left: widgetState.left == null ? "auto" : `${widgetState.left}px`,
+      top: widgetState.top == null ? "auto" : `${widgetState.top}px`, zIndex: "2147483647",
       width: "min(440px, calc(100vw - 36px))", color: "#fff",
       font: "600 12px system-ui", filter: "drop-shadow(0 10px 28px #0004)",
     });
-    box.innerHTML = `<div data-klinot-log-panel style="display:none;margin-bottom:8px;overflow:hidden;background:#fff;color:#173143;border:1px solid #cddfe2;border-radius:16px"><div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:#f3f8f8;border-bottom:1px solid #dce9eb"><strong style="font-size:13px">İşlem günlüğü</strong><span data-klinot-log-panel-count style="color:#60777d;font-weight:600"></span></div><div data-klinot-log-list style="max-height:300px;overflow:auto;padding:5px 10px"></div></div><button data-klinot-log-toggle type="button" aria-expanded="false" style="width:100%;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;border:0;border-radius:14px;padding:12px 14px;color:#fff;text-align:left;font:700 12px system-ui;cursor:pointer"><span data-klinot-log-title style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Klinot</span><span data-klinot-log-action style="display:inline-flex;align-items:center;gap:7px;white-space:nowrap"><span data-klinot-log-count style="display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 5px;border-radius:99px;background:#ffffff2e">0</span><span data-klinot-log-action-label>Günlüğü aç</span><span data-klinot-log-chevron>▴</span></span></button>`;
+    box.innerHTML = `<button data-klinot-log-orb type="button" aria-label="Klinot işlem günlüğünü aç" style="display:none;margin-left:auto;width:50px;height:50px;border:0;border-radius:50%;background:#087454;color:#fff;font:800 18px system-ui;cursor:pointer">K</button><div data-klinot-log-shell><div data-klinot-log-panel style="display:none;margin-bottom:8px;overflow:hidden;background:#fff;color:#173143;border:1px solid #cddfe2;border-radius:16px"><div data-klinot-log-drag style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:#f3f8f8;border-bottom:1px solid #dce9eb;cursor:move;touch-action:none"><strong style="font-size:13px">İşlem günlüğü</strong><span style="display:flex;align-items:center;gap:10px"><span data-klinot-log-panel-count style="color:#60777d;font-weight:600"></span><button data-klinot-log-close type="button" aria-label="Günlüğü yana küçült" style="border:0;background:transparent;color:#36535a;font:700 18px system-ui;cursor:pointer">×</button></span></div><div data-klinot-log-list style="max-height:300px;overflow:auto;padding:5px 10px"></div></div><button data-klinot-log-toggle type="button" aria-expanded="false" style="width:100%;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;border:0;border-radius:14px;padding:12px 14px;color:#fff;text-align:left;font:700 12px system-ui;cursor:pointer"><span><span data-klinot-log-title style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Klinot</span><small data-klinot-log-context style="display:block;margin-top:2px;opacity:.82;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500"></small></span><span data-klinot-log-action style="display:inline-flex;align-items:center;gap:7px;white-space:nowrap"><span data-klinot-log-count style="display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 5px;border-radius:99px;background:#ffffff2e">0</span><span data-klinot-log-action-label>Günlüğü aç</span><span data-klinot-log-chevron>▴</span></span></button></div>`;
+    const shell = box.querySelector("[data-klinot-log-shell]");
+    const orb = box.querySelector("[data-klinot-log-orb]");
     const toggle = box.querySelector("[data-klinot-log-toggle]");
     toggle.addEventListener("click", () => {
       const panel = box.querySelector("[data-klinot-log-panel]");
@@ -163,6 +189,60 @@
       toggle.setAttribute("aria-expanded", String(!open));
       box.querySelector("[data-klinot-log-action-label]").textContent = open ? "Günlüğü aç" : "Kapat";
       box.querySelector("[data-klinot-log-chevron]").textContent = open ? "▴" : "▾";
+    });
+    const collapse = (collapsed) => {
+      shell.style.display = collapsed ? "none" : "block";
+      orb.style.display = collapsed ? "block" : "none";
+      box.style.width = collapsed ? "50px" : "min(440px, calc(100vw - 36px))";
+      saveBridgeWidgetState({collapsed});
+    };
+    box.querySelector("[data-klinot-log-close]").addEventListener("click", () => collapse(true));
+    collapse(Boolean(widgetState.collapsed));
+
+    let drag = null;
+    let suppressOrbClick = false;
+    const handle = box.querySelector("[data-klinot-log-drag]");
+    const finishDrag = (event, source) => {
+      if (!drag) return;
+      const moved = drag.moved;
+      drag = null;
+      const rect = box.getBoundingClientRect();
+      const left = rect.left + rect.width / 2 < innerWidth / 2 ? 8 : Math.max(8, innerWidth - rect.width - 8);
+      const top = Math.max(8, Math.min(innerHeight - Math.min(rect.height, innerHeight - 16) - 8, rect.top));
+      box.style.left = `${left}px`;
+      box.style.top = `${top}px`;
+      saveBridgeWidgetState({left, top});
+      if (source === orb && moved) {
+        suppressOrbClick = true;
+        setTimeout(() => { suppressOrbClick = false; }, 0);
+      }
+    };
+    const bindDrag = (source) => {
+      source.style.touchAction = "none";
+      source.addEventListener("pointerdown", (event) => {
+        if (event.button != null && event.button !== 0) return;
+        const rect = box.getBoundingClientRect();
+        drag = {x: event.clientX, y: event.clientY, left: rect.left, top: rect.top, moved: false};
+        source.setPointerCapture?.(event.pointerId);
+      });
+      source.addEventListener("pointermove", (event) => {
+        if (!drag) return;
+        const dx = event.clientX - drag.x;
+        const dy = event.clientY - drag.y;
+        if (Math.abs(dx) + Math.abs(dy) > 4) drag.moved = true;
+        const maxLeft = Math.max(8, innerWidth - box.offsetWidth - 8);
+        const maxTop = Math.max(8, innerHeight - box.offsetHeight - 8);
+        box.style.left = `${Math.min(maxLeft, Math.max(8, drag.left + dx))}px`;
+        box.style.top = `${Math.min(maxTop, Math.max(8, drag.top + dy))}px`;
+        box.style.right = box.style.bottom = "auto";
+      });
+      source.addEventListener("pointerup", (event) => finishDrag(event, source));
+      source.addEventListener("pointercancel", (event) => finishDrag(event, source));
+    };
+    bindDrag(handle);
+    bindDrag(orb);
+    orb.addEventListener("click", () => {
+      if (!suppressOrbClick) collapse(false);
     });
     document.body.appendChild(box);
     return box;
@@ -174,6 +254,7 @@
     const toggle = box.querySelector("[data-klinot-log-toggle]");
     toggle.style.background = color;
     box.querySelector("[data-klinot-log-title]").textContent = `Klinot · ${text}`;
+    box.querySelector("[data-klinot-log-context]").textContent = bridgeContext();
     const logs = bridgeLogs().slice().reverse();
     box.querySelector("[data-klinot-log-count]").textContent = String(logs.length);
     box.querySelector("[data-klinot-log-panel-count]").textContent = `${logs.length} işlem`;
@@ -192,6 +273,12 @@
       state.textContent = entry.state === "bad" ? "Kontrol gerekli" : entry.state === "ok" ? "Tamamlandı" : "İşleniyor";
       state.style.cssText = `display:block;margin-top:2px;color:${entry.state === "bad" ? "#b5322d" : entry.state === "ok" ? "#087454" : "#5976da"};font-weight:700`;
       copy.append(title, state);
+      if (entry.context) {
+        const context = document.createElement("small");
+        context.textContent = entry.context;
+        context.style.cssText = "display:block;margin-top:3px;color:#60777d;font-weight:500;overflow-wrap:anywhere";
+        copy.append(context);
+      }
       const time = document.createElement("time");
       time.textContent = entry.time;
       time.style.cssText = "color:#789095;font-size:10px;font-weight:600;white-space:nowrap";
@@ -202,8 +289,8 @@
 
   function bridgeStatus(text, state = "idle") {
     const logs = bridgeLogs();
-    const entry = {text: String(text), state, time: new Date().toLocaleTimeString("tr-TR", {hour: "2-digit", minute: "2-digit", second: "2-digit"})};
-    if (logs.at(-1)?.text !== entry.text) logs.push(entry);
+    const entry = {text: String(text), state, context: bridgeContext(), time: new Date().toLocaleTimeString("tr-TR", {hour: "2-digit", minute: "2-digit", second: "2-digit"})};
+    if (logs.at(-1)?.text !== entry.text || logs.at(-1)?.context !== entry.context) logs.push(entry);
     sessionStorage.setItem(BRIDGE_LOG_KEY, JSON.stringify(logs.slice(-120)));
     renderBridgeStatus(text, state);
   }
@@ -214,6 +301,17 @@
 
   function textOf(root) {
     return (root?.innerText || "").replace(/\s+/g, " ").trim();
+  }
+
+  function parsePatientIdentity() {
+    const raw = textOf(document.body);
+    const phone = raw.match(/Telefon\s+\(?0?(\d{3})\)?\s*(\d{3})\s*(\d{2})\s*(\d{2})/i);
+    const phoneDigits = phone ? phone.slice(1).join("") : "";
+    return {
+      tckn: raw.match(/TC\s*\/\s*Pasaport\s*No\s+(\d{11})/i)?.[1] || "",
+      birth_date: raw.match(/Doğum\s*Tarihi\s*-\s*Yaş\s+(\d{2}\.\d{2}\.\d{4})/i)?.[1] || "",
+      phone_masked: phoneDigits ? `*** ** ${phoneDigits.slice(-2)}` : "",
+    };
   }
 
   function parseRow(row, card = {}) {
@@ -297,6 +395,7 @@
     const item = {
       ...fallback,
       ...(selected?.visit_id === match[1] ? selected : {}),
+      ...parsePatientIdentity(),
       visit_id: match[1],
       clinical_card_id: match[2],
       clinical_card_url: location.href,
@@ -1504,7 +1603,10 @@
         }
         await openPendingTransferFromWorklist();
       } else if (CARD_RE.test(path)) {
-        if (routeChanged) await syncCurrentCard();
+        if (routeChanged || Date.now() - lastCardSyncAt >= 15000) {
+          await syncCurrentCard();
+          lastCardSyncAt = Date.now();
+        }
         await pollTransfer();
       }
     } catch (error) {

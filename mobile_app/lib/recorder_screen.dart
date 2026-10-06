@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'api_client.dart';
 import 'audio_recorder_service.dart';
@@ -692,6 +693,50 @@ class _IdleRecording extends StatelessWidget {
   final VoidCallback onStart;
   final bool patientMode;
 
+  Future<void> _showPrivacyNotice(BuildContext context) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 4, 24, 28),
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('Kişisel Verilerin Korunması', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
+                const SizedBox(height: 14),
+                const Text(
+                  'Görüşme sesi; sağlık hizmetinin yürütülmesi, görüşmenin yazıya çevrilmesi ve doktor/hasta raporlarının hazırlanması amacıyla işlenir. Kayıt yalnızca yetkili hesaplarla ilişkilendirilir. Doktor son kontrolü yapmadan COMED kaydı imzalanmaz.',
+                  style: TextStyle(height: 1.55),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'Veri sorumlusunun ayrıntılı aydınlatma metni, başvuru yöntemleri ve KVKK kapsamındaki haklarınız için MLP Care kişisel verilerin korunması sayfasını inceleyebilirsiniz.',
+                  style: TextStyle(height: 1.55, color: Color(0xFF60777D)),
+                ),
+                const SizedBox(height: 18),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () => launchUrl(
+                      Uri.parse('https://www.mlpcare.com/tr/protection-of-personal-data'),
+                      mode: LaunchMode.externalApplication,
+                    ),
+                    icon: const Icon(Icons.open_in_new_rounded),
+                    label: const Text('MLP Care aydınlatma metnini aç'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) => Column(
     children: [
@@ -750,6 +795,12 @@ class _IdleRecording extends StatelessWidget {
             ],
           ),
         ),
+      ),
+      TextButton.icon(
+        key: const Key('privacyNoticeButton'),
+        onPressed: () => _showPrivacyNotice(context),
+        icon: const Icon(Icons.shield_outlined, size: 18),
+        label: const Text('Aydınlatma metnini incele'),
       ),
       const SizedBox(height: 20),
       SizedBox(

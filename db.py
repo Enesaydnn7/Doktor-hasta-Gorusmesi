@@ -182,9 +182,29 @@ def init():
                 FROM comed_worklist_legacy
             """)
             c.execute("DROP TABLE comed_worklist_legacy")
+        worklist_columns = {
+            row[1] for row in c.execute("PRAGMA table_info(comed_worklist)")
+        }
+        if "patient_identity_hash" not in worklist_columns:
+            c.execute("ALTER TABLE comed_worklist ADD COLUMN patient_identity_hash TEXT")
+        if "birth_date" not in worklist_columns:
+            c.execute("ALTER TABLE comed_worklist ADD COLUMN birth_date TEXT")
+        if "phone_masked" not in worklist_columns:
+            c.execute("ALTER TABLE comed_worklist ADD COLUMN phone_masked TEXT")
         c.execute(
             "CREATE INDEX IF NOT EXISTS ix_comed_worklist_synced "
             "ON comed_worklist(synced_at DESC)"
+        )
+        c.execute(
+            "CREATE INDEX IF NOT EXISTS ix_comed_worklist_identity "
+            "ON comed_worklist(patient_identity_hash, synced_at DESC)"
+        )
+        # Eski sürümlerde eşleştirme için açık doğum tarihi tutulabiliyordu.
+        # Yeni akış yalnızca TCKN + doğum tarihi HMAC özetini saklar; mevcut
+        # yerel kayıtlardaki açık doğum tarihlerini de yükseltmede temizle.
+        c.execute(
+            "UPDATE comed_worklist SET birth_date='' "
+            "WHERE COALESCE(birth_date,'')<>''"
         )
         # Hasta uygulamasından daha önce alınmış kayıtları da randevunun COMED
         # iş listesindeki doktoruna bağla. Böylece sürüm yükseltildiğinde son
@@ -510,8 +530,9 @@ def comed_worklist_sync(items: list[dict], synced_by: str = "",
                 """INSERT INTO comed_worklist
                    (visit_id, clinical_card_id, patient_id, patient_name, patient_no,
                     protocol_no, department, doctor_name, task, status,
-                    clinical_card_url, synced_at, synced_by)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+                    clinical_card_url, synced_at, synced_by, patient_identity_hash,
+                    birth_date, phone_masked)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                    ON CONFLICT(visit_id, synced_by) DO UPDATE SET
                      clinical_card_id=COALESCE(NULLIF(excluded.clinical_card_id,''), comed_worklist.clinical_card_id),
                      patient_id=excluded.patient_id,
@@ -524,7 +545,10 @@ def comed_worklist_sync(items: list[dict], synced_by: str = "",
                      status=excluded.status,
                      clinical_card_url=COALESCE(NULLIF(excluded.clinical_card_url,''), comed_worklist.clinical_card_url),
                      synced_at=excluded.synced_at,
-                     synced_by=excluded.synced_by""",
+                     synced_by=excluded.synced_by,
+                     patient_identity_hash=COALESCE(NULLIF(excluded.patient_identity_hash,''), comed_worklist.patient_identity_hash),
+                     birth_date='',
+                     phone_masked=COALESCE(NULLIF(excluded.phone_masked,''), comed_worklist.phone_masked)""",
                 (
                     visit_id, card_id, str(item.get("patient_id") or ""), name,
                     str(item.get("patient_no") or ""),
@@ -533,6 +557,9 @@ def comed_worklist_sync(items: list[dict], synced_by: str = "",
                     str(item.get("doctor_name") or ""),
                     str(item.get("task") or ""), str(item.get("status") or ""),
                     url, now, synced_by,
+                    str(item.get("patient_identity_hash") or ""),
+                    "",
+                    str(item.get("phone_masked") or ""),
                 ),
             )
             if url:
@@ -589,6 +616,20 @@ def comed_patient_appointments(patient_no: str, limit: int = 100) -> list[dict]:
             seen.add(key)
         appointments.append(item)
     return appointments
+
+
+def comed_patient_by_identity(identity_hash: str) -> dict | None:
+    """T.C. kimlik + doğum tarihi HMAC özetiyle son eşleşen hastayı bul."""
+    if not identity_hash:
+        return None
+    with _lock, _conn() as c:
+        row = c.execute(
+            """SELECT * FROM comed_worklist
+               WHERE patient_identity_hash=?
+               ORDER BY synced_at DESC LIMIT 1""",
+            (identity_hash,),
+        ).fetchone()
+    return dict(row) if row else None
 
 
 def comed_assigned_doctor(patient_no: str, visit_id: str) -> str | None:

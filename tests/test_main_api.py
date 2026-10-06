@@ -21,26 +21,21 @@ class AnalyzeEndpointTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(payload["error_id"]), 8)
         self.assertNotIn("Service Unavailable", payload["error"])
 
-    async def test_health_reports_scribe_primary_and_openai_fallback(self):
-        with (
-            patch.object(main.config, "ELEVENLABS_API_KEY", "eleven-test"),
-            patch.object(main.config, "OPENAI_API_KEY", "openai-test"),
-        ):
+    async def test_health_reports_openai_only(self):
+        with patch.object(main.config, "OPENAI_API_KEY", "openai-test"):
             payload = await main.health()
 
         self.assertEqual(payload["version"], main.config.APP_VERSION)
-        self.assertEqual(payload["stt_provider"], "ElevenLabs")
-        self.assertEqual(payload["stt_model"], main.config.ELEVENLABS_STT_MODEL)
-        self.assertEqual(payload["stt_primary_model"], main.config.ELEVENLABS_STT_MODEL)
-        self.assertEqual(
-            payload["stt_provider_fallback_model"], main.config.OPENAI_STT_MODEL
-        )
+        self.assertEqual(payload["stt_provider"], "OpenAI")
+        self.assertEqual(payload["stt_model"], main.config.OPENAI_STT_MODEL)
+        self.assertEqual(payload["stt_primary_model"], main.config.OPENAI_STT_MODEL)
+        self.assertIsNone(payload["stt_provider_fallback_model"])
         self.assertEqual(
             payload["stt_fallback_model"], main.config.OPENAI_STT_FALLBACK_MODEL
         )
         self.assertEqual(payload["role_model"], main.config.GEMINI_MODEL)
         self.assertTrue(payload["stt_api_configured"])
-        self.assertTrue(payload["elevenlabs_stt_configured"])
+        self.assertFalse(payload["elevenlabs_stt_configured"])
         self.assertTrue(payload["openai_stt_configured"])
         self.assertFalse(payload["audio_converter"])
 

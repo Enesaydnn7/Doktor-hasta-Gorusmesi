@@ -1,5 +1,27 @@
 import 'dart:typed_data';
 
+class PatientOtpChallenge {
+  const PatientOtpChallenge({
+    required this.challengeId,
+    required this.expiresIn,
+    required this.phoneMasked,
+    required this.testMode,
+  });
+
+  final String challengeId;
+  final int expiresIn;
+  final String phoneMasked;
+  final bool testMode;
+
+  factory PatientOtpChallenge.fromJson(Map<String, dynamic> json) =>
+      PatientOtpChallenge(
+        challengeId: json['challenge_id']?.toString() ?? '',
+        expiresIn: (json['expires_in'] as num?)?.toInt() ?? 300,
+        phoneMasked: json['phone_masked']?.toString() ?? 'kayıtlı telefon',
+        testMode: json['test_mode'] == true,
+      );
+}
+
 class UserSession {
   const UserSession({
     required this.token,

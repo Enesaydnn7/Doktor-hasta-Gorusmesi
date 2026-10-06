@@ -7,7 +7,7 @@ Doktor ile hastanın yüz yüze görüşmesinde telefonun masanın ortasında du
 - Doktor/yönetici girişi ve cihazda güvenli oturum saklama
 - Görünür kayıt durumu, canlı mikrofon seviyesi, süre, duraklat/devam ve iptal
 - AAC/M4A mono kayıt, otomatik kazanç ve gürültü azaltma
-- Mevcut Scribe/OpenAI STT zinciriyle arka planda metne dönüştürme
+- Yalnızca OpenAI STT ile arka planda metne dönüştürme
 - Görüşme metnini ve analiz ilerlemesini doktora göstermeden arka planda işleme
 - İşlem tamamlandığında doktor epikrizi ve önerileri
 - Ses, transkript ve üç raporu mevcut web yönetim paneline kaydetme

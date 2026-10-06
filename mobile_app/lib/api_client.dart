@@ -17,6 +17,8 @@ abstract class KlinotApi {
     String password, {
     String? requestedRole,
   });
+  Future<PatientOtpChallenge> startPatientOtp(String tckn, String birthDate);
+  Future<UserSession> verifyPatientOtp(String challengeId, String code);
   Future<void> validateSession(String token);
   Future<TranscriptionResult> transcribe(String token, File file);
   Stream<AnalysisEvent> analyze(
@@ -106,6 +108,33 @@ class ApiClient implements KlinotApi {
           _uri('/api/v1/mobile/auth/login'),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode(body),
+        )
+        .timeout(const Duration(seconds: 70));
+    return UserSession.fromJson(_decodeResponse(response));
+  }
+
+  @override
+  Future<PatientOtpChallenge> startPatientOtp(
+    String tckn,
+    String birthDate,
+  ) async {
+    final response = await _client
+        .post(
+          _uri('/api/v1/mobile/auth/patient/otp/start'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'tckn': tckn, 'birth_date': birthDate}),
+        )
+        .timeout(const Duration(seconds: 70));
+    return PatientOtpChallenge.fromJson(_decodeResponse(response));
+  }
+
+  @override
+  Future<UserSession> verifyPatientOtp(String challengeId, String code) async {
+    final response = await _client
+        .post(
+          _uri('/api/v1/mobile/auth/patient/otp/verify'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'challenge_id': challengeId, 'code': code}),
         )
         .timeout(const Duration(seconds: 70));
     return UserSession.fromJson(_decodeResponse(response));
@@ -276,7 +305,7 @@ class ApiClient implements KlinotApi {
         'audio_id': transcription.audioId,
         'stt_usage': transcription.usage,
         'source': 'mobile',
-        'client_version': '2.10.3',
+        'client_version': '2.11.0',
         'metadata': {
           'platform': Platform.operatingSystem,
           if (comedPatient != null) 'comed_patient': comedPatient.toJson(),

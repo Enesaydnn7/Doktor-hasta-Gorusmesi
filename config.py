@@ -7,7 +7,7 @@ load_dotenv(override=True)  # .env her zaman kazanır
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
-APP_VERSION = os.getenv("APP_VERSION", "v2.10.3")
+APP_VERSION = os.getenv("APP_VERSION", "v2.11.0")
 
 # COMED test ortamı. Kimlik doğrulama anahtarları uygulama sunucusunda tutulmaz;
 # aktarım, kurumsal ağdaki yetkili tarayıcı köprüsü üzerinden tamamlanır.
@@ -50,6 +50,4 @@ def label() -> str:
 
 
 def stt_label() -> str:
-    if ELEVENLABS_API_KEY:
-        return f"ElevenLabs · {ELEVENLABS_STT_MODEL}"
     return f"OpenAI · {OPENAI_STT_MODEL}"
