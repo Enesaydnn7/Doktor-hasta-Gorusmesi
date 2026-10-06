@@ -115,7 +115,12 @@ _fallback_secret = hashlib.sha256(
 ).hexdigest()
 SECRET = (_configured_secret or _fallback_secret).encode()
 
-PATIENT_TEST_OTP_ENABLED = os.getenv("PATIENT_TEST_OTP_ENABLED", "false").strip().lower() in {
+# SMS sağlayıcısı henüz bağlanmadığı için hasta girişi geçici olarak sabit test
+# koduyla açılır. Gerçek SMS devreye girdiğinde ortam değişkenini "false" yapın:
+#   PATIENT_TEST_OTP_ENABLED=false
+# UYARI: Açıkken, TCKN ve doğum tarihini bilen herkes bu kodla o hastanın
+# kaydına girebilir. Yalnızca test ortamında açık bırakın.
+PATIENT_TEST_OTP_ENABLED = os.getenv("PATIENT_TEST_OTP_ENABLED", "true").strip().lower() in {
     "1", "true", "yes", "on",
 }
 PATIENT_TEST_OTP = "000000"

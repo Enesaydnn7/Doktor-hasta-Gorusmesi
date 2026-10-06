@@ -1,5 +1,10 @@
 # Sürüm Geçmişi
 
+## v2.13.1 — 6 Ekim 2026
+
+- SMS sağlayıcısı henüz bağlanmadığı için hasta girişindeki sabit test kodu (`000000`) geçici olarak varsayılan açık hâle getirildi; kimlik eşleşen hasta artık SMS beklemeden giriş yapabiliyor.
+- Gerçek SMS servisi devreye girince `PATIENT_TEST_OTP_ENABLED=false` yapılması yeterli. Açıkken TCKN ve doğum tarihini bilen herkes o hastanın kaydına girebileceği için yalnızca test ortamında açık bırakılmalıdır.
+
 ## v2.13.0 — 6 Ekim 2026
 
 - **Hasta girişi düzeltildi.** TCKN ve doğum tarihi COMED'de yalnızca "Hasta Bilgileri" açılır panelinde bulunuyor. Köprü bu alanları görünür metinden okuduğu için panel kapalıyken kimlik hiç yakalanmıyor, hasta uygulamasında "Kimlik bilgileriyle eşleşen aktif COMED randevusu bulunamadı" hatası çıkıyordu. Kimlik taraması artık gizli düğümleri de kapsıyor.
