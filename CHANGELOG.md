@@ -1,5 +1,13 @@
 # Sürüm Geçmişi
 
+## v2.15.0 — 7 Ekim 2026
+
+- **İş listesi otomatik son 1 aya açılıyor.** COMED varsayılan olarak yalnızca bugünü gösterdiği ve kartlar genelde geçmiş tarihli olduğu için liste boş görünüyor, köprünün eşitleyecek satırı kalmıyordu. Sayfa her yüklendiğinde köprü bir kez "1 Ay" aralığını seçiyor; doktor aralığı sonradan değiştirirse tekrar zorlanmıyor.
+- **Eklentide tekrar giriş sorulmuyor.** Bir kez bağlandıktan sonra kullanıcı adı/şifre alanları gizleniyor, yerine bağlı hesap görünüyor. Oturum düşerse (401) kayıtlı oturum silinip giriş ekranı kendiliğinden geri geliyor. "Başka hesapla bağlan" ile elle değiştirilebiliyor.
+- **Düşme riski ve soygeçmiş artık zorunlu.** Görüşmede konuyla ilgili bir şey geçmiyorsa alanlar boş bırakılmıyor: düşme riski "yok", soygeçmiş "özellik yok" olarak işaretleniyor. Model boş bıraksa bile sunucu tarafında deterministik olarak dolduruluyor.
+- **Doktor paneli yönetici paneliyle birebir aynı düzene geçti.** Aynı istatistik şeridi, arama kutusu, kayıt satırları ve açılır detay; detayda ses kaydı, beş rapor sekmesi, PDF indirme ve COMED aktarım çubuğu.
+- `popup.js` içinde gözden kaçan eski COMED adresi düzeltildi (ters bölü ile yazıldığı için toplu değiştirmede yakalanmamıştı).
+
 ## v2.14.0 — 7 Ekim 2026
 
 - **COMED adresleri değişti.** Web `https://goztepetest.comed.mlpcare.com`, API `https://goztepetestapi.comed.mlpcare.com` oldu. Protokol `http` → **`https`**; iz kaydı ve eklenti POST izin listesindeki şema kontrolleri de güncellendi, aksi halde sessizce çalışmayı bırakacaklardı.

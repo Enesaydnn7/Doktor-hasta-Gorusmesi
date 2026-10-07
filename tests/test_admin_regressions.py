@@ -78,14 +78,17 @@ class BrowserStateRegressionTests(unittest.TestCase):
             html.index("/static/doctor.js"),
         )
         self.assertIn("/static/admin.css", html)
+        # Sekmeler yonetici panelindeki gibi detay icinde uretilir.
         for tab in ("doktor", "hasta", "yonetim", "comed", "transkript"):
-            self.assertIn(f'data-tab="{tab}"', html)
-        self.assertIn("record-audio", html)
-        self.assertIn("bodyHTML(selectedRecord", js)
-        self.assertIn("prepareAudioTimeline(audio)", js)
+            self.assertIn(f'"{tab}"', js)
+        self.assertIn("bodyHTML(k, sekme)", js)
+        self.assertIn("prepareAudioTimeline(audioEl)", js)
+        self.assertIn("/doctor/audio/", js)
         self.assertIn("/doctor/pdf/", js)
-        # Ortak katmandaki esc ile cakismamali.
+        self.assertIn("comed-action-bar", js)
+        # Ortak katmandaki esc/val/fmtUsd ile cakismamali.
         self.assertNotIn("function esc(", js)
+        self.assertNotIn("const esc =", js)
 
     def test_comed_bridge_never_auto_signs_or_embeds_credentials(self):
         manifest = (ROOT / "comed_bridge_extension" / "manifest.json").read_text(

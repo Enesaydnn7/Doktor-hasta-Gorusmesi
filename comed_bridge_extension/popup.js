@@ -3,29 +3,88 @@ const user = document.getElementById("user");
 const password = document.getElementById("password");
 const button = document.getElementById("connect");
 const status = document.getElementById("status");
+const loginStatus = document.getElementById("login-status");
 const traceEnabled = document.getElementById("trace-enabled");
 const clearDraft = document.getElementById("clear-draft");
+const connectedView = document.getElementById("connected-view");
+const loginView = document.getElementById("login-view");
+const connectedName = document.getElementById("connected-name");
+const connectedUser = document.getElementById("connected-user");
+const switchAccount = document.getElementById("switch-account");
+const cancelSwitch = document.getElementById("cancel-switch");
 
-chrome.storage.local.get(["apiBase", "username", "displayName", "token", "traceEnabled"], (saved) => {
-  if (saved.apiBase) api.value = saved.apiBase;
-  if (saved.username) user.value = saved.username;
-  traceEnabled.checked = saved.traceEnabled !== false;
-  if (saved.token) show(`${saved.displayName || "Doktor"} bağlı. COMED iş listesi eşitleniyor.`, true);
+const COMED_CARD_RE = /^https:\/\/goztepetest\.comed\.mlpcare\.com\/tr-tr\/medical\//i;
+
+let connected = null;
+
+/* Bir kez baglandiktan sonra kullanici adi/sifre alanlari gorunmez; yalnizca
+   "bagli" bilgisi durur. Oturum dustugunde (401) background.js kayitli tokeni
+   siler, bu da popup'i otomatik olarak giris ekranina dondurur. */
+function paint() {
+  const isConnected = Boolean(connected?.token);
+  connectedView.classList.toggle("hidden", !isConnected);
+  loginView.classList.toggle("hidden", isConnected);
+  cancelSwitch.classList.toggle("hidden", !isConnected);
+  if (isConnected) {
+    connectedName.textContent = connected.displayName || "Doktor";
+    connectedUser.textContent = connected.username || "";
+  }
+}
+
+function show(text, ok = false) {
+  const target = connected?.token ? status : loginStatus;
+  target.textContent = text;
+  target.className = ok ? "ok" : "bad";
+}
+
+chrome.storage.local.get(
+  ["apiBase", "username", "displayName", "token", "traceEnabled"],
+  (saved) => {
+    if (saved.apiBase) api.value = saved.apiBase;
+    if (saved.username) user.value = saved.username;
+    traceEnabled.checked = saved.traceEnabled !== false;
+    connected = saved.token ? saved : null;
+    paint();
+  },
+);
+
+// Token baska bir yerde silinirse (ornegin 401 sonrasi) popup aninda giris
+// ekranina doner.
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area !== "local" || !changes.token) return;
+  if (!changes.token.newValue) {
+    connected = null;
+    paint();
+    show("Klinot oturumu sona erdi. Tekrar bağlanın.", false);
+  }
 });
 
 traceEnabled.addEventListener("change", async () => {
   await chrome.storage.local.set({traceEnabled: traceEnabled.checked});
 });
 
-function show(text, ok = false) {
-  status.textContent = text;
-  status.className = ok ? "ok" : "bad";
-}
+switchAccount.addEventListener("click", () => {
+  connected = null;
+  password.value = "";
+  paint();
+  loginStatus.textContent = "Yeni Klinot hesabını girin.";
+  loginStatus.className = "";
+});
+
+cancelSwitch.addEventListener("click", () => {
+  chrome.storage.local.get(
+    ["apiBase", "username", "displayName", "token"],
+    (saved) => {
+      connected = saved.token ? saved : null;
+      paint();
+    },
+  );
+});
 
 button.addEventListener("click", async () => {
   button.disabled = true;
-  status.className = "";
-  status.textContent = "Bağlanıyor…";
+  loginStatus.className = "";
+  loginStatus.textContent = "Bağlanıyor…";
   const base = api.value.trim().replace(/\/$/, "");
   try {
     const response = await fetch(`${base}/api/v1/mobile/auth/login`, {
@@ -40,15 +99,20 @@ button.addEventListener("click", async () => {
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.detail || "Giriş başarısız");
     if (payload.user?.role !== "doctor") throw new Error("Eklentiye doktor hesabıyla giriş yapın");
-    await chrome.storage.local.set({
+    const saved = {
       apiBase: base,
       username: user.value.trim(),
       displayName: payload.user?.display_name || user.value.trim().split(";")[0],
       token: payload.access_token,
-    });
+    };
+    await chrome.storage.local.set(saved);
     password.value = "";
-    show(`${payload.user?.display_name || "Doktor"} bağlandı. COMED sekmesini yenileyebilirsiniz.`, true);
+    connected = saved;
+    paint();
+    show(`${saved.displayName} bağlandı. COMED sekmesini yenileyebilirsiniz.`, true);
   } catch (error) {
+    connected = null;
+    paint();
     show(error.message);
   } finally {
     button.disabled = false;
@@ -60,7 +124,7 @@ clearDraft.addEventListener("click", async () => {
   clearDraft.disabled = true;
   try {
     const [tab] = await chrome.tabs.query({active: true, currentWindow: true});
-    if (!tab?.id || !/^https?:\/\/goztepe\.comedtest\.mlpcare\.com\/tr-tr\/medical\//i.test(tab.url || "")) {
+    if (!tab?.id || !COMED_CARD_RE.test(tab.url || "")) {
       throw new Error("Önce temizlenecek COMED hasta kartını açın");
     }
     const response = await chrome.tabs.sendMessage(tab.id, {type: "klinot-clear-last-transfer"});

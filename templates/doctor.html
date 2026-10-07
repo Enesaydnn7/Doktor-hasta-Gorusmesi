@@ -1,79 +1,67 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="tr">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Klinot · Doktor Paneli</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-  <link rel="stylesheet" href="/static/admin.css?v={{ version }}">
-  <link rel="stylesheet" href="/static/doctor.css?v={{ version }}">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Doktor · Klinik Görüşme Kayıtları</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="/static/style.css" rel="stylesheet">
+  <link href="/static/admin.css?v={{ version }}" rel="stylesheet">
+  <link href="/static/doctor.css?v={{ version }}" rel="stylesheet">
 </head>
 <body>
+
   <header class="topbar">
-    <div><b>Klinot</b><small>Doktor çalışma alanı · {{ version }}</small></div>
-    <div class="doctor-identity"><span>{{ user.display_name }}</span><a href="/doctor/logout">Çıkış</a></div>
+    <div class="topbar-inner">
+      <div class="brand">
+        <span class="brand-mark"><i class="bi bi-clipboard2-pulse"></i></span>
+        <div>
+          <div class="brand-name">Doktor · Görüşme Kayıtları</div>
+          <div class="brand-sub">COMED iş listesi · ses kayıtları · raporlar</div>
+        </div>
+      </div>
+      <div class="topbar-meta">
+        <span class="pill"><i class="bi bi-person-badge"></i> {{ user.display_name }}</span>
+        <a class="pill pill-out" href="/doctor/logout"><i class="bi bi-box-arrow-right"></i> Çıkış</a>
+      </div>
+    </div>
   </header>
 
-  <main class="workspace">
-    <section id="worklist-view">
-      <section class="hero">
-        <div><p class="eyebrow">COMED İŞ LİSTESİ</p><h1>Bugünkü hastalarım</h1><p>Görüşmeye veya aktarıma başlayacağınız hastayı seçin.</p></div>
-        <button id="refresh" class="secondary">Yenile</button>
-      </section>
-      <section class="stats" id="stats"></section>
-      <article class="panel worklist-panel">
-        <div class="panel-head"><div><h2>Hasta iş listesi</h2><p>Liste eklenti tarafından otomatik güncellenir.</p></div><span id="worklist-count" class="badge">0</span></div>
-        <div id="worklist" class="worklist-grid"><div class="empty">Yükleniyor…</div></div>
-      </article>
+  <main class="wrap wrap-wide">
+
+    <div class="stat-strip">
+      <div class="stat-box"><div class="s-lbl">COMED hastası</div><div class="s-val" id="stat-worklist">0</div></div>
+      <div class="stat-box"><div class="s-lbl">Görüşme raporu</div><div class="s-val" id="stat-records">0</div></div>
+      <div class="stat-box"><div class="s-lbl">Toplam token</div><div class="s-val" id="stat-token">0</div></div>
+      <div class="stat-box"><div class="s-lbl">Toplam maliyet</div><div class="s-val val-teal" id="stat-cost">$0.0000</div></div>
+    </div>
+
+    <section class="worklist-section">
+      <div class="rec-head rec-head-worklist"><span>COMED iş listesi</span><span class="ta-r" id="worklist-count">0 hasta</span></div>
+      <div id="worklist" class="worklist-grid"><div class="empty-box">Yükleniyor…</div></div>
     </section>
 
-    <section id="patient-view" class="hidden">
-      <button id="back-to-worklist" class="back-button">← İş listesine dön</button>
-      <section class="patient-hero panel">
-        <div><p class="eyebrow">SEÇİLİ HASTA</p><h1 id="patient-title">Hasta</h1><p id="patient-meta"></p></div>
-        <span id="transfer-state" class="status">Rapor seçin</span>
-      </section>
-      <section class="detail-grid">
-        <article class="panel">
-          <div class="panel-head"><div><h2>Görüşme raporları</h2><p>Aktarılacak epikrizi seçin.</p></div><span id="record-count" class="badge">0</span></div>
-          <div id="records" class="card-list"><div class="empty">Yükleniyor…</div></div>
-        </article>
-        <article class="panel transfer-panel">
-          <div class="panel-head"><div><h2>COMED aktarımı</h2><p>Seçili raporu kontrol edip aktarın.</p></div></div>
-          <div class="actions"><button id="transfer" disabled>COMED'e aktar ve kartı aç</button></div>
-          <p class="hint">Hasta kartı yeni sekmede açılır. Eklenti alanları doldurur; son kontrol ve imza doktordadır.</p>
-        </article>
-      </section>
+    <div class="admin-tools">
+      <div class="search-wrap">
+        <i class="bi bi-search"></i>
+        <input id="q" type="text" placeholder="Kayıtlarda ara (tanı, şikayet, kayıt no)...">
+      </div>
+      <button class="btn-ghost" id="refresh"><i class="bi bi-arrow-clockwise"></i> Yenile</button>
+    </div>
 
-      <article class="panel report-panel">
-        <div class="panel-head">
-          <div><h2>Görüşme kaydı</h2><p>Ses kaydı, epikriz, hasta özeti, iletişim önerileri ve COMED taslağı.</p></div>
-          <span id="report-record-id" class="badge">—</span>
-        </div>
+    <div class="rec-head">
+      <span>No</span><span>Tarih / Saat</span><span>Özet (tanı / şikayet)</span><span>Ses</span><span class="ta-r">İşlem</span>
+    </div>
 
-        <div id="audio-wrap" class="audio-wrap hidden">
-          <div class="audio-title"><i class="bi bi-soundwave"></i> Görüşme ses kaydı</div>
-          <audio id="record-audio" controls preload="metadata"></audio>
-        </div>
+    <div id="rec-list"><div class="empty-box">Yükleniyor…</div></div>
+    <div id="bos-arama" class="empty-box hidden">Aramaya uyan kayıt yok.</div>
 
-        <nav class="det-tabs" id="report-tabs">
-          <button data-tab="doktor" class="active"><i class="bi bi-file-earmark-medical"></i> Doktor epikrizi</button>
-          <button data-tab="hasta"><i class="bi bi-person-heart"></i> Hasta özeti</button>
-          <button data-tab="yonetim"><i class="bi bi-speedometer2"></i> Yönetim raporu</button>
-          <button data-tab="comed"><i class="bi bi-hospital"></i> COMED taslağı</button>
-          <button data-tab="transkript"><i class="bi bi-chat-left-text"></i> Görüşme metni</button>
-        </nav>
-
-        <div class="det-pdf-row">
-          <button class="secondary" data-pdf="doktor"><i class="bi bi-filetype-pdf"></i> Epikriz PDF</button>
-          <button class="secondary" data-pdf="hasta"><i class="bi bi-filetype-pdf"></i> Hasta özeti PDF</button>
-          <button class="secondary" data-pdf="yonetim"><i class="bi bi-filetype-pdf"></i> Yönetim raporu PDF</button>
-        </div>
-
-        <div id="report-body" class="report-body"><div class="empty">Soldaki listeden bir rapor seçin.</div></div>
-      </article>
-    </section>
+    <div class="db-note"><i class="bi bi-info-circle"></i>
+      Yalnızca size atanmış görüşmeler listelenir. COMED aktarımında son kontrol, kayıt ve imza doktordadır.
+    </div>
   </main>
+
   <div id="toast" role="status"></div>
   <script src="/static/report_view.js?v={{ version }}"></script>
   <script src="/static/doctor.js?v={{ version }}"></script>

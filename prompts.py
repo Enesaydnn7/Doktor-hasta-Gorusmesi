@@ -158,9 +158,17 @@ KURALLAR (ÇOK ÖNEMLİ):
   yalnız Erkek Kardeşi|Babası|Annesi|Kız Kardeşi|Diğer; hastalık yalnız Diyabet|Guatr|
   Hipertansiyon|Kan Hastalığı|Koroner arter hastalığı (KAH)|Malignite|Diğer olabilir.
 - Psikolojik durum yalnız Sakin, Üzgün, Ajite, Kaygılı veya Agresif seçeneklerinden oluşur.
-- Düşme riski "exists": true ise alt maddeleri de yalnız görüşmede açıkça geçen bilgiyle
-  doldur; bilinmeyen alt maddeleri null bırak. "exists": false yalnız riskin olmadığı açıkça
-  söylendiyse kullanılabilir.
+- DÜŞME RİSKİ ZORUNLUDUR, ASLA null BIRAKMA: "fall_risk.exists" her zaman true veya false
+  olmalıdır. Görüşmede düşme, düşme öyküsü, denge bozukluğu veya "düşme riskim var" açıkça
+  geçiyorsa true; hiç geçmiyorsa ya da "düşmedim / riskim yok" deniyorsa false yaz.
+  Bilgi olmaması "risk yok" demektir; bu alan boş bırakılamaz.
+  "exists": true ise alt maddeleri yalnız görüşmede açıkça geçen bilgiyle doldur,
+  bilinmeyen alt maddeleri null bırak.
+- SOYGEÇMİŞ ZORUNLUDUR: "profile.family_history" ve "profile.no_known_family_history"
+  ikisi birden boş kalamaz. Ailede hastalık geçiyorsa listeye yaz ve
+  no_known_family_history false olsun. Görüşmede hiç ailesel hastalık geçmiyorsa listeyi
+  boş bırak ve no_known_family_history alanını true yap (COMED'de "Özellik Yok" olarak
+  işaretlenecektir).
 - Ağrı niteliği yalnız şu COMED seçeneklerinden biri olabilir: Keskin, Bastırıcı, Kolik,
   Ezici, Dolgunluk, Saplanıcı, Künt, Yanıcı, Stabilize. Ağrı ritmi yalnız Sürekli veya
   Aralıklı olabilir.

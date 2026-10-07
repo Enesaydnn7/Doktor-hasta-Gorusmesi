@@ -498,8 +498,23 @@ def normalize_draft(draft: dict[str, Any] | None) -> dict[str, Any]:
         data["profile"]["no_known_history"] = False
     if data["profile"]["family_history"]:
         data["profile"]["no_known_family_history"] = False
+    elif data["profile"].get("no_known_family_history") is not True:
+        # Soygecmis COMED'de zorunlu alandir ve bos birakilamaz. Gorusmede
+        # ailesel hastalik gecmiyorsa bu "ozellik yok" demektir; doktor COMED'de
+        # aksini gorurse duzeltir. Karar verilmemis halde birakmak, formun
+        # kaydedilememesine yol aciyordu.
+        data["profile"]["no_known_family_history"] = True
     if not isinstance(data["profile"].get("parents_related"), bool):
         data["profile"]["parents_related"] = None
+
+    # Dusme riski de zorunludur: model null birakirsa "risk belirtilmedi" degil,
+    # "risk yok" olarak isaretlenir.
+    fall_risk_value = data.get("fall_risk")
+    if not isinstance(fall_risk_value, dict):
+        fall_risk_value = {}
+        data["fall_risk"] = fall_risk_value
+    if not isinstance(fall_risk_value.get("exists"), bool):
+        fall_risk_value["exists"] = False
 
     data["vitals"]["height"] = _height_cm(data["vitals"].get("height"))
 

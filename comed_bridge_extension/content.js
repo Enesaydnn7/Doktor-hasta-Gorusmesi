@@ -30,6 +30,7 @@
   let lastWorklistSyncAt = 0;
   let lastCardSyncAt = 0;
   let lastIdentityFingerprint = "";
+  let dateRangeApplied = false;
   let identitySyncTimer = null;
   let openingVisitId = null;
   let traceEnabled = true;
@@ -472,7 +473,34 @@
     sessionStorage.removeItem(SELECTED_PATIENT_KEY);
   }
 
+  // COMED is listesi varsayilan olarak yalnizca BUGUNU gosterir. Kartlar
+  // genelde gecmis tarihli oldugu icin liste bos gorunur ve koprunun
+  // esitleyecek satiri kalmaz. Sayfa her yuklendiginde bir kez "1 Ay" araligi
+  // secilir. Doktor sonradan araligi degistirirse tekrar zorlanmaz; bayrak
+  // yalnizca sayfa yenilendiginde sifirlanir.
+  async function ensureWorklistDateRange() {
+    if (dateRangeApplied) return;
+    dateRangeApplied = true;
+    try {
+      const rangeText = /^\d{2}\.\d{2}\.\d{4}\s*-\s*\d{2}\.\d{2}\.\d{4}$/;
+      const trigger = await waitFor(() => [
+        ...document.querySelectorAll("input,button,span,div"),
+      ].find((element) => element.offsetParent !== null
+        && rangeText.test((element.value || textOf(element) || "").trim())), 9000);
+      if (!trigger) return;
+      activateNode(trigger);
+      if (!await waitFor(() => clickText("1 Ay") || null, 3000)) return;
+      await sleep(260);
+      clickText("Tamam");
+      await waitForDomQuiet(document.body, 260, 3000);
+      bridgeStatus("İş listesi son 1 aya genişletildi", "ok");
+    } catch (_) {
+      // COMED arayuzu degisirse koprunun geri kalani calismaya devam etsin.
+    }
+  }
+
   async function syncWorklist() {
+    await ensureWorklistDateRange();
     const items = parseWorklist();
     try {
       // Boş ayrıştırma neredeyse her zaman "sayfa henüz yüklenmedi" demektir;

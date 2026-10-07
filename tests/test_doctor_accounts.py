@@ -81,16 +81,24 @@ class DoctorAccountTests(unittest.TestCase):
         self.assertEqual(doctor_login.status_code, 200)
         self.assertIn("Doktor", doctor_login.text)
 
-    def test_doctor_panel_starts_with_worklist_and_has_no_token_stat(self):
+    def test_doctor_panel_mirrors_the_admin_layout(self):
+        """Doktor paneli yonetici paneliyle ayni duzeni kullanir."""
         self.client.post(
             "/doctor/login",
             data={"user": "Kullanici.kayadr;Kullanici.aydin1|tracer", "password": "1"},
         )
         panel = self.client.get("/doctor")
         self.assertEqual(panel.status_code, 200)
-        self.assertIn("Bugünkü hastalarım", panel.text)
-        self.assertIn("COMED aktarımı", panel.text)
-        self.assertNotIn("Toplam token", panel.text)
+        # Yonetici panelindeki ayni iskelet parcalari.
+        for marker in (
+            "stat-strip", "admin-tools", "rec-head", "rec-list",
+            "search-wrap", "/static/admin.css",
+        ):
+            self.assertIn(marker, panel.text)
+        self.assertIn("COMED iş listesi", panel.text)
+        self.assertIn("Toplam token", panel.text)
+        # Doktor yalnizca kendi kayitlarini gorur; silme yetkisi yoktur.
+        self.assertNotIn('data-act="sil"', panel.text)
 
     def test_worklist_same_visit_is_isolated_between_doctors(self):
         with tempfile.TemporaryDirectory() as directory:

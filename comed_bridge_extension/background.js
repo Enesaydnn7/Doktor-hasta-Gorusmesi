@@ -119,6 +119,13 @@ async function klinotFetch(path, options = {}) {
     },
   });
   const payload = await response.json().catch(() => ({}));
+  if (response.status === 401) {
+    // Klinot oturumu dustu. Kayitli tokeni silmek popup'i otomatik olarak
+    // giris ekranina dondurur; aksi halde kullanici "bagli" gorunup her
+    // istekte sessizce hata alirdi.
+    await chrome.storage.local.remove("token");
+    throw new Error("Klinot oturumu sona erdi. Eklentiden tekrar bağlanın.");
+  }
   if (!response.ok) throw new Error(payload.detail || payload.error || `HTTP ${response.status}`);
   return payload;
 }
