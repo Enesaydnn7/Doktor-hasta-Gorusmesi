@@ -18,24 +18,25 @@ class DoctorAccountTests(unittest.TestCase):
         self.client.close()
 
     def test_pipe_username_round_trips_through_tokens(self):
-        username = "adnan.kaya;enes.aydin1|tracer"
+        username = "Kullanici.kayadr;Kullanici.aydin1|tracer"
         api_info = auth.api_token_bilgisi(auth.api_token_uret(username, "doctor"))
         web_info = auth.token_bilgisi(auth.token_uret(username, "doctor"))
         self.assertEqual(api_info["user"], username)
         self.assertEqual(web_info["user"], username)
-        self.assertEqual(api_info["display_name"], "Prof. Dr. Adnan Kaya")
+        self.assertEqual(api_info["display_name"], "Prof. Dr. Personel Kaya")
 
-    def test_both_doctors_login_but_admin_is_rejected_by_mobile_client(self):
-        for username in (
-            "adnan.kaya;enes.aydin1|tracer",
-            "sami.sokucu;enes.aydin1|tracer",
-        ):
-            response = self.client.post(
-                "/api/v1/mobile/auth/login",
-                json={"username": username, "password": "1", "client_type": "mobile"},
-            )
-            self.assertEqual(response.status_code, 200)
-            self.assertEqual(response.json()["user"]["role"], "doctor")
+    def test_doctor_logs_in_but_admin_is_rejected_by_mobile_client(self):
+        # COMED test ortaminda tek doktor hesabi var.
+        response = self.client.post(
+            "/api/v1/mobile/auth/login",
+            json={
+                "username": "Kullanici.kayadr;Kullanici.aydin1|tracer",
+                "password": "1",
+                "client_type": "mobile",
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["user"]["role"], "doctor")
         rejected = self.client.post(
             "/api/v1/mobile/auth/login",
             json={"username": "admin", "password": "admin", "client_type": "mobile"},
@@ -49,25 +50,25 @@ class DoctorAccountTests(unittest.TestCase):
 
     def test_only_configured_doctors_are_accepted(self):
         self.assertIsNone(auth.api_giris_rolu("doctor", "1"))
-        self.assertIsNone(auth.api_giris_rolu("enes.aydin1", "1"))
+        self.assertIsNone(auth.api_giris_rolu("Kullanici.aydin1", "1"))
 
     def test_doctor_web_login_is_role_scoped(self):
         response = self.client.post(
             "/doctor/login",
-            data={"user": "adnan.kaya;enes.aydin1|tracer", "password": "1"},
+            data={"user": "Kullanici.kayadr;Kullanici.aydin1|tracer", "password": "1"},
             follow_redirects=False,
         )
         self.assertEqual(response.status_code, 303)
         self.assertEqual(response.headers["location"], "/doctor")
         panel = self.client.get("/doctor")
         self.assertEqual(panel.status_code, 200)
-        self.assertIn("Prof. Dr. Adnan Kaya", panel.text)
+        self.assertIn("Prof. Dr. Personel Kaya", panel.text)
         self.assertEqual(self.client.get("/admin", follow_redirects=False).status_code, 303)
 
     def test_role_login_pages_remain_reachable_when_other_role_is_signed_in(self):
         self.client.post(
             "/doctor/login",
-            data={"user": "adnan.kaya;enes.aydin1|tracer", "password": "1"},
+            data={"user": "Kullanici.kayadr;Kullanici.aydin1|tracer", "password": "1"},
         )
         admin_login = self.client.get("/admin/login", follow_redirects=False)
         self.assertEqual(admin_login.status_code, 200)
@@ -83,7 +84,7 @@ class DoctorAccountTests(unittest.TestCase):
     def test_doctor_panel_starts_with_worklist_and_has_no_token_stat(self):
         self.client.post(
             "/doctor/login",
-            data={"user": "adnan.kaya;enes.aydin1|tracer", "password": "1"},
+            data={"user": "Kullanici.kayadr;Kullanici.aydin1|tracer", "password": "1"},
         )
         panel = self.client.get("/doctor")
         self.assertEqual(panel.status_code, 200)
@@ -124,8 +125,8 @@ class DoctorAccountTests(unittest.TestCase):
                 patch.dict("os.environ", {"SEED_MANAGER_DEMO": "false"}),
             ):
                 db.init()
-                doctor = "adnan.kaya;enes.aydin1|tracer"
-                other_doctor = "sami.sokucu;enes.aydin1|tracer"
+                doctor = "Kullanici.kayadr;Kullanici.aydin1|tracer"
+                other_doctor = "Kullanici.ikinci;Kullanici.aydin1|tracer"
                 patient = {
                     "visit_id": "visit-476644",
                     "clinical_card_id": "card-476644",

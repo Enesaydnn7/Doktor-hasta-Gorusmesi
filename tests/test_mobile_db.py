@@ -122,7 +122,7 @@ class MobileDatabaseTests(unittest.TestCase):
                 completed = {
                     **row,
                     "clinical_card_id": "30416836",
-                    "clinical_card_url": "http://goztepe.comedtest.mlpcare.com/card",
+                    "clinical_card_url": "https://goztepetest.comed.mlpcare.com/card",
                 }
                 db.comed_worklist_sync(
                     [completed], synced_by="doctor-a", replace=False
@@ -135,11 +135,11 @@ class MobileDatabaseTests(unittest.TestCase):
         self.assertEqual(saved["clinical_card_id"], "30416836")
         self.assertEqual(
             saved["clinical_card_url"],
-            "http://goztepe.comedtest.mlpcare.com/card",
+            "https://goztepetest.comed.mlpcare.com/card",
         )
         self.assertEqual(
             updated_transfer["clinical_card_url"],
-            "http://goztepe.comedtest.mlpcare.com/card",
+            "https://goztepetest.comed.mlpcare.com/card",
         )
 
     def test_comed_transfer_persists_channel_debug(self):
@@ -177,20 +177,20 @@ class MobileDatabaseTests(unittest.TestCase):
                 accepted = db.comed_trace_add([
                     {
                         "method": "POST",
-                        "url": "http://goztepe.comedtestapi.mlpcare.com/tr-tr/api/json/forms/document/saveDocumentProcesses",
+                        "url": "https://goztepetestapi.comed.mlpcare.com/tr-tr/api/json/forms/document/saveDocumentProcesses",
                         "status": 200,
                         "request_body": {"documentProcesses": [{"id": 9}]},
                         "response_body": {"success": True},
                     },
                     {
                         "method": "GET",
-                        "url": "http://goztepe.comedtestapi.mlpcare.com/tr-tr/api/json/lookup",
+                        "url": "https://goztepetestapi.comed.mlpcare.com/tr-tr/api/json/lookup",
                         "status": 200,
                     },
                 ], captured_by="doctor-a")
                 db.comed_trace_add([{
                     "method": "POST",
-                    "url": "http://goztepe.comedtestapi.mlpcare.com/other",
+                    "url": "https://goztepetestapi.comed.mlpcare.com/other",
                     "status": 204,
                 }], captured_by="doctor-b")
 

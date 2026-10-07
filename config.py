@@ -7,17 +7,17 @@ load_dotenv(override=True)  # .env her zaman kazanır
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
-APP_VERSION = os.getenv("APP_VERSION", "v2.13.2")
+APP_VERSION = os.getenv("APP_VERSION", "v2.14.0")
 
 # COMED test ortamı. Kimlik doğrulama anahtarları uygulama sunucusunda tutulmaz;
 # aktarım, kurumsal ağdaki yetkili tarayıcı köprüsü üzerinden tamamlanır.
 COMED_WEB_BASE_URL = os.getenv(
     "COMED_WEB_BASE_URL",
-    "http://goztepe.comedtest.mlpcare.com/tr-tr/medical",
+    "https://goztepetest.comed.mlpcare.com/tr-tr/medical",
 ).rstrip("/")
 COMED_API_BASE_URL = os.getenv(
     "COMED_API_BASE_URL",
-    "http://goztepe.comedtestapi.mlpcare.com/tr-tr/api/json",
+    "https://goztepetestapi.comed.mlpcare.com/tr-tr/api/json",
 ).rstrip("/")
 
 ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY", "")

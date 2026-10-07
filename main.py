@@ -845,7 +845,7 @@ async def mobile_comed_trace_capture(
     events = []
     for event in body.events[:100]:
         parsed = urlsplit(event.url)
-        if parsed.scheme != "http" or parsed.hostname != "goztepe.comedtestapi.mlpcare.com":
+        if parsed.scheme != "https" or parsed.hostname != "goztepetestapi.comed.mlpcare.com":
             continue
         safe_query = "&".join(
             part for part in parsed.query.split("&")
@@ -1031,11 +1031,21 @@ async def doctor_audio(kid: int, request: Request):
 
 @app.get("/doctor/pdf/{kid}")
 async def doctor_pdf(kid: int, request: Request):
+    return await doctor_pdf_report(kid, "doktor", request)
+
+
+@app.get("/doctor/pdf/{kid}/{rec}")
+async def doctor_pdf_report(kid: int, rec: str, request: Request):
+    """Doktor paneli; yönetici panelindeki üç raporu da PDF olarak verir."""
     session = doctor_auth(request)
     record = db.getir_for_doctor(kid, session["user"])
     if not record:
         raise HTTPException(status_code=404, detail="Kayıt bulunamadı")
-    content, filename = pdf_report.build_pdf("doktor", record["doktor"])
+    rec = _admin_report_type(rec)
+    try:
+        content, filename = pdf_report.build_pdf(rec, record[rec])
+    except Exception as e:  # noqa: BLE001
+        return JSONResponse({"error": f"PDF oluşturulamadı: {e}"}, status_code=500)
     return Response(
         content=content,
         media_type="application/pdf",

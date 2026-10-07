@@ -73,8 +73,8 @@
     if (!value || typeof value !== "object") return false;
     try {
       const url = new URL(value.url);
-      return url.protocol === "http:"
-        && url.hostname === "goztepe.comedtestapi.mlpcare.com"
+      return url.protocol === "https:"
+        && url.hostname === "goztepetestapi.comed.mlpcare.com"
         && /^(GET|POST|PUT|PATCH|DELETE)$/i.test(value.method || "GET");
     } catch (_) {
       return false;
@@ -199,12 +199,14 @@
       #klinot-comed-bridge [data-klinot-log-panel]{position:absolute;right:72px;top:50%;width:min(420px,calc(100vw - 112px));max-height:min(520px,calc(100vh - 32px));display:flex;flex-direction:column;overflow:hidden;background:#fff;color:#173143;border:1px solid #d6e5e7;border-radius:20px;box-shadow:0 22px 56px #102b3a33;opacity:0;visibility:hidden;transform:translate(26px,-50%) scale(.94);transform-origin:right center;transition:opacity .24s ease,transform .3s cubic-bezier(.22,1,.36,1),visibility .24s;pointer-events:none}
       #klinot-comed-bridge [data-klinot-log-panel][aria-hidden="false"]{opacity:1;visibility:visible;transform:translate(0,-50%) scale(1);pointer-events:auto}
       #klinot-comed-bridge [data-klinot-log-header]{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 15px;background:#f4f9f9;border-bottom:1px solid #e0edee}
-      #klinot-comed-bridge [data-klinot-log-close]{width:30px;height:30px;flex:0 0 auto;border:0;border-radius:10px;background:#e4eeee;color:#36535a;font:800 18px system-ui;cursor:pointer;transition:background .15s ease}
+      #klinot-comed-bridge [data-klinot-log-close]{display:grid;place-items:center;width:30px;height:30px;flex:0 0 auto;border:0;border-radius:10px;background:#e4eeee;color:#36535a;cursor:pointer;transition:background .15s ease,transform .15s ease}
+      #klinot-comed-bridge [data-klinot-log-close]:hover svg{transform:translateY(1px)}
+      #klinot-comed-bridge [data-klinot-log-close] svg{transition:transform .15s ease}
       #klinot-comed-bridge [data-klinot-log-close]:hover{background:#d2e2e2}
       #klinot-comed-bridge [data-klinot-log-summary]{padding:11px 15px;background:linear-gradient(135deg,#0a9289,#06706c);color:#fff}
       #klinot-comed-bridge [data-klinot-log-list]{flex:1 1 auto;min-height:0;overflow:auto;padding:5px 11px;overscroll-behavior:contain}
       @media(max-width:620px){#klinot-comed-bridge [data-klinot-log-panel]{right:66px;width:calc(100vw - 96px)}}
-    </style><div data-klinot-log-shell><section data-klinot-log-panel aria-hidden="true"><div data-klinot-log-header><span><strong style="display:block;font-size:13px">İşlem günlüğü</strong><small data-klinot-log-panel-count style="color:#60777d;font-weight:600"></small></span><button data-klinot-log-close type="button" aria-label="İşlem günlüğünü kapat">×</button></div><div data-klinot-log-summary><strong data-klinot-log-title>Klinot hazır</strong><small data-klinot-log-context style="display:block;margin-top:3px;opacity:.82;font-weight:500;overflow-wrap:anywhere"></small></div><div data-klinot-log-list></div></section><button data-klinot-log-orb type="button" aria-expanded="false" aria-label="Klinot işlem günlüğünü aç"><span data-klinot-log-mark aria-hidden="true">K</span><span data-klinot-log-label><b>Klinot</b><i data-klinot-log-tag>İşlem günlüğü</i></span></button><span data-klinot-log-count>0</span></div>`;
+    </style><div data-klinot-log-shell><section data-klinot-log-panel aria-hidden="true"><div data-klinot-log-header><span><strong style="display:block;font-size:13px">İşlem günlüğü</strong><small data-klinot-log-panel-count style="color:#60777d;font-weight:600"></small></span><button data-klinot-log-close type="button" aria-label="İşlem günlüğünü aşağı indir" title="Aşağı indir"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button></div><div data-klinot-log-summary><strong data-klinot-log-title>Klinot hazır</strong><small data-klinot-log-context style="display:block;margin-top:3px;opacity:.82;font-weight:500;overflow-wrap:anywhere"></small></div><div data-klinot-log-list></div></section><button data-klinot-log-orb type="button" aria-expanded="false" aria-label="Klinot işlem günlüğünü aç"><span data-klinot-log-mark aria-hidden="true">K</span><span data-klinot-log-label><b>Klinot</b><i data-klinot-log-tag>İşlem günlüğü</i></span></button><span data-klinot-log-count>0</span></div>`;
     const shell = box.querySelector("[data-klinot-log-shell]");
     const orb = box.querySelector("[data-klinot-log-orb]");
     const panel = box.querySelector("[data-klinot-log-panel]");

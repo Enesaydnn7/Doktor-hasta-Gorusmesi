@@ -11,8 +11,8 @@
   const NATIVE_COMMAND_SOURCE = "klinot-comed-native-command-v1";
   const NATIVE_RESULT_SOURCE = "klinot-comed-native-result-v1";
   const SUPPRESS_RELOAD_PROMPT_KEY = "klinot-comed-suppress-reload-prompt-once";
-  const API_HOST = "goztepe.comedtestapi.mlpcare.com";
-  const API_BASE = `http://${API_HOST}/tr-tr/api/json/`;
+  const API_HOST = "goztepetestapi.comed.mlpcare.com";
+  const API_BASE = `https://${API_HOST}/tr-tr/api/json/`;
   const NATIVE_ENDPOINTS = new Set([
     "forms/document/saveDocumentProcesses",
     "medical/treatment/savevisitdiagnoses",

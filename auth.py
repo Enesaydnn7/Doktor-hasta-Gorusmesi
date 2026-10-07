@@ -22,13 +22,11 @@ MOBILE_API_MAX_AGE = int(os.getenv("MOBILE_SESSION_DAYS", "30")) * 86400
 ADMIN_USER = os.getenv("ADMIN_USER", "admin")
 ADMIN_PASS = os.getenv("ADMIN_PASS", "admin")
 _DEFAULT_DOCTOR_ACCOUNTS = {
-    "adnan.kaya;enes.aydin1|tracer": {
+    # COMED test ortamindaki tek aktif doktor hesabi.
+    # Bicim: <comed_kullanici>;<tracer_kullanici>|tracer
+    "Kullanici.kayadr;Kullanici.aydin1|tracer": {
         "password": "1",
-        "display_name": "Prof. Dr. Adnan Kaya",
-    },
-    "sami.sokucu;enes.aydin1|tracer": {
-        "password": "1",
-        "display_name": "Dr. Sami Sökücü",
+        "display_name": "Prof. Dr. Personel Kaya",
     },
 }
 _DEFAULT_PATIENT_ACCOUNTS = {

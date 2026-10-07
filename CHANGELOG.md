@@ -1,5 +1,13 @@
 # Sürüm Geçmişi
 
+## v2.14.0 — 7 Ekim 2026
+
+- **COMED adresleri değişti.** Web `https://goztepetest.comed.mlpcare.com`, API `https://goztepetestapi.comed.mlpcare.com` oldu. Protokol `http` → **`https`**; iz kaydı ve eklenti POST izin listesindeki şema kontrolleri de güncellendi, aksi halde sessizce çalışmayı bırakacaklardı.
+- **Tek doktor hesabı.** `Kullanici.kayadr;Kullanici.aydin1|tracer` (şifre `1`). Eski iki test hesabı kaldırıldı.
+- **Eklenti kapat düğmesi aşağı ok oldu.** Panel aşağı indiği için `×` yerine aşağı bakan ok simgesi kullanılıyor.
+- **Doktor paneli yönetici paneliyle aynı derinliğe geldi.** Ses kaydı oynatıcısı, sekmeli rapor görünümü (doktor epikrizi, hasta özeti, yönetim raporu, COMED taslağı, görüşme metni), iletişim önerileri ve üç rapor için ayrı PDF indirme eklendi.
+- Rapor render katmanı `static/report_view.js` dosyasına çıkarıldı; `/admin` ve `/doctor` panelleri artık aynı kodu paylaşıyor, kopya kod kalmadı.
+
 ## v2.13.2 — 6 Ekim 2026
 
 - **Hasta adı düzeltildi.** Köprü, COMED kart sayfasında ismi sayfa gövdesinin ilk 80 karakterinden alıyordu; COMED başlığı isme cinsiyet, yaş, doğum tarihi ve hasta numarasını boşluksuz eklediği için uygulamaya `Sena Nur Deneme Hastasıdır K28yıl22.10.1997 Hasta No:1300013` gibi bir metin düşüyordu. Ad artık ilk meta işaretinden kesiliyor.

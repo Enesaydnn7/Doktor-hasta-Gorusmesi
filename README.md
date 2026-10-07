@@ -52,9 +52,9 @@ Tarayıcı: **http://127.0.0.1:8000** → "Örnek yükle" → "Analiz et".
 
 GEMINI_API_KEY=...
 GEMINI_MODEL=gemini-2.5-flash
-APP_VERSION=v2.13.2
-COMED_WEB_BASE_URL=http://goztepe.comedtest.mlpcare.com/tr-tr/medical
-COMED_API_BASE_URL=http://goztepe.comedtestapi.mlpcare.com/tr-tr/api/json
+APP_VERSION=v2.14.0
+COMED_WEB_BASE_URL=https://goztepetest.comed.mlpcare.com/tr-tr/medical
+COMED_API_BASE_URL=https://goztepetestapi.comed.mlpcare.com/tr-tr/api/json
 MOBILE_SESSION_DAYS=30
 OPENAI_API_KEY=...
 OPENAI_STT_MODEL=gpt-4o-transcribe-diarize
@@ -122,7 +122,7 @@ PATIENT_TEST_OTP_ENABLED=false
 4. **Environment** sekmesinden değişkenleri gir:
    - `GEMINI_API_KEY` = (anahtarın)
    - `GEMINI_MODEL` = `gemini-2.5-flash`
-   - `APP_VERSION` = `v2.13.2`
+   - `APP_VERSION` = `v2.14.0`
    - `MOBILE_SESSION_DAYS` = `30`
    - `OPENAI_API_KEY` = (OpenAI Platform anahtarın)
    - `OPENAI_STT_MODEL` = `gpt-4o-transcribe-diarize`
@@ -165,10 +165,10 @@ Panelde metin kutusunun üstünde **Kaydet** ve **Ses dosyası yükle** var:
 
 ### COMED Chrome köprüsü
 
-Hazır eklenti paketi: [`build_artifacts/klinot-comed-bridge-v2.13.2.zip`](build_artifacts/klinot-comed-bridge-v2.13.2.zip).
+Hazır eklenti paketi: [`build_artifacts/klinot-comed-bridge-v2.14.0.zip`](build_artifacts/klinot-comed-bridge-v2.14.0.zip).
 ZIP'i klasöre çıkardıktan sonra [`build_artifacts/README.md`](build_artifacts/README.md) içindeki adımları izleyin.
 COMED oturumu Chrome'da normal şekilde açılır; eklentiye COMED parolası değil, mobil Klinot hesabı girilir.
-v2.13.2 hasta kimliğini klinik kart kimliği henüz oluşmamış COMED kartlarından da eşler;
+v2.14.0 hasta kimliğini klinik kart kimliği henüz oluşmamış COMED kartlarından da eşler;
 işlem günlüğünü sağ kenarda hover/tıklamayla açılan modern bir balon olarak gösterir.
 v2.11.0 doktor panelinden aktarım başlatıldığında açık COMED sekmesini yeniden kullanır;
 COMED oturumu kapalıysa giriş tamamlandıktan sonra hedef hasta kartına otomatik dönüp aktarımı sürdürür.
@@ -232,8 +232,7 @@ Doktorlar mobil uygulama, Chrome eklentisi ve web doktor panelinde aynı hesapla
 
 Test hesapları:
 
-- `adnan.kaya;enes.aydin1|tracer` / `1`
-- `sami.sokucu;enes.aydin1|tracer` / `1`
+- `Kullanici.kayadr;Kullanici.aydin1|tracer` / `1`
 
 Hesaplar Render ortamında `DOCTOR_ACCOUNTS_JSON` ile değiştirilebilir. Yönetici hesabı mobil uygulama, doktor paneli ve eklentiye kabul edilmez.
 

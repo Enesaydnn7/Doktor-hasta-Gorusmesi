@@ -220,7 +220,7 @@ class ComedIntegrationTests(unittest.TestCase):
         patient = {
             "visit_id": "22207357",
             "clinical_card_id": "30416836",
-            "clinical_card_url": "http://goztepe.comedtest.mlpcare.com/card",
+            "clinical_card_url": "https://goztepetest.comed.mlpcare.com/card",
         }
         bundle = comed_integration.build_transfer_bundle(record, patient)
 
@@ -290,7 +290,7 @@ class ComedIntegrationTests(unittest.TestCase):
             "method": "POST",
             "status": 200,
             "url": (
-                "http://goztepe.comedtestapi.mlpcare.com/tr-tr/api/json/"
+                "https://goztepetestapi.comed.mlpcare.com/tr-tr/api/json/"
                 "forms/document/saveDocumentProcesses"
             ),
             "request_body": {
@@ -338,7 +338,7 @@ class ComedIntegrationTests(unittest.TestCase):
             "visit_id": "22207357",
             "clinical_card_id": "30416836",
             "patient_name": "Test Hasta",
-            "clinical_card_url": "http://goztepe.comedtest.mlpcare.com/card",
+            "clinical_card_url": "https://goztepetest.comed.mlpcare.com/card",
         }
         transfer = {
             "id": 8,
@@ -401,7 +401,7 @@ class ComedIntegrationTests(unittest.TestCase):
                 json={"events": [
                     {
                         "method": "POST",
-                        "url": "http://goztepe.comedtestapi.mlpcare.com/tr-tr/api/json/forms/document/saveDocumentProcesses?visit=1&token=hidden",
+                        "url": "https://goztepetestapi.comed.mlpcare.com/tr-tr/api/json/forms/document/saveDocumentProcesses?visit=1&token=hidden",
                         "status": 200,
                         "request_body": {"password": "hidden", "documentProcesses": [{"id": 7}]},
                         "response_body": {"access_token": "hidden", "success": True},

@@ -30,18 +30,20 @@ class BrowserStateRegressionTests(unittest.TestCase):
 
     def test_doctor_score_uses_risk_aware_colors(self):
         css = (ROOT / "static" / "style.css").read_text(encoding="utf-8")
-        admin_js = (ROOT / "static" / "admin.js").read_text(encoding="utf-8")
+        # Rapor render katmani /admin ve /doctor panellerinde paylasilir.
+        report_js = (ROOT / "static" / "report_view.js").read_text(encoding="utf-8")
         app_js = (ROOT / "static" / "app.js").read_text(encoding="utf-8")
         for name in ("score-low", "score-mid", "score-high"):
             self.assertIn(name, css)
-            self.assertIn(name, admin_js)
+            self.assertIn(name, report_js)
             self.assertIn(name, app_js)
 
     def test_admin_repairs_infinite_webm_duration(self):
-        js = (ROOT / "static" / "admin.js").read_text(encoding="utf-8")
-        self.assertIn('preload="metadata"', js)
-        self.assertIn("audio.duration !== Infinity", js)
-        self.assertIn("audio.currentTime = Number.MAX_SAFE_INTEGER", js)
+        admin_js = (ROOT / "static" / "admin.js").read_text(encoding="utf-8")
+        report_js = (ROOT / "static" / "report_view.js").read_text(encoding="utf-8")
+        self.assertIn('preload="metadata"', admin_js)
+        self.assertIn("audio.duration !== Infinity", report_js)
+        self.assertIn("audio.currentTime = Number.MAX_SAFE_INTEGER", report_js)
 
     def test_legacy_pdf_names_are_normalized_in_browser(self):
         js = (ROOT / "static" / "admin.js").read_text(encoding="utf-8")
@@ -50,19 +52,40 @@ class BrowserStateRegressionTests(unittest.TestCase):
 
     def test_admin_exposes_doctor_reviewed_comed_workflow(self):
         js = (ROOT / "static" / "admin.js").read_text(encoding="utf-8")
+        report_js = (ROOT / "static" / "report_view.js").read_text(encoding="utf-8")
         html = (ROOT / "templates" / "admin.html").read_text(encoding="utf-8")
         css = (ROOT / "static" / "admin.css").read_text(encoding="utf-8")
 
-        self.assertIn("COMED taslağı", js)
+        self.assertIn("COMED taslağı", report_js)
         self.assertIn("/admin/comed/transfer/", js)
-        self.assertIn("Otomatik imza kapalıdır", js)
-        self.assertIn("COMED taslağı bulunmuyor", js)
-        self.assertIn("POST ile giden", js)
-        self.assertIn("Eklentinin doldurduğu", js)
-        self.assertIn("Operasyonel varsayılan", js)
+        self.assertIn("Otomatik imza kapalıdır", report_js)
+        self.assertIn("COMED taslağı bulunmuyor", report_js)
+        self.assertIn("POST ile giden", report_js)
+        self.assertIn("Eklentinin doldurduğu", report_js)
+        self.assertIn("Operasyonel varsayılan", report_js)
         self.assertIn('["doktor", "hasta", "yonetim"].includes(sekme)', js)
         self.assertIn("COMED aktarımı", html)
         self.assertIn("comed-action-bar", css)
+
+    def test_doctor_panel_shares_the_admin_report_layer(self):
+        """Doktor paneli yonetici panelindeki tum rapor gorunumlerini kullanir."""
+        html = (ROOT / "templates" / "doctor.html").read_text(encoding="utf-8")
+        js = (ROOT / "static" / "doctor.js").read_text(encoding="utf-8")
+
+        # Ortak render katmani doctor.js'ten ONCE yuklenmeli.
+        self.assertLess(
+            html.index("/static/report_view.js"),
+            html.index("/static/doctor.js"),
+        )
+        self.assertIn("/static/admin.css", html)
+        for tab in ("doktor", "hasta", "yonetim", "comed", "transkript"):
+            self.assertIn(f'data-tab="{tab}"', html)
+        self.assertIn("record-audio", html)
+        self.assertIn("bodyHTML(selectedRecord", js)
+        self.assertIn("prepareAudioTimeline(audio)", js)
+        self.assertIn("/doctor/pdf/", js)
+        # Ortak katmandaki esc ile cakismamali.
+        self.assertNotIn("function esc(", js)
 
     def test_comed_bridge_never_auto_signs_or_embeds_credentials(self):
         manifest = (ROOT / "comed_bridge_extension" / "manifest.json").read_text(
@@ -78,7 +101,7 @@ class BrowserStateRegressionTests(unittest.TestCase):
             encoding="utf-8"
         )
 
-        self.assertIn("goztepe.comedtest.mlpcare.com", manifest)
+        self.assertIn("goztepetest.comed.mlpcare.com", manifest)
         self.assertIn("ready_for_review", content)
         self.assertIn("klinot-comed-native-command-v1", content)
         self.assertIn("executeNativePosts(transfer.visit_id, nativeRequests)", content)

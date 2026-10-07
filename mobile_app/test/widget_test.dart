@@ -66,7 +66,7 @@ class FakeApi implements KlinotApi {
       visitId: '22207357',
       clinicalCardId: '30416836',
       patientName: 'Test Hasta',
-      clinicalCardUrl: 'http://goztepe.comedtest.mlpcare.com/test',
+      clinicalCardUrl: 'https://goztepetest.comed.mlpcare.com/test',
       patientNo: '476644',
       protocolNo: 'V-22207357',
       department: 'Kardiyoloji',
@@ -81,7 +81,7 @@ class FakeApi implements KlinotApi {
   ) async => const ComedTransfer(
     id: 7,
     status: 'ready_for_review',
-    clinicalCardUrl: 'http://goztepe.comedtest.mlpcare.com/test',
+    clinicalCardUrl: 'https://goztepetest.comed.mlpcare.com/test',
   );
 
   @override
@@ -89,7 +89,7 @@ class FakeApi implements KlinotApi {
       const ComedTransfer(
         id: 7,
         status: 'ready_for_review',
-        clinicalCardUrl: 'http://goztepe.comedtest.mlpcare.com/test',
+        clinicalCardUrl: 'https://goztepetest.comed.mlpcare.com/test',
       );
 
   @override
@@ -176,7 +176,7 @@ class SlowReadyTransferApi extends FakeApi {
   ) async => const ComedTransfer(
     id: 23,
     status: 'queued',
-    clinicalCardUrl: 'http://goztepe.comedtest.mlpcare.com/test',
+    clinicalCardUrl: 'https://goztepetest.comed.mlpcare.com/test',
   );
 
   @override
@@ -185,7 +185,7 @@ class SlowReadyTransferApi extends FakeApi {
     return ComedTransfer(
       id: transferId,
       status: statusCalls >= 12 ? 'ready_for_review' : 'filling',
-      clinicalCardUrl: 'http://goztepe.comedtest.mlpcare.com/test',
+      clinicalCardUrl: 'https://goztepetest.comed.mlpcare.com/test',
     );
   }
 }
@@ -247,7 +247,7 @@ void main() {
     );
 
     expect(find.text('Klinot'), findsOneWidget);
-    expect(find.textContaining('v2.13.2'), findsOneWidget);
+    expect(find.textContaining('v2.14.0'), findsOneWidget);
     await tester.enterText(find.byKey(const Key('usernameField')), 'admin');
     await tester.enterText(find.byKey(const Key('passwordField')), 'secret');
     await tester.tap(find.byKey(const Key('loginButton')));
@@ -357,7 +357,7 @@ void main() {
         clinicalCardId: '30416836',
         patientName: 'Test Hasta',
         protocolNo: 'V-22207357',
-        clinicalCardUrl: 'http://goztepe.comedtest.mlpcare.com/test',
+        clinicalCardUrl: 'https://goztepetest.comed.mlpcare.com/test',
       ),
       recordId: 42,
     );
@@ -490,7 +490,7 @@ void main() {
           clinicalCardId: '30416836',
           patientName: 'Test Hasta',
           protocolNo: 'V-22207357',
-          clinicalCardUrl: 'http://goztepe.comedtest.mlpcare.com/test',
+          clinicalCardUrl: 'https://goztepetest.comed.mlpcare.com/test',
         ),
         recordId: 42,
       );

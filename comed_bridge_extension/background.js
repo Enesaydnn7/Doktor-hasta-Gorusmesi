@@ -1,5 +1,5 @@
 const DEFAULT_API = "https://doktor-hasta-gorusmesi.onrender.com";
-const COMED_HOST = "goztepe.comedtest.mlpcare.com";
+const COMED_HOST = "goztepetest.comed.mlpcare.com";
 const PENDING_COMED_KEY = "pendingComedNavigation";
 
 function parsedUrl(value) {

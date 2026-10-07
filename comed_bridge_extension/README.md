@@ -15,7 +15,7 @@ kurumsal-ağ köprüsüdür.
    sabitleyin ve açın.
 7. Eklentide API adresini değiştirmeden, mobil Klinot'a girdiğiniz **Klinot kullanıcı
    adı ve şifresiyle** “Köprüyü bağla” deyin. Buraya COMED parolası yazılmaz.
-8. Kurumsal Wi-Fi'da `http://goztepe.comedtest.mlpcare.com/tr-tr/medical/hasta-tibbi-karti`
+8. Kurumsal Wi-Fi'da `https://goztepetest.comed.mlpcare.com/tr-tr/medical/hasta-tibbi-karti`
    iş listesini açın ve COMED'e kendi hesabınızla giriş yapın.
 9. İş listesi sayfasını bir kez yenileyin. Sağ altta “Klinot · 1 hasta iş listesine
    eşitlendi” bildirimi görünmelidir.
@@ -24,7 +24,7 @@ kurumsal-ağ köprüsüdür.
 ## Test isteği izleme
 
 Eklenti açılır penceresindeki **COMED test isteği izleme** seçeneği, yalnız
-`goztepe.comedtestapi.mlpcare.com` alan adına giden GET/POST isteklerinin URL,
+`goztepetestapi.comed.mlpcare.com` alan adına giden GET/POST isteklerinin URL,
 JSON gövdesi, yanıt durumu ve JSON yanıtını Klinot tanı kaydına gönderir. İstek
 başlıkları, çerezler, COMED parolası ve oturum/token alanları okunmaz veya
 saklanmaz. Bu seçenek gerçek COMED payload haritası çıkarılırken açık tutulur;

@@ -4,6 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Klinot · Doktor Paneli</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="/static/admin.css?v={{ version }}">
   <link rel="stylesheet" href="/static/doctor.css?v={{ version }}">
 </head>
 <body>
@@ -38,14 +40,42 @@
         </article>
         <article class="panel transfer-panel">
           <div class="panel-head"><div><h2>COMED aktarımı</h2><p>Seçili raporu kontrol edip aktarın.</p></div></div>
-          <div id="report-preview" class="report-preview">Rapor yükleniyor…</div>
-          <div class="actions"><a id="pdf-link" class="secondary disabled" href="#">Epikriz PDF</a><button id="transfer" disabled>COMED'e aktar ve kartı aç</button></div>
+          <div class="actions"><button id="transfer" disabled>COMED'e aktar ve kartı aç</button></div>
           <p class="hint">Hasta kartı yeni sekmede açılır. Eklenti alanları doldurur; son kontrol ve imza doktordadır.</p>
         </article>
       </section>
+
+      <article class="panel report-panel">
+        <div class="panel-head">
+          <div><h2>Görüşme kaydı</h2><p>Ses kaydı, epikriz, hasta özeti, iletişim önerileri ve COMED taslağı.</p></div>
+          <span id="report-record-id" class="badge">—</span>
+        </div>
+
+        <div id="audio-wrap" class="audio-wrap hidden">
+          <div class="audio-title"><i class="bi bi-soundwave"></i> Görüşme ses kaydı</div>
+          <audio id="record-audio" controls preload="metadata"></audio>
+        </div>
+
+        <nav class="det-tabs" id="report-tabs">
+          <button data-tab="doktor" class="active"><i class="bi bi-file-earmark-medical"></i> Doktor epikrizi</button>
+          <button data-tab="hasta"><i class="bi bi-person-heart"></i> Hasta özeti</button>
+          <button data-tab="yonetim"><i class="bi bi-speedometer2"></i> Yönetim raporu</button>
+          <button data-tab="comed"><i class="bi bi-hospital"></i> COMED taslağı</button>
+          <button data-tab="transkript"><i class="bi bi-chat-left-text"></i> Görüşme metni</button>
+        </nav>
+
+        <div class="det-pdf-row">
+          <button class="secondary" data-pdf="doktor"><i class="bi bi-filetype-pdf"></i> Epikriz PDF</button>
+          <button class="secondary" data-pdf="hasta"><i class="bi bi-filetype-pdf"></i> Hasta özeti PDF</button>
+          <button class="secondary" data-pdf="yonetim"><i class="bi bi-filetype-pdf"></i> Yönetim raporu PDF</button>
+        </div>
+
+        <div id="report-body" class="report-body"><div class="empty">Soldaki listeden bir rapor seçin.</div></div>
+      </article>
     </section>
   </main>
   <div id="toast" role="status"></div>
+  <script src="/static/report_view.js?v={{ version }}"></script>
   <script src="/static/doctor.js?v={{ version }}"></script>
 </body>
 </html>

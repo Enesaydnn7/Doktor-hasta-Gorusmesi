@@ -2,7 +2,9 @@ let overview={records:[],worklist:[]},selectedPatient=null,selectedRecord=null,a
 let refreshTimer=null,transferTimer=null,loading=false;
 const $=(id)=>document.getElementById(id);
 function toast(message,error=false){const el=$("toast");el.textContent=message;el.className=error?"show error":"show";setTimeout(()=>el.className="",4500)}
-function esc(value){return String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+// esc / val / isMiss ve rapor render fonksiyonlari report_view.js icinde
+// tanimlidir; yonetici paneliyle ayni katman kullanilir.
+let activeTab="doktor";
 async function json(url,options={}){const response=await fetch(url,{...options,headers:{Accept:"application/json",...(options.body?{"Content-Type":"application/json"}:{}),...(options.headers||{})}});const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.detail||data.error||`HTTP ${response.status}`);return data}
 function patientKey(p){return String(p?.visit_id||"")}
 function recordMatchesPatient(record,patient){const linked=record?.metadata?.comed_patient||{};return Boolean(linked.visit_id)&&String(linked.visit_id)===patientKey(patient)}
@@ -36,10 +38,69 @@ async function selectRecord(summary){
   try{const full=await json(`/doctor/api/records/${summary.id}`);selectedRecord={...summary,...full};activeTransfer=full.comed_transfer||null;$("transfer-state").textContent=activeTransfer?statusText(activeTransfer.status):"Aktarıma hazır";renderRecords();updateSelection();if(activeTransfer&&["queued","filling"].includes(activeTransfer.status))await pollTransfer(activeTransfer.id)}catch(e){toast(e.message,true)}
 }
 function updateSelection(){
-  const ep=selectedRecord?.doktor?.epikriz||selectedRecord?.doktor||{};
-  $("report-preview").textContent=selectedRecord?(ep.oyku||ep.sikayet||ep.onTani||selectedRecord.ozet||"Epikriz hazır"):'Bu hasta için önce bir görüşme raporu seçin.';
   $("transfer").disabled=!(selectedPatient&&selectedRecord)||["queued","filling","ready_for_review","completed"].includes(activeTransfer?.status);
-  const pdf=$("pdf-link");if(selectedRecord){pdf.href=`/doctor/pdf/${selectedRecord.id}`;pdf.classList.remove("disabled")}else{pdf.href="#";pdf.classList.add("disabled")}
+  renderReport();
+}
+
+/* Yonetici panelindeki ayni rapor katmani; sekmeler, ses ve PDF. */
+function renderReport(){
+  const body=$("report-body");
+  const badge=$("report-record-id");
+  const wrap=$("audio-wrap");
+  const audio=$("record-audio");
+  if(!selectedRecord||!selectedRecord.doktor){
+    badge.textContent="—";
+    wrap.classList.add("hidden");
+    audio.removeAttribute("src");
+    body.innerHTML='<div class="empty">Soldaki listeden bir rapor seçin.</div>';
+    document.querySelectorAll("[data-pdf]").forEach(b=>b.disabled=true);
+    return;
+  }
+  badge.textContent=`#${selectedRecord.id}`;
+  document.querySelectorAll("[data-pdf]").forEach(b=>b.disabled=false);
+  // Ses yalnizca kayitta varsa gosterilir; her secimde yeniden baglanir.
+  const wanted=`/doctor/audio/${selectedRecord.id}`;
+  if(selectedRecord.ses_var){
+    wrap.classList.remove("hidden");
+    if(!audio.src.endsWith(wanted)){audio.src=wanted;prepareAudioTimeline(audio)}
+  }else{
+    wrap.classList.add("hidden");
+    audio.removeAttribute("src");
+  }
+  try{
+    body.innerHTML=bodyHTML(selectedRecord,activeTab);
+  }catch(error){
+    body.innerHTML=`<div class="empty">Rapor görüntülenemedi: ${esc(error.message)}</div>`;
+  }
+}
+
+document.addEventListener("click",(event)=>{
+  const tab=event.target.closest("#report-tabs [data-tab]");
+  if(tab){
+    activeTab=tab.dataset.tab;
+    document.querySelectorAll("#report-tabs [data-tab]").forEach(b=>b.classList.toggle("active",b===tab));
+    renderReport();
+    return;
+  }
+  const pdf=event.target.closest("[data-pdf]");
+  if(pdf&&selectedRecord)indirDoktorPdf(pdf);
+});
+
+async function indirDoktorPdf(btn){
+  const rec=btn.dataset.pdf,id=selectedRecord.id,orig=btn.innerHTML;
+  btn.disabled=true;btn.innerHTML='<i class="bi bi-hourglass-split"></i> Hazırlanıyor…';
+  try{
+    const res=await fetch(`/doctor/pdf/${id}/${rec}`);
+    if(res.status===401)throw new Error("Oturum sona erdi. Tekrar giriş yapın.");
+    if(!res.ok){let m="PDF hatası";try{m=(await res.json()).error||m}catch(_){}throw new Error(m)}
+    const blob=await res.blob();
+    if(!blob.size||!String(blob.type).startsWith("application/pdf"))throw new Error("Sunucu geçerli bir PDF döndürmedi.");
+    const url=URL.createObjectURL(blob),a=document.createElement("a");
+    a.href=url;a.download=({hasta:"hasta_ozeti",doktor:"epikriz",yonetim:"yonetim_raporu"}[rec]||"rapor")+`_${id}.pdf`;
+    document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+  }catch(e){toast("PDF indirilemedi: "+e.message,true)}
+  finally{btn.disabled=false;btn.innerHTML=orig}
 }
 async function load({silent=false}={}){
   if(loading)return;loading=true;

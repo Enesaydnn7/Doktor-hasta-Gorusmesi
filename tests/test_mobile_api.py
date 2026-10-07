@@ -231,7 +231,7 @@ class MobileApiTests(unittest.TestCase):
             patch.object(
                 main.db,
                 "comed_assigned_doctor",
-                return_value="adnan.kaya;enes.aydin1|tracer",
+                return_value="Kullanici.kayadr;Kullanici.aydin1|tracer",
             ) as assignment,
             patch.object(main.db, "kaydet", return_value=56) as save,
         ):
@@ -256,7 +256,7 @@ class MobileApiTests(unittest.TestCase):
         self.assertEqual(save.call_args.kwargs["owner_user"], "476644")
         self.assertEqual(
             save.call_args.kwargs["assigned_doctor_user"],
-            "adnan.kaya;enes.aydin1|tracer",
+            "Kullanici.kayadr;Kullanici.aydin1|tracer",
         )
 
     def test_mobile_health_does_not_require_login(self):

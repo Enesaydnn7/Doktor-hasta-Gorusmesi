@@ -29,7 +29,7 @@ def fetch(url: str) -> tuple[str, str]:
 
 def main() -> int:
     root = (sys.argv[1] if len(sys.argv) > 1 else
-            "http://goztepe.comedtest.mlpcare.com/tr-tr/medical/")
+            "https://goztepetest.comed.mlpcare.com/tr-tr/medical/")
     needles = sys.argv[2:] or [
         "Sistem Sorgulama",
         "Sistem Sorgusu",
