@@ -35,6 +35,25 @@ class ComedExtensionTests(unittest.TestCase):
         # Ham 80 karakter kesme yontemi geri gelmemeli.
         self.assertNotIn("headerText.match(/^([^|\\n]{3,80})/)?.[1]?.trim()", source)
 
+    def test_worklist_date_range_uses_the_real_comed_picker(self):
+        """Tarih kutusu disabled bir input; takvimi yalnizca ikon dugmesi acar.
+
+        Canli COMED test ortaminda dogrulanan yapi:
+          div[data-test=co-date-time-picker]
+            button[data-test=co-button-icon-calendar]  <- tetikleyici
+            input (disabled, "07.10.2026 - 07.10.2026")
+        """
+        source = (EXTENSION / "content.js").read_text(encoding="utf-8")
+
+        self.assertIn('[data-test="co-date-time-picker"]', source)
+        self.assertIn('[data-test="co-button-icon-calendar"]', source)
+        self.assertIn('textOf(element) === "3 Ay"', source)
+        # Basari dogrulanmadan bayrak set edilmemeli; aksi halde tek bir erken
+        # deneme ozelligi kalici olarak devre disi birakir.
+        self.assertIn("if (rangeIsWide(picker.querySelector(\"input\"))) {", source)
+        self.assertIn("function rangeIsWide", source)
+        self.assertNotIn("dateRangeApplied = true;\n    try {", source)
+
     def test_empty_worklist_never_replaces_stored_patients(self):
         """Boş ayrıştırma sayfa yüklenmemiş demektir; kayıtlı liste silinmemeli."""
         source = (EXTENSION / "content.js").read_text(encoding="utf-8")

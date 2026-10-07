@@ -31,6 +31,7 @@
   let lastCardSyncAt = 0;
   let lastIdentityFingerprint = "";
   let dateRangeApplied = false;
+  let dateRangeTries = 0;
   let identitySyncTimer = null;
   let openingVisitId = null;
   let traceEnabled = true;
@@ -475,25 +476,69 @@
 
   // COMED is listesi varsayilan olarak yalnizca BUGUNU gosterir. Kartlar
   // genelde gecmis tarihli oldugu icin liste bos gorunur ve koprunun
-  // esitleyecek satiri kalmaz. Sayfa her yuklendiginde bir kez "1 Ay" araligi
+  // esitleyecek satiri kalmaz. Sayfa her yuklendiginde bir kez "3 Ay" araligi
   // secilir. Doktor sonradan araligi degistirirse tekrar zorlanmaz; bayrak
   // yalnizca sayfa yenilendiginde sifirlanir.
+  const RANGE_RE = /(\d{2}\.\d{2}\.\d{4})\s*-\s*(\d{2}\.\d{2}\.\d{4})/;
+
+  function rangeValueOf(node) {
+    if (!node) return "";
+    const raw = String(node.value || "").trim() || textOf(node);
+    return (raw.match(RANGE_RE) || [""])[0];
+  }
+
+  // Araligin gercekten genisledigini dogrular: iki tarih artik farkli olmali.
+  function rangeIsWide(node) {
+    const match = rangeValueOf(node).match(RANGE_RE);
+    return Boolean(match && match[1] !== match[2]);
+  }
+
+  // COMED is listesi varsayilan olarak yalnizca BUGUNU gosterir. Kartlar
+  // genelde gecmis tarihli oldugu icin liste bos gorunur ve koprunun
+  // esitleyecek satiri kalmaz. Bu yuzden bir kez "3 Ay" araligi secilir.
+  // ONEMLI: bayrak yalnizca BASARIDAN SONRA set edilir. Onceki surumde bayrak
+  // denemeden once set edildigi icin ilk deneme erken calisip basarisiz
+  // oldugunda bir daha hic denenmiyordu.
   async function ensureWorklistDateRange() {
-    if (dateRangeApplied) return;
-    dateRangeApplied = true;
+    if (dateRangeApplied || dateRangeTries >= 8) return;
+    dateRangeTries += 1;
     try {
-      const rangeText = /^\d{2}\.\d{2}\.\d{4}\s*-\s*\d{2}\.\d{2}\.\d{4}$/;
-      const trigger = await waitFor(() => [
-        ...document.querySelectorAll("input,button,span,div"),
+      // Tarih kutusu COMED'de ``disabled`` bir input'tur; ona tiklamak hicbir
+      // olay tetiklemez. Takvimi yalnizca yanindaki ikon dugmesi acar.
+      const picker = await waitFor(
+        () => document.querySelector('[data-test="co-date-time-picker"]'), 6000,
+      );
+      if (!picker) return;
+      if (rangeIsWide(picker.querySelector("input"))) {
+        dateRangeApplied = true;
+        return;
+      }
+
+      const opener = picker.querySelector('[data-test="co-button-icon-calendar"]')
+        || picker.querySelector("button");
+      if (!opener) return;
+      activateNode(opener);
+
+      const monthButton = await waitFor(() => [
+        ...document.querySelectorAll("button"),
       ].find((element) => element.offsetParent !== null
-        && rangeText.test((element.value || textOf(element) || "").trim())), 9000);
-      if (!trigger) return;
-      activateNode(trigger);
-      if (!await waitFor(() => clickText("1 Ay") || null, 3000)) return;
-      await sleep(260);
-      clickText("Tamam");
+        && textOf(element) === "3 Ay"), 2500);
+      if (!monthButton) return;
+      activateNode(monthButton);
+
+      // "3 Ay" secimi araligi aninda uygular ve paneli kapatir; "Tamam" yalnizca
+      // acik kalirsa gereklidir.
+      await sleep(320);
+      const confirm = [...document.querySelectorAll("button")].find(
+        (element) => element.offsetParent !== null && textOf(element) === "Tamam",
+      );
+      if (confirm) activateNode(confirm);
       await waitForDomQuiet(document.body, 260, 3000);
-      bridgeStatus("İş listesi son 1 aya genişletildi", "ok");
+
+      if (rangeIsWide(picker.querySelector("input"))) {
+        dateRangeApplied = true;
+        bridgeStatus("İş listesi son 3 aya genişletildi", "ok");
+      }
     } catch (_) {
       // COMED arayuzu degisirse koprunun geri kalani calismaya devam etsin.
     }
@@ -1696,7 +1741,13 @@
         lastIdentityFingerprint = "";
       }
       if (WORKLIST_RE.test(path)) {
-        if (routeChanged || Date.now() - lastWorklistSyncAt >= 60000) {
+        // Tarih araligi her turda (5 sn) denenir; basarili olunca kendini
+        // kapatir. Esitleme 60 saniyede bir yapildigi icin burada beklemek
+        // ilk denemenin basarisiz olmasi halinde cok gec kalirdi.
+        const widened = !dateRangeApplied;
+        await ensureWorklistDateRange();
+        if (routeChanged || (widened && dateRangeApplied)
+          || Date.now() - lastWorklistSyncAt >= 60000) {
           await syncWorklist();
           lastWorklistSyncAt = Date.now();
         }

@@ -1,8 +1,11 @@
 # Sürüm Geçmişi
 
+## v2.15.1 — 7 Ekim 2026
+
+- **İş listesi otomatik son 3 aya açılıyor (düzeltildi).** v2.15.0'daki deneme çalışmıyordu. İki nedeni vardı: (1) bayrak denemeden *önce* set edildiği için sayfa yüklenmeden yapılan ilk deneme başarısız olunca özellik kalıcı olarak devre dışı kalıyordu; (2) COMED'in tarih kutusu `disabled` bir `input` — ona tıklamak hiçbir olay tetiklemiyor, takvimi yalnızca yanındaki `[data-test="co-button-icon-calendar"]` düğmesi açıyor. Artık gerçek seçiciler kullanılıyor, aralığın genişlediği doğrulanıyor ve bayrak yalnızca başarıdan sonra set ediliyor. Canlı COMED test ortamında ölçüldü: aralık `07.10.2026 - 07.10.2026` → `09.07.2026 - 07.10.2026`, liste 0 → 2 hasta.
+
 ## v2.15.0 — 7 Ekim 2026
 
-- **İş listesi otomatik son 1 aya açılıyor.** COMED varsayılan olarak yalnızca bugünü gösterdiği ve kartlar genelde geçmiş tarihli olduğu için liste boş görünüyor, köprünün eşitleyecek satırı kalmıyordu. Sayfa her yüklendiğinde köprü bir kez "1 Ay" aralığını seçiyor; doktor aralığı sonradan değiştirirse tekrar zorlanmıyor.
 - **Eklentide tekrar giriş sorulmuyor.** Bir kez bağlandıktan sonra kullanıcı adı/şifre alanları gizleniyor, yerine bağlı hesap görünüyor. Oturum düşerse (401) kayıtlı oturum silinip giriş ekranı kendiliğinden geri geliyor. "Başka hesapla bağlan" ile elle değiştirilebiliyor.
 - **Düşme riski ve soygeçmiş artık zorunlu.** Görüşmede konuyla ilgili bir şey geçmiyorsa alanlar boş bırakılmıyor: düşme riski "yok", soygeçmiş "özellik yok" olarak işaretleniyor. Model boş bıraksa bile sunucu tarafında deterministik olarak dolduruluyor.
 - **Doktor paneli yönetici paneliyle birebir aynı düzene geçti.** Aynı istatistik şeridi, arama kutusu, kayıt satırları ve açılır detay; detayda ses kaydı, beş rapor sekmesi, PDF indirme ve COMED aktarım çubuğu.
