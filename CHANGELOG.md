@@ -1,5 +1,10 @@
 # Sürüm Geçmişi
 
+## v2.16.1 — 8 Ekim 2026
+
+- **Durum şeridi yana doğru açılıyor.** Şerit mutlak konumlu ve kapsayıcısı yalnızca balon kadar (56 px) geniş olduğu için tarayıcı "shrink-to-fit" uygulayıp her kelimeyi alt satıra atıyordu; mesaj dar ve uzun bir sütun gibi görünüyordu. `width:max-content` ile şerit artık içeriği kadar yana genişliyor (ölçüldü: 211×52 px).
+- **Tanı "Taraf Tipi" listesi açık bırakılmıyor.** Önceki kod listeyi açıp 60 ms bekliyor ve `clickText` ile seçeneği arıyordu; `clickText` yalnızca `button/label/span` tarıyor, oysa seçenekler `li`/`div` olabiliyor. Seçenek bulunamayınca liste açık kalıyor ve doktorun karşısına yarım kalmış bir alan çıkıyordu. Yeni `selectDropdownOption()` seçeneği geniş bir kümede arıyor, seçimden sonra listenin gerçekten kapandığını doğruluyor, kapanmadıysa Escape ile kapatıyor.
+
 ## v2.16.0 — 8 Ekim 2026
 
 - **Aktarım sırasında canlı durum şeridi.** Eskiden alanlar doldurulurken ekranda yalnızca balon görünüyordu; ne olduğunu anlamak için günlüğü açmak gerekiyordu. Artık balonun yanında kısa bir şerit beliriyor ve "Şikayet dolduruldu", "Özgeçmiş ve soygeçmiş hazırlanıyor" gibi anlık adımları gösteriyor. Altında hasta/protokol bilgisi var. Şerit 6 saniye sonra sönüyor, günlük açılınca gizleniyor; detaylı günlük eskisi gibi balona tıklanınca açılıyor.

@@ -77,6 +77,25 @@ class ComedExtensionTests(unittest.TestCase):
         self.assertIn('if (!added) return clickCardOption("Soygeçmiş", "Özellik Yok") ? 1 : 0;', source)
         self.assertIn('clickCardOption("Soygeçmiş", "Görüldü")', source)
 
+    def test_diagnosis_side_dropdown_is_selected_and_closed(self):
+        """Taraf Tipi listesi acik birakilmamali; "Ayrim Yok" secilip kapanmali."""
+        source = (EXTENSION / "content.js").read_text(encoding="utf-8")
+
+        self.assertIn("async function selectDropdownOption", source)
+        self.assertIn('selectDropdownOption(fieldGroupByLabel("Taraf Tipi", card), side)', source)
+        # Liste acik kalirsa Escape ile kapatilir.
+        self.assertIn('key: "Escape"', source)
+        self.assertIn("const stillOpen", source)
+        # Eski kirilgan yontem geri gelmemeli.
+        self.assertNotIn("sideInput?.click();", source)
+
+    def test_live_caption_grows_sideways_not_downwards(self):
+        """Serit kapsayicisi 56px; max-content olmadan her kelime alt satira duser."""
+        source = (EXTENSION / "content.js").read_text(encoding="utf-8")
+
+        self.assertIn("width:max-content", source)
+        self.assertIn('[data-klinot-log-caption][data-final="1"]{white-space:nowrap}', source)
+
     def test_empty_worklist_never_replaces_stored_patients(self):
         """Boş ayrıştırma sayfa yüklenmemiş demektir; kayıtlı liste silinmemeli."""
         source = (EXTENSION / "content.js").read_text(encoding="utf-8")

@@ -200,13 +200,16 @@
       #klinot-comed-bridge [data-klinot-log-orb][aria-expanded="true"] [data-klinot-log-label]{opacity:0;transform:translateX(-10px)}
       #klinot-comed-bridge [data-klinot-log-count]{position:absolute;right:-3px;top:-5px;display:grid;place-items:center;min-width:22px;height:22px;padding:0 6px;border:2px solid #fff;border-radius:99px;background:#3158c8;color:#fff;font:800 10px system-ui;pointer-events:none;box-shadow:0 3px 9px #0b253355}
       /* Islem sirasinda panel acmadan gorunen canli durum seridi. */
-      #klinot-comed-bridge [data-klinot-log-caption]{position:absolute;right:68px;top:50%;transform:translate(10px,-50%);max-width:min(330px,calc(100vw - 110px));padding:9px 14px;border-radius:14px;background:#0f2f3aF2;color:#fff;font:650 12.5px/1.35 system-ui;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:0 10px 26px #0a222c45;opacity:0;visibility:hidden;transition:opacity .2s ease,transform .26s cubic-bezier(.22,1,.36,1),visibility .2s;pointer-events:none}
+      /* width:max-content sart: kapsayici yalnizca 56px (orb) genisliginde
+         oldugu icin mutlak konumlu serit "shrink-to-fit" ile her kelimeyi alt
+         satira atiyordu. Boylece serit yana dogru buyur. */
+      #klinot-comed-bridge [data-klinot-log-caption]{position:absolute;right:68px;top:50%;transform:translate(10px,-50%);width:max-content;max-width:min(340px,calc(100vw - 120px));padding:9px 14px;border-radius:14px;background:#0f2f3aF2;color:#fff;font:650 12.5px/1.35 system-ui;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:0 10px 26px #0a222c45;opacity:0;visibility:hidden;transition:opacity .2s ease,transform .26s cubic-bezier(.22,1,.36,1),visibility .2s;pointer-events:none}
       #klinot-comed-bridge [data-klinot-log-caption][data-show="1"]{opacity:1;visibility:visible;transform:translate(0,-50%)}
       #klinot-comed-bridge [data-klinot-log-caption] b{display:block;font-weight:800}
       #klinot-comed-bridge [data-klinot-log-caption] i{display:block;margin-top:2px;font-style:normal;font-weight:600;opacity:.78;font-size:11px}
       #klinot-comed-bridge [data-klinot-log-caption][data-state="ok"]{background:#0b5f47F2}
       #klinot-comed-bridge [data-klinot-log-caption][data-state="bad"]{background:#8d2a26F2}
-      #klinot-comed-bridge [data-klinot-log-caption][data-final="1"]{white-space:normal;max-width:min(300px,calc(100vw - 110px))}
+      #klinot-comed-bridge [data-klinot-log-caption][data-final="1"]{white-space:nowrap}
       @media(max-width:620px){#klinot-comed-bridge [data-klinot-log-caption]{display:none}}
       #klinot-comed-bridge [data-klinot-log-panel]{position:absolute;right:72px;top:50%;width:min(420px,calc(100vw - 112px));max-height:min(520px,calc(100vh - 32px));display:flex;flex-direction:column;overflow:hidden;background:#fff;color:#173143;border:1px solid #d6e5e7;border-radius:20px;box-shadow:0 22px 56px #102b3a33;opacity:0;visibility:hidden;transform:translate(26px,-50%) scale(.94);transform-origin:right center;transition:opacity .24s ease,transform .3s cubic-bezier(.22,1,.36,1),visibility .24s;pointer-events:none}
       #klinot-comed-bridge [data-klinot-log-panel][aria-hidden="false"]{opacity:1;visibility:visible;transform:translate(0,-50%) scale(1);pointer-events:auto}
@@ -1484,6 +1487,48 @@
     };
   }
 
+  /* COMED acilir listelerini secer ve LISTEYI KAPATIR.
+     Onceki kod 60 ms bekleyip clickText() ile ariyordu; clickText yalnizca
+     button/label/span tarar, oysa secenekler li/div olabiliyor. Secenek
+     bulunamayinca liste acik kaliyor ve doktorun karsisina yarim kalmis bir
+     alan cikiyordu. Burada secenek genis bir kume icinde aranir, secimden
+     sonra listenin gercekten kapandigi dogrulanir; kapanmadiysa Escape ile
+     kapatilir. */
+  async function selectDropdownOption(group, label) {
+    if (!group || !label) return false;
+    const input = group.querySelector("input");
+    if (!input) return false;
+    if (String(input.value || "").trim() === label) return true;
+
+    input.click();
+    const optionSelector = "li,[role=option],.co-select__option,.co-option,"
+      + ".autocomplete__item,.co-dropdown__item,button,span,div";
+    const isOpenOption = (node) => node.offsetParent !== null
+      && textOf(node) === label
+      && node.children.length <= 1
+      && !group.contains(node);
+
+    const option = await waitFor(
+      () => [...document.querySelectorAll(optionSelector)].find(isOpenOption), 2500,
+    );
+    if (option) {
+      activateNode(option);
+      await sleep(140);
+    }
+
+    // Liste hala aciksa doktora yarim kalmis alan birakma: Escape ile kapat.
+    const stillOpen = () => [...document.querySelectorAll(optionSelector)]
+      .some(isOpenOption);
+    if (stillOpen()) {
+      input.dispatchEvent(new KeyboardEvent("keydown", {
+        key: "Escape", code: "Escape", keyCode: 27, bubbles: true,
+      }));
+      document.body.click();
+      await sleep(120);
+    }
+    return String(input.value || "").trim() === label;
+  }
+
   async function fillDiagnoses(diagnoses = []) {
     const card = cardByTitle("Tanılar (ICD - 10)");
     if (!card) return 0;
@@ -1504,10 +1549,7 @@
       }[diagnosis.diagnosis_type] || "Ön Tanı";
       clickText(diagnosisType, card);
       const side = {none: "Ayrım Yok", left: "Sol", right: "Sağ"}[diagnosis.side] || "Ayrım Yok";
-      const sideInput = fieldGroupByLabel("Taraf Tipi", card)?.querySelector("input");
-      sideInput?.click();
-      await sleep(60);
-      clickText(side);
+      await selectDropdownOption(fieldGroupByLabel("Taraf Tipi", card), side);
       const mainDiagnosis = card.querySelector('input[type="checkbox"]');
       const shouldBePrimary = diagnosis.primary === true || (index === 0
         && !diagnoses.some((item) => item?.primary === true));
