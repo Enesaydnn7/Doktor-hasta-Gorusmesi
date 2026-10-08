@@ -9,14 +9,21 @@ EXTENSION = ROOT / "comed_bridge_extension"
 
 
 class ComedExtensionTests(unittest.TestCase):
-    def test_transfer_path_prefers_native_post_and_has_form_fallback(self):
+    def test_transfer_fills_the_form_and_never_posts_natively(self):
+        """POST sablonu akisi kaldirildi; tum alanlar form doldurularak hazirlanir."""
         source = (EXTENSION / "content.js").read_text(encoding="utf-8")
 
-        self.assertIn("klinot-comed-native-command-v1", source)
-        self.assertIn("executeNativePosts(transfer.visit_id, nativeRequests)", source)
         self.assertIn("function setValue", source)
         self.assertIn("async function fillFormDraft", source)
-        self.assertIn("POST şablonu yok · alanlar eklentiyle dolduruluyor", source)
+        for removed in (
+            "klinot-comed-native-command-v1",
+            "executeNativePosts",
+            "nativePending",
+            "POST şablonu yok",
+            "POST tamamlanamadı",
+            "Doğrulanmış COMED POST'ları gönderiliyor",
+        ):
+            self.assertNotIn(removed, source)
 
     def test_patient_identity_is_read_even_when_info_panel_is_collapsed(self):
         """TCKN ve doğum tarihi yalnız açılır panelde; gizliyken de okunmalı."""
@@ -54,18 +61,22 @@ class ComedExtensionTests(unittest.TestCase):
         self.assertIn("function rangeIsWide", source)
         self.assertNotIn("dateRangeApplied = true;\n    try {", source)
 
-    def test_live_caption_shows_progress_without_opening_the_log(self):
-        """Aktarim sirasinda panel acmadan yanda anlik durum gorunmeli."""
+    def test_single_bubble_shows_progress_without_opening_the_log(self):
+        """TEK balon: hem hover'da hem islem sirasinda yana acilip adimi gosterir."""
         source = (EXTENSION / "content.js").read_text(encoding="utf-8")
 
-        self.assertIn("data-klinot-log-caption", source)
         self.assertIn("function renderBridgeCaption", source)
         self.assertIn("renderBridgeCaption(box, text, state)", source)
-        # Son adim doktorun imzasidir; mesaj kendiliginden kaybolmamali.
+        # Durum metni balonun kendi etiketine yazilir; ayri bir serit yok.
+        self.assertIn("data-klinot-caption-text", source)
+        self.assertNotIn("data-klinot-log-caption", source)
+        self.assertIn('orb.dataset.live = panelOpen ? "0" : "1";', source)
+        self.assertIn('[data-klinot-log-orb][data-live="1"]', source)
+        # Son adim doktorun imzasidir; balon kendiliginden kapanmamali.
         self.assertIn("Lütfen kontrol edip Kaydet ve İmzala", source)
         self.assertIn("if (!isFinal) {", source)
-        # Gunluk acikken serit gizlenir.
-        self.assertIn('if (open && caption) caption.dataset.show = "0";', source)
+        # Gunluk acikken balon kucuk kalir.
+        self.assertIn('if (open) orb.dataset.live = "0";', source)
 
     def test_family_history_and_fall_risk_are_always_answered(self):
         """Ikisi de COMED'de zorunlu; bilgi yoksa 'yok' isaretlenmeli."""
@@ -89,17 +100,14 @@ class ComedExtensionTests(unittest.TestCase):
         # Eski kirilgan yontem geri gelmemeli.
         self.assertNotIn("sideInput?.click();", source)
 
-    def test_live_caption_grows_sideways_not_downwards(self):
-        """Serit kapsayicisi 56px; max-content olmadan her kelime alt satira duser."""
+    def test_bubble_grows_sideways_to_fit_its_text(self):
+        """Balon sabit genislik yerine icerigi kadar yana acilir."""
         source = (EXTENSION / "content.js").read_text(encoding="utf-8")
 
         self.assertIn("width:max-content", source)
-        self.assertIn('[data-klinot-log-caption][data-final="1"]{white-space:nowrap}', source)
-        # Balon hover'da 196px'e acilir; serit de sola kayip bindirmeyi onler.
-        self.assertIn(
-            "[data-klinot-log-shell]:hover [data-klinot-log-caption]{right:208px}",
-            source,
-        )
+        # Sabit 196px genislik metni kesiyordu.
+        self.assertNotIn("{width:196px;border-radius:28px}", source)
+        self.assertIn("text-overflow:ellipsis", source)
 
     def test_caption_context_never_shows_toolbar_text_as_patient_name(self):
         """Is listesi sayfasinda sayfa basi arac cubugudur, hasta adi degil."""
@@ -130,9 +138,6 @@ class ComedExtensionTests(unittest.TestCase):
         self.assertIn('[data-klinot-log-orb]:hover', source)
         self.assertIn("saveBridgeWidgetState({top})", source)
         self.assertNotIn("saveBridgeWidgetState({left, top})", source)
-        self.assertIn("const hasMainPost", source)
-        self.assertIn("POST tamamlanamadı · alanlar eklentiyle dolduruluyor", source)
-        self.assertIn("throw postError || new Error", source)
         self.assertIn("await fillFormDraft(transfer", source)
         self.assertIn("const editorAlreadyVisible", source)
         self.assertIn("controlSwitch.checked !== fields.is_control_suggested", source)
@@ -195,13 +200,19 @@ class ComedExtensionTests(unittest.TestCase):
         self.assertNotIn('textOf(button) === "Kaydet ve İmzala"', source)
         self.assertNotIn('textOf(button) === "Kaydet" && button.click', source)
 
-    def test_page_executor_has_strict_save_allowlist_and_no_sign_endpoint(self):
+    def test_page_tracer_only_observes_and_never_posts(self):
+        """page_trace artik yalnizca gozlemci; COMED'e istek gondermez."""
         source = (EXTENSION / "page_trace.js").read_text(encoding="utf-8")
-
-        self.assertIn('"forms/document/saveDocumentProcesses"', source)
-        self.assertIn('"medical/treatment/savevisitdiagnoses"', source)
         self.assertIn('"x-authentication-token"', source)
-        self.assertIn('/delete|remove|sign|unsign/i', source)
+        # POST calistirici tamamen kaldirildi.
+        for removed in (
+            "NATIVE_ENDPOINTS",
+            "executeNativePosts",
+            "klinot-comed-native-command-v1",
+            "nativeFetch",
+            "API_BASE",
+        ):
+            self.assertNotIn(removed, source)
         self.assertIn("klinot-comed-suppress-reload-prompt-once", source)
         self.assertIn('window.addEventListener("beforeunload"', source)
         self.assertIn("event.stopImmediatePropagation()", source)

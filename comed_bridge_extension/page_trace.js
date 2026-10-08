@@ -8,28 +8,12 @@
   markerHost.setAttribute?.(TRACE_MARKER, "1");
 
   const TRACE_SOURCE = "klinot-comed-trace-v1";
-  const NATIVE_COMMAND_SOURCE = "klinot-comed-native-command-v1";
-  const NATIVE_RESULT_SOURCE = "klinot-comed-native-result-v1";
   const SUPPRESS_RELOAD_PROMPT_KEY = "klinot-comed-suppress-reload-prompt-once";
   const API_HOST = "goztepetestapi.comed.mlpcare.com";
-  const API_BASE = `https://${API_HOST}/tr-tr/api/json/`;
-  const NATIVE_ENDPOINTS = new Set([
-    "forms/document/saveDocumentProcesses",
-    "medical/treatment/savevisitdiagnoses",
-    "medical/examination/saveProfile",
-    "medical/examination/saveProfileDiseases",
-    "medical/examination/saveProfileDisabilities",
-    "medical/examination/saveProfileItems",
-    "medical/examination/saveProfileOffers",
-    "medical/examination/saveProfileOperations",
-    "medical/examination/saveProfilePharmacyProducts",
-    "medical/examination/saveProfileSymptoms",
-  ]);
   const SECRET_KEY = /authorization|cookie|password|passwd|secret|token|session/i;
   const MAX_TEXT = 300000;
   const sessionHeaders = new Map();
   const traceEvents = [];
-  let nativeFetch = null;
 
   // Klinot'un güvenli geri alma işlemi bittikten sonra yaptığı tek yenilemede
   // COMED'in "kaydedilmemiş değişiklik" uyarısını bastır. Bu dinleyici
@@ -121,92 +105,6 @@
     }
   }
 
-  function normalizeNativeEndpoint(value) {
-    const raw = String(value || "").trim();
-    let endpoint = raw.replace(/^\/+/, "");
-    try {
-      if (/^https?:\/\//i.test(raw)) {
-        const url = new URL(raw);
-        if (url.hostname !== API_HOST) return null;
-        endpoint = url.pathname.split("/api/json/", 2)[1] || "";
-      }
-    } catch (_) {
-      return null;
-    }
-    endpoint = endpoint.replace(/^\/+|\/+$/g, "");
-    if (/delete|remove|sign|unsign/i.test(endpoint)) return null;
-    return NATIVE_ENDPOINTS.has(endpoint) ? endpoint : null;
-  }
-
-  function containsVisitReference(value, visitId) {
-    if (Array.isArray(value)) return value.some((item) => containsVisitReference(item, visitId));
-    if (value && typeof value === "object") {
-      return Object.values(value).some((item) => containsVisitReference(item, visitId));
-    }
-    return String(value) === String(visitId);
-  }
-
-  function postNativeResult(requestId, payload) {
-    window.postMessage({
-      source: NATIVE_RESULT_SOURCE,
-      request_id: requestId,
-      ...payload,
-    }, location.origin);
-  }
-
-  async function executeNativePosts(command) {
-    const requestId = String(command.request_id || "");
-    const visitId = String(command.visit_id || "");
-    const requests = Array.isArray(command.requests) ? command.requests.slice(0, 20) : [];
-    if (!requestId || !visitId || !requests.length) {
-      throw new Error("Doğrulanmış COMED POST isteği bulunamadı");
-    }
-    if (typeof nativeFetch !== "function") throw new Error("COMED fetch katmanı hazır değil");
-    if (!sessionHeaders.get("x-application-key") || !sessionHeaders.get("x-authentication-token")) {
-      throw new Error("COMED oturum başlıkları yakalanamadı; hasta kartını bir kez yenileyin");
-    }
-
-    const results = [];
-    for (const request of requests) {
-      const endpoint = normalizeNativeEndpoint(request?.endpoint);
-      if (!endpoint || String(request?.method || "POST").toUpperCase() !== "POST") {
-        throw new Error("İzin verilmeyen COMED kayıt ucu engellendi");
-      }
-      if (!request.body || !containsVisitReference(request.body, visitId)) {
-        throw new Error("COMED POST gövdesi seçili protokolle eşleşmiyor");
-      }
-
-      const headers = new Headers({Accept: "application/json", "Content-Type": "application/json"});
-      sessionHeaders.forEach((value, name) => headers.set(name, value));
-      const startedAt = performance.now();
-      const response = await nativeFetch(`${API_BASE}${endpoint}`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify(request.body),
-      });
-      const responseText = await response.clone().text();
-      const responseBody = parseText(responseText);
-      emit({
-        method: "POST",
-        url: response.url || `${API_BASE}${endpoint}`,
-        status: response.status,
-        duration_ms: Math.round(performance.now() - startedAt),
-        request_body: request.body,
-        response_body: responseBody,
-      });
-      if (!response.ok) {
-        const detail = responseBody?.message || responseBody?.detail || `HTTP ${response.status}`;
-        throw new Error(`COMED ${endpoint}: ${String(detail).slice(0, 400)}`);
-      }
-      results.push({
-        endpoint,
-        status: response.status,
-        patched_fields: Array.isArray(request?.patched_fields)
-          ? request.patched_fields.slice(0, 100) : [],
-      });
-    }
-    return results;
-  }
 
   function emit(event) {
     const url = safeUrl(event.url);
@@ -283,7 +181,6 @@
 
   if (typeof window.fetch === "function") {
     const originalFetch = window.fetch.bind(window);
-    nativeFetch = originalFetch;
     window.fetch = async function(input, init = {}) {
       const method = String(init.method || input?.method || "GET").toUpperCase();
       const url = typeof input === "string" || input instanceof URL ? input : input?.url;
@@ -319,15 +216,4 @@
     };
   }
 
-  window.addEventListener("message", (event) => {
-    if (event.source !== window || event.origin !== location.origin) return;
-    if (event.data?.source !== NATIVE_COMMAND_SOURCE) return;
-    const requestId = String(event.data.request_id || "");
-    executeNativePosts(event.data)
-      .then((results) => postNativeResult(requestId, {ok: true, results}))
-      .catch((error) => postNativeResult(requestId, {
-        ok: false,
-        error: String(error?.message || error || "COMED POST başarısız").slice(0, 800),
-      }));
-  });
 })();

@@ -226,10 +226,12 @@ class ComedIntegrationTests(unittest.TestCase):
 
         self.assertFalse(bundle["auto_sign"])
         self.assertTrue(bundle["doctor_review_required"])
-        self.assertEqual(bundle["schema_version"], 5)
+        self.assertEqual(bundle["schema_version"], 6)
         self.assertIn("fallback_fields", bundle)
-        self.assertEqual(bundle["execution_mode"], "native_api_post")
-        self.assertEqual(bundle["native_requests"], [])
+        # Dogrulanmis POST sablonu akisi kaldirildi; alanlar yalnizca eklenti
+        # tarafindan form doldurularak hazirlanir.
+        self.assertEqual(bundle["execution_mode"], "extension_form_fill")
+        self.assertNotIn("native_requests", bundle)
         self.assertEqual(
             [request.get("endpoint") or request.get("endpoint_group") for request in bundle["requests"]],
             [
@@ -276,7 +278,8 @@ class ComedIntegrationTests(unittest.TestCase):
 
         self.assertFalse(bundle["requests"][0]["fields"]["fall_risk"]["exists"])
 
-    def test_native_document_post_is_built_only_from_same_visit_success_template(self):
+    def test_trace_templates_no_longer_produce_native_posts(self):
+        """POST sablonu akisi kaldirildi; iz kayitlari pakete etki etmemeli."""
         record = {
             "id": 42,
             "comed": {
@@ -293,43 +296,17 @@ class ComedIntegrationTests(unittest.TestCase):
                 "https://goztepetestapi.comed.mlpcare.com/tr-tr/api/json/"
                 "forms/document/saveDocumentProcesses"
             ),
-            "request_body": {
-                "documentProcesses": [{
-                    "document": "examination_v2",
-                    "contextId": {"referenceId": 22207357},
-                    "values": {
-                        "patient_complaint": [{"values": ["eski"]}],
-                        "patient_story": [{"values": ["eski öykü"]}],
-                        "weight": [{"values": [60]}],
-                        "height": [{"values": [160]}],
-                        "pulse": [{"values": [70]}],
-                    },
-                }],
-            },
+            "request_body": {"documentProcesses": [{"document": "examination_v2"}]},
         }
-        bundle = comed_integration.build_transfer_bundle(
+        with_template = comed_integration.build_transfer_bundle(
             record, patient, trace_templates=[template]
         )
+        without_template = comed_integration.build_transfer_bundle(record, patient)
 
-        self.assertEqual(len(bundle["native_requests"]), 1)
-        native = bundle["native_requests"][0]
-        values = native["body"]["documentProcesses"][0]["values"]
-        self.assertEqual(values["patient_complaint"][0]["values"], ["Yeni baş ağrısı"])
-        self.assertEqual(values["patient_story"][0]["values"], ["İki gündür sürüyor."])
-        self.assertEqual(values["weight"][0]["values"], [74])
-        self.assertIn("patient_complaint", native["patched_fields"])
-
-        wrong_visit = {**template, "request_body": {
-            **template["request_body"],
-            "documentProcesses": [{
-                **template["request_body"]["documentProcesses"][0],
-                "contextId": {"referenceId": 99999999},
-            }],
-        }}
-        rejected = comed_integration.build_transfer_bundle(
-            record, patient, trace_templates=[wrong_visit]
-        )
-        self.assertEqual(rejected["native_requests"], [])
+        # Eski cagiranlari kirmamak icin parametre korunur ama yok sayilir.
+        self.assertEqual(with_template, without_template)
+        self.assertNotIn("native_requests", with_template)
+        self.assertEqual(with_template["execution_mode"], "extension_form_fill")
 
     def test_mobile_worklist_and_transfer_require_authenticated_user(self):
         token = auth.api_token_uret("dr-enes", "doctor")

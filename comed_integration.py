@@ -3,11 +3,9 @@
 from __future__ import annotations
 
 from copy import deepcopy
-import json
 import re
 import unicodedata
 from typing import Any
-from urllib.parse import urlsplit
 
 import config
 
@@ -175,36 +173,6 @@ PROFILE_LIST_FIELDS = (
     "diseases", "operations", "pharmacy_products", "allergies", "addictions",
     "special_conditions", "vaccines", "devices", "disabilities", "transfusions", "therapies",
 )
-
-COMED_NATIVE_POST_ENDPOINTS = {
-    "forms/document/saveDocumentProcesses",
-    "medical/treatment/savevisitdiagnoses",
-    "medical/examination/saveProfile",
-    "medical/examination/saveProfileDiseases",
-    "medical/examination/saveProfileDisabilities",
-    "medical/examination/saveProfileItems",
-    "medical/examination/saveProfileOffers",
-    "medical/examination/saveProfileOperations",
-    "medical/examination/saveProfilePharmacyProducts",
-    "medical/examination/saveProfileSymptoms",
-}
-
-_DOCUMENT_FIELD_PATHS = {
-    "patient_complaint": ("patient_complaint",),
-    "patient_story": ("patient_story",),
-    "review_of_system_simple": ("review_of_system_simple",),
-    "exam_simple_textarea": ("exam_simple_textarea",),
-    "treatment_note_v2": ("treatment_note_v2",),
-    "is_surgery_will_planned": ("is_surgery_will_planned",),
-    "is_control_suggested": ("is_control_suggested",),
-    "weight": ("vitals", "weight"),
-    "height": ("vitals", "height"),
-    "temperature_v2": ("vitals", "temperature_v2"),
-    "pulse": ("vitals", "pulse"),
-    "pressure_systolic": ("vitals", "pressure_systolic"),
-    "pressure_diastolic": ("vitals", "pressure_diastolic"),
-    "spo2": ("vitals", "spo2"),
-}
 
 
 def clinical_card_url(visit_id: str | int, clinical_card_id: str | int) -> str:
@@ -656,196 +624,17 @@ def normalize_draft(draft: dict[str, Any] | None) -> dict[str, Any]:
     }
 
 
-def _value_at_path(value: dict[str, Any], path: tuple[str, ...]) -> Any:
-    current: Any = value
-    for key in path:
-        if not isinstance(current, dict):
-            return None
-        current = current.get(key)
-    return current
-
-
-def _encode_document_value(current: Any, value: Any) -> Any:
-    """Preserve COMED's captured value envelope while replacing its value."""
-    if (
-        isinstance(current, list)
-        and current
-        and isinstance(current[0], dict)
-        and isinstance(current[0].get("values"), list)
-    ):
-        cloned = deepcopy(current)
-        cloned[0]["values"] = value if isinstance(value, list) else [value]
-        return cloned
-    if isinstance(current, dict) and isinstance(current.get("values"), list):
-        cloned = deepcopy(current)
-        cloned["values"] = value if isinstance(value, list) else [value]
-        return cloned
-    return deepcopy(value)
-
-
-def _patch_document_payload(value: Any, fields: dict[str, Any],
-                            patched: set[str]) -> Any:
-    if isinstance(value, list):
-        return [_patch_document_payload(item, fields, patched) for item in value]
-    if not isinstance(value, dict):
-        return value
-
-    result = {}
-    for key, current in value.items():
-        path = _DOCUMENT_FIELD_PATHS.get(key)
-        replacement = _value_at_path(fields, path) if path else None
-        if path and _present(replacement):
-            if key == "treatment_note_v2" and _present(fields.get("control_note")):
-                replacement = (
-                    f"{replacement}\nKontrol notu: {fields['control_note']}"
-                )
-            result[key] = _encode_document_value(current, replacement)
-            patched.add(key)
-        else:
-            result[key] = _patch_document_payload(current, fields, patched)
-    return result
-
-
-def _contains_visit_reference(value: Any, visit_id: str) -> bool:
-    if isinstance(value, dict):
-        return any(_contains_visit_reference(item, visit_id) for item in value.values())
-    if isinstance(value, list):
-        return any(_contains_visit_reference(item, visit_id) for item in value)
-    return str(value) == visit_id
-
-
-def _trace_endpoint(url: str) -> str | None:
-    path = urlsplit(str(url or "")).path
-    marker = "/api/json/"
-    if marker not in path:
-        return None
-    endpoint = path.split(marker, 1)[1].strip("/")
-    return endpoint if endpoint in COMED_NATIVE_POST_ENDPOINTS else None
-
-
-def _document_signature(body: Any) -> str:
-    names: list[str] = []
-
-    def walk(value: Any) -> None:
-        if isinstance(value, dict):
-            document = value.get("document")
-            if isinstance(document, str) and document:
-                names.append(document)
-            for child in value.values():
-                walk(child)
-        elif isinstance(value, list):
-            for child in value:
-                walk(child)
-
-    walk(body)
-    return "|".join(sorted(set(names))) or json.dumps(body, sort_keys=True)[:300]
-
-
-def _diagnosis_code(value: Any) -> str:
-    if not isinstance(value, dict):
-        return ""
-    icd = value.get("icd") if isinstance(value.get("icd"), dict) else {}
-    return str(value.get("code") or value.get("icdCode") or icd.get("code") or "").strip().upper()
-
-
-def build_native_requests(fields: dict[str, Any], visit_id: str,
-                          trace_templates: list[dict[str, Any]] | None) -> tuple[list[dict], list[str]]:
-    """Build strict POSTs only from successful, same-visit COMED test captures.
-
-    Captured request headers are deliberately never accepted here.  A request body
-    is eligible only when it already references the selected visit and targets an
-    allow-listed save endpoint.  This keeps the integration from guessing COMED's
-    private payload schema or replaying another patient's payload.
-    """
-    requests: list[dict] = []
-    warnings: list[str] = []
-    seen_documents: set[str] = set()
-    diagnosis_added = False
-
-    for event in trace_templates or []:
-        if str(event.get("method") or "").upper() != "POST":
-            continue
-        status = event.get("status")
-        if status is not None and not 200 <= int(status) < 300:
-            continue
-        endpoint = _trace_endpoint(str(event.get("url") or ""))
-        body = event.get("request_body")
-        if not endpoint or not isinstance(body, (dict, list)):
-            continue
-        if not _contains_visit_reference(body, visit_id):
-            continue
-
-        if endpoint == "forms/document/saveDocumentProcesses":
-            signature = _document_signature(body)
-            if signature in seen_documents:
-                continue
-            patched: set[str] = set()
-            patched_body = _patch_document_payload(deepcopy(body), fields, patched)
-            if not patched:
-                continue
-            seen_documents.add(signature)
-            requests.append({
-                "method": "POST",
-                "endpoint": endpoint,
-                "body": patched_body,
-                "patched_fields": sorted(patched),
-            })
-            continue
-
-        if endpoint == "medical/treatment/savevisitdiagnoses" and not diagnosis_added:
-            if not isinstance(body, dict) or not isinstance(body.get("selectedDiagnosises"), list):
-                continue
-            requested = {
-                item["code"]: item for item in fields.get("diagnoses") or []
-                if isinstance(item, dict) and item.get("code")
-            }
-            selected = []
-            for candidate in body["selectedDiagnosises"]:
-                code = _diagnosis_code(candidate)
-                if code not in requested:
-                    continue
-                cloned = deepcopy(candidate)
-                wanted = requested[code]
-                for description_key in ("description", "explanation"):
-                    if description_key in cloned and _present(wanted.get("description")):
-                        cloned[description_key] = wanted["description"]
-                cloned.update({
-                    "visitId": int(visit_id) if visit_id.isdigit() else visit_id,
-                    "newAdded": True,
-                    "selected": True,
-                    "saved": True,
-                })
-                selected.append(cloned)
-            if selected:
-                patched_body = deepcopy(body)
-                patched_body["selectedDiagnosises"] = selected
-                requests.append({
-                    "method": "POST",
-                    "endpoint": endpoint,
-                    "body": patched_body,
-                    "patched_fields": [f"diagnosis:{_diagnosis_code(item)}" for item in selected],
-                })
-                diagnosis_added = True
-
-    if not any(item["endpoint"] == "forms/document/saveDocumentProcesses" for item in requests):
-        warnings.append(
-            "Bu protokol için doğrulanmış ana muayene POST şablonu bulunamadı; "
-            "COMED'de bir kez Kaydet ile öğrenme kaydı gerekir."
-        )
-    if fields.get("diagnoses") and not diagnosis_added:
-        warnings.append(
-            "ICD kaydı, aynı kodu içeren doğrulanmış COMED POST şablonu olmadığı için doktora bırakıldı."
-        )
-    if _profile_present(fields.get("profile") or {}):
-        warnings.append(
-            "Lookup kimliği gerektiren özgeçmiş/soygeçmiş kayıtları doğrudan POST'ta uydurulmadı; "
-            "mevcut kayıtlar korunur ve yeni eşleşmeler doktor kontrolündedir."
-        )
-    return requests, warnings
-
 
 def build_transfer_bundle(record: dict[str, Any], patient: dict[str, Any],
                           trace_templates: list[dict[str, Any]] | None = None) -> dict[str, Any]:
+    """Aktarım paketini hazırla.
+
+    Alanlar COMED'de yalnızca tarayıcı köprüsü tarafından form doldurularak
+    hazırlanır. Doğrulanmış POST şablonu akışı kaldırıldı: her protokol için
+    şablon bulunmadığından davranış öngörülemez oluyor ve doktora "POST şablonu
+    yok" gibi anlamsız mesajlar gidiyordu. ``trace_templates`` parametresi
+    çağıranları kırmamak için korunur ancak kullanılmaz.
+    """
     draft = deepcopy(record.get("comed") or {})
     _reconcile_fall_risk_from_transcript(draft, record.get("transkript"))
     normalized = normalize_draft(draft)
@@ -854,18 +643,14 @@ def build_transfer_bundle(record: dict[str, Any], patient: dict[str, Any],
     url = patient.get("clinical_card_url") or (
         clinical_card_url(visit_id, card_id) if visit_id and card_id else None
     )
-    native_requests, native_warnings = build_native_requests(
-        normalized["fields"], visit_id, trace_templates
-    )
     return {
-        "schema_version": 5,
+        "schema_version": 6,
         "record_id": record.get("id"),
         "patient": {**patient, "clinical_card_url": url},
         "doctor_review_required": True,
         "auto_sign": False,
         "api_base_url": config.COMED_API_BASE_URL,
-        "execution_mode": "native_api_post",
-        "native_requests": native_requests,
+        "execution_mode": "extension_form_fill",
         "requests": [
             {
                 "method": "POST",
@@ -888,7 +673,7 @@ def build_transfer_bundle(record: dict[str, Any], patient: dict[str, Any],
         ],
         "missing_required": normalized["missing_required"],
         "fallback_fields": normalized["fallback_fields"],
-        "manual_review_notes": native_warnings + [
+        "manual_review_notes": [
             "ICD kodu COMED arama sonucuyla eşleştirilmeden imzalanmamalıdır.",
             "Ağrı skoru kurum şemasına göre ayrı Ağrı Değerlendirme dokümanında olabilir.",
             "Eksik zorunlu alanlar doktor tarafından tamamlanmalıdır.",

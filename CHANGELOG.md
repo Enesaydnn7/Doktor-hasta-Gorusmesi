@@ -1,5 +1,14 @@
 # Sürüm Geçmişi
 
+## v2.17.0 — 8 Ekim 2026
+
+- **Tek balon.** Ayrı durum şeridi kaldırıldı. Artık tek bir balon var: fare üzerine gelince de işlem sırasında da aynı balon yana açılıyor ve o anki adımı kendi içinde gösteriyor. İki kutunun yan yana durması ve üst üste binmesi sorunu kökten bitti. Balon içeriği kadar genişliyor (ölçüldü: 304 px / 257 px / boşta 56 px).
+- **POST şablonu sistemi tamamen kaldırıldı.** Her protokol için doğrulanmış şablon bulunmadığından davranış öngörülemez oluyor ve doktora "POST şablonu yok", "POST tamamlanamadı" gibi anlamsız mesajlar gidiyordu. Artık bütün alanlar yalnızca eklenti tarafından form doldurularak hazırlanıyor.
+  - `content.js`: `executeNativePosts` ve POST dalları kaldırıldı.
+  - `page_trace.js`: POST çalıştırıcı kaldırıldı, dosya 333 → 220 satıra indi; yalnızca gözlemci olarak kaldı, COMED'e hiçbir istek göndermiyor.
+  - `comed_integration.py`: `build_native_requests` ve yardımcıları kaldırıldı (186 satır), paket `schema_version: 6` ve `execution_mode: "extension_form_fill"` döndürüyor.
+  - Köprü hiçbir koşulda Kaydet/Kaydet ve İmzala düğmesine basmıyor; son kontrol, kayıt ve imza doktorda.
+
 ## v2.16.2 — 8 Ekim 2026
 
 - **Fare balonun üzerine gelince şerit artık ezilmiyor.** Balon 56 px'den 196 px'e açılırken şeridin üstüne biniyordu. Şerit de aynı anda sola kayıyor; aralarında boşluk kalıyor.

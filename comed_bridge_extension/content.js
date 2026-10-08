@@ -8,9 +8,6 @@
   const LAST_DRAFT_SNAPSHOT_KEY = "klinot-comed-last-draft-snapshot";
   const SUPPRESS_RELOAD_PROMPT_KEY = "klinot-comed-suppress-reload-prompt-once";
   const TRACE_SOURCE = "klinot-comed-trace-v1";
-  const NATIVE_COMMAND_SOURCE = "klinot-comed-native-command-v1";
-  const NATIVE_RESULT_SOURCE = "klinot-comed-native-result-v1";
-  const NATIVE_TIMEOUT_MS = 45000;
   const SYSTEM_REVIEW_DEFAULTS = {
     "Genel Sistem Sorgusu": "Özellik Yok",
     "Genitoüriner Sistem": "Özellik Yok",
@@ -38,7 +35,6 @@
   let traceEnabled = true;
   let traceFlushTimer = null;
   const traceQueue = [];
-  const nativePending = new Map();
 
   function request(path, options = {}) {
     return new Promise((resolve, reject) => {
@@ -101,33 +97,7 @@
       scheduleTraceFlush();
       return;
     }
-    if (event.data?.source !== NATIVE_RESULT_SOURCE) return;
-    const requestId = String(event.data.request_id || "");
-    const pending = nativePending.get(requestId);
-    if (!pending) return;
-    clearTimeout(pending.timer);
-    nativePending.delete(requestId);
-    if (event.data.ok) pending.resolve(event.data.results || []);
-    else pending.reject(new Error(event.data.error || "COMED POST başarısız"));
   });
-
-  function executeNativePosts(visitId, requests) {
-    return new Promise((resolve, reject) => {
-      const requestId = crypto.randomUUID?.()
-        || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-      const timer = setTimeout(() => {
-        nativePending.delete(requestId);
-        reject(new Error("COMED POST yanıt süresi aşıldı"));
-      }, NATIVE_TIMEOUT_MS);
-      nativePending.set(requestId, {resolve, reject, timer});
-      window.postMessage({
-        source: NATIVE_COMMAND_SOURCE,
-        request_id: requestId,
-        visit_id: String(visitId),
-        requests,
-      }, location.origin);
-    });
-  }
 
   const BRIDGE_LOG_KEY = "klinot_comed_bridge_log_v1";
   const BRIDGE_WIDGET_KEY = "klinot_comed_bridge_widget_v2";
@@ -198,31 +168,22 @@
       #klinot-comed-bridge [data-klinot-log-orb]{position:relative;height:56px;width:56px;padding:0;border:0;border-radius:28px;background:linear-gradient(135deg,#0a9289,#06706c);color:#fff;display:flex;align-items:center;overflow:hidden;cursor:grab;box-shadow:0 10px 30px #082c3855;transition:width .26s cubic-bezier(.22,1,.36,1),border-radius .26s ease,background .2s ease,transform .18s ease;touch-action:none;animation:klinot-orb-in .32s cubic-bezier(.22,1,.36,1)}
       #klinot-comed-bridge [data-klinot-log-orb]:active{cursor:grabbing;transform:scale(.96)}
       #klinot-comed-bridge [data-klinot-log-orb][data-klinot-busy="1"]{animation:klinot-pulse 1.8s ease-out infinite}
-      #klinot-comed-bridge [data-klinot-log-orb]:hover,#klinot-comed-bridge [data-klinot-log-orb]:focus-visible{width:196px;border-radius:28px}
-      #klinot-comed-bridge [data-klinot-log-orb][aria-expanded="true"]{width:56px}
+      /* TEK balon: hem fare uzerine gelince hem islem sirasinda ayni balon yana
+         acilir ve o anki adimi gosterir. Ayri bir durum seridi yok. */
+      #klinot-comed-bridge [data-klinot-log-orb]:hover,
+      #klinot-comed-bridge [data-klinot-log-orb]:focus-visible,
+      #klinot-comed-bridge [data-klinot-log-orb][data-live="1"]{width:max-content;max-width:min(360px,calc(100vw - 60px));border-radius:28px}
+      #klinot-comed-bridge [data-klinot-log-orb][aria-expanded="true"]{width:56px;max-width:56px}
       #klinot-comed-bridge [data-klinot-log-mark]{width:56px;min-width:56px;height:56px;display:grid;place-items:center;font:800 20px system-ui;letter-spacing:.5px}
-      #klinot-comed-bridge [data-klinot-log-label]{display:flex;flex-direction:column;align-items:flex-start;padding-right:18px;white-space:nowrap;opacity:0;transform:translateX(-10px);transition:opacity .2s ease .04s,transform .26s cubic-bezier(.22,1,.36,1) .04s}
-      #klinot-comed-bridge [data-klinot-log-label] b{font:800 13px system-ui;line-height:1.2}
-      #klinot-comed-bridge [data-klinot-log-label] i{font:600 11px system-ui;font-style:normal;opacity:.82;line-height:1.3}
-      #klinot-comed-bridge [data-klinot-log-orb]:hover [data-klinot-log-label],#klinot-comed-bridge [data-klinot-log-orb]:focus-visible [data-klinot-log-label]{opacity:1;transform:none}
+      #klinot-comed-bridge [data-klinot-log-label]{display:flex;flex-direction:column;align-items:flex-start;padding-right:18px;min-width:0;white-space:nowrap;opacity:0;transform:translateX(-10px);transition:opacity .2s ease .04s,transform .26s cubic-bezier(.22,1,.36,1) .04s}
+      #klinot-comed-bridge [data-klinot-log-label] b{max-width:290px;overflow:hidden;text-overflow:ellipsis;font:800 13px system-ui;line-height:1.2}
+      #klinot-comed-bridge [data-klinot-log-label] i{max-width:290px;overflow:hidden;text-overflow:ellipsis;font:600 11px system-ui;font-style:normal;opacity:.82;line-height:1.3}
+      #klinot-comed-bridge [data-klinot-log-orb]:hover [data-klinot-log-label],
+      #klinot-comed-bridge [data-klinot-log-orb]:focus-visible [data-klinot-log-label],
+      #klinot-comed-bridge [data-klinot-log-orb][data-live="1"] [data-klinot-log-label]{opacity:1;transform:none}
       #klinot-comed-bridge [data-klinot-log-orb][aria-expanded="true"] [data-klinot-log-label]{opacity:0;transform:translateX(-10px)}
       #klinot-comed-bridge [data-klinot-log-count]{position:absolute;right:-3px;top:-5px;display:grid;place-items:center;min-width:22px;height:22px;padding:0 6px;border:2px solid #fff;border-radius:99px;background:#3158c8;color:#fff;font:800 10px system-ui;pointer-events:none;box-shadow:0 3px 9px #0b253355}
-      /* Islem sirasinda panel acmadan gorunen canli durum seridi. */
-      /* width:max-content sart: kapsayici yalnizca 56px (orb) genisliginde
-         oldugu icin mutlak konumlu serit "shrink-to-fit" ile her kelimeyi alt
-         satira atiyordu. Boylece serit yana dogru buyur. */
-      #klinot-comed-bridge [data-klinot-log-caption]{position:absolute;right:68px;top:50%;transform:translate(10px,-50%);width:max-content;max-width:min(340px,calc(100vw - 120px));padding:9px 14px;border-radius:14px;background:#0f2f3aF2;color:#fff;font:650 12.5px/1.35 system-ui;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:0 10px 26px #0a222c45;opacity:0;visibility:hidden;transition:opacity .2s ease,transform .26s cubic-bezier(.22,1,.36,1),visibility .2s;pointer-events:none}
-      #klinot-comed-bridge [data-klinot-log-caption][data-show="1"]{opacity:1;visibility:visible;transform:translate(0,-50%)}
-      #klinot-comed-bridge [data-klinot-log-caption] b{display:block;font-weight:800}
-      #klinot-comed-bridge [data-klinot-log-caption] i{display:block;margin-top:2px;font-style:normal;font-weight:600;opacity:.78;font-size:11px}
-      #klinot-comed-bridge [data-klinot-log-caption][data-state="ok"]{background:#0b5f47F2}
-      #klinot-comed-bridge [data-klinot-log-caption][data-state="bad"]{background:#8d2a26F2}
-      #klinot-comed-bridge [data-klinot-log-caption][data-final="1"]{white-space:nowrap}
-      /* Fare balonun uzerine gelince balon 56px -> 196px acildigi icin seridin
-         ustune biniyordu; serit de ayni anda sola kayar. */
-      #klinot-comed-bridge [data-klinot-log-shell]:hover [data-klinot-log-caption]{right:208px}
-      #klinot-comed-bridge [data-klinot-log-orb][aria-expanded="true"] ~ [data-klinot-log-caption]{right:68px}
-      @media(max-width:620px){#klinot-comed-bridge [data-klinot-log-caption]{display:none}}
+      @media(max-width:620px){#klinot-comed-bridge [data-klinot-log-label]{max-width:180px}}
       #klinot-comed-bridge [data-klinot-log-panel]{position:absolute;right:72px;top:50%;width:min(420px,calc(100vw - 112px));max-height:min(520px,calc(100vh - 32px));display:flex;flex-direction:column;overflow:hidden;background:#fff;color:#173143;border:1px solid #d6e5e7;border-radius:20px;box-shadow:0 22px 56px #102b3a33;opacity:0;visibility:hidden;transform:translate(26px,-50%) scale(.94);transform-origin:right center;transition:opacity .24s ease,transform .3s cubic-bezier(.22,1,.36,1),visibility .24s;pointer-events:none}
       #klinot-comed-bridge [data-klinot-log-panel][aria-hidden="false"]{opacity:1;visibility:visible;transform:translate(0,-50%) scale(1);pointer-events:auto}
       #klinot-comed-bridge [data-klinot-log-header]{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 15px;background:#f4f9f9;border-bottom:1px solid #e0edee}
@@ -233,7 +194,7 @@
       #klinot-comed-bridge [data-klinot-log-summary]{padding:11px 15px;background:linear-gradient(135deg,#0a9289,#06706c);color:#fff}
       #klinot-comed-bridge [data-klinot-log-list]{flex:1 1 auto;min-height:0;overflow:auto;padding:5px 11px;overscroll-behavior:contain}
       @media(max-width:620px){#klinot-comed-bridge [data-klinot-log-panel]{right:66px;width:calc(100vw - 96px)}}
-    </style><div data-klinot-log-shell><section data-klinot-log-panel aria-hidden="true"><div data-klinot-log-header><span><strong style="display:block;font-size:13px">İşlem günlüğü</strong><small data-klinot-log-panel-count style="color:#60777d;font-weight:600"></small></span><button data-klinot-log-close type="button" aria-label="İşlem günlüğünü aşağı indir" title="Aşağı indir"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button></div><div data-klinot-log-summary><strong data-klinot-log-title>Klinot hazır</strong><small data-klinot-log-context style="display:block;margin-top:3px;opacity:.82;font-weight:500;overflow-wrap:anywhere"></small></div><div data-klinot-log-list></div></section><div data-klinot-log-caption data-show="0" aria-live="polite"><b data-klinot-caption-text></b><i data-klinot-caption-sub></i></div><button data-klinot-log-orb type="button" aria-expanded="false" aria-label="Klinot işlem günlüğünü aç"><span data-klinot-log-mark aria-hidden="true">K</span><span data-klinot-log-label><b>Klinot</b><i data-klinot-log-tag>İşlem günlüğü</i></span></button><span data-klinot-log-count>0</span></div>`;
+    </style><div data-klinot-log-shell><section data-klinot-log-panel aria-hidden="true"><div data-klinot-log-header><span><strong style="display:block;font-size:13px">İşlem günlüğü</strong><small data-klinot-log-panel-count style="color:#60777d;font-weight:600"></small></span><button data-klinot-log-close type="button" aria-label="İşlem günlüğünü aşağı indir" title="Aşağı indir"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button></div><div data-klinot-log-summary><strong data-klinot-log-title>Klinot hazır</strong><small data-klinot-log-context style="display:block;margin-top:3px;opacity:.82;font-weight:500;overflow-wrap:anywhere"></small></div><div data-klinot-log-list></div></section><button data-klinot-log-orb type="button" data-live="0" aria-expanded="false" aria-label="Klinot işlem günlüğünü aç"><span data-klinot-log-mark aria-hidden="true">K</span><span data-klinot-log-label aria-live="polite"><b data-klinot-caption-text>Klinot</b><i data-klinot-caption-sub>İşlem günlüğü</i></span></button><span data-klinot-log-count>0</span></div>`;
     const shell = box.querySelector("[data-klinot-log-shell]");
     const orb = box.querySelector("[data-klinot-log-orb]");
     const panel = box.querySelector("[data-klinot-log-panel]");
@@ -242,8 +203,8 @@
       orb.setAttribute("aria-expanded", String(open));
       orb.setAttribute("aria-label", open ? "Klinot işlem günlüğünü kapat" : "Klinot işlem günlüğünü aç");
       // Gunluk acikken canli serit panelin uzerine binmesin.
-      const caption = box.querySelector("[data-klinot-log-caption]");
-      if (open && caption) caption.dataset.show = "0";
+      // Gunluk acikken balon kucuk kalsin.
+      if (open) orb.dataset.live = "0";
     };
     let drag = null;
     let suppressClick = false;
@@ -291,7 +252,6 @@
     const orb = box.querySelector("[data-klinot-log-orb]");
     orb.style.background = theme.grad;
     orb.dataset.klinotBusy = state === "idle" ? "1" : "0";
-    box.querySelector("[data-klinot-log-tag]").textContent = theme.tag;
     box.querySelector("[data-klinot-log-count]").style.background = theme.solid;
     box.querySelector("[data-klinot-log-summary]").style.background = theme.grad;
     box.querySelector("[data-klinot-log-title]").textContent = `Klinot · ${text}`;
@@ -335,26 +295,24 @@
   const BRIDGE_FINAL_TEXT = "Aktarım bitti · Genel doktor kontrolü gerekli";
 
   function renderBridgeCaption(box, text, state) {
-    const caption = box.querySelector("[data-klinot-log-caption]");
-    if (!caption) return;
+    const orb = box.querySelector("[data-klinot-log-orb]");
+    if (!orb) return;
     const panelOpen = box.querySelector("[data-klinot-log-panel]")
       ?.getAttribute("aria-hidden") === "false";
     const isFinal = String(text).startsWith(BRIDGE_FINAL_TEXT);
-    caption.dataset.state = state;
-    caption.dataset.final = isFinal ? "1" : "0";
-    caption.querySelector("[data-klinot-caption-text]").textContent =
-      isFinal ? "Aktarım bitti" : text;
-    // Alt satir tek satirda durmali; uzun baglam metni kirpilir.
+    // Uzun baglam metni tek satirda kalmali.
     const context = bridgeContext() || "COMED aktarımı";
-    caption.querySelector("[data-klinot-caption-sub]").textContent = isFinal
+    orb.querySelector("[data-klinot-caption-text]").textContent =
+      isFinal ? "Aktarım bitti" : text;
+    orb.querySelector("[data-klinot-caption-sub]").textContent = isFinal
       ? "Lütfen kontrol edip Kaydet ve İmzala"
       : (context.length > 54 ? `${context.slice(0, 53)}…` : context);
-    caption.dataset.show = panelOpen ? "0" : "1";
+    orb.dataset.live = panelOpen ? "0" : "1";
 
     clearTimeout(captionTimer);
-    // Son mesaj doktorun imza adimidir; kendiliginden kaybolmaz.
+    // Son mesaj doktorun imza adimidir; balon acik kalir.
     if (!isFinal) {
-      captionTimer = setTimeout(() => { caption.dataset.show = "0"; }, 6000);
+      captionTimer = setTimeout(() => { orb.dataset.live = "0"; }, 6000);
     }
   }
 
@@ -622,10 +580,9 @@
     }
   }
 
-  // Native POST is preferred when a verified same-visit template exists.  The
-  // COMED test environment does not expose such a template for every protocol,
-  // so the bridge keeps a form-filling fallback.  This fallback only prepares a
-  // draft on the currently open card; it never clicks Kaydet or Kaydet ve İmzala.
+  // Tum alanlar acik hasta kartinda form doldurarak hazirlanir. Koprunun
+  // kendisi asla Kaydet veya Kaydet ve Imzala dugmesine basmaz; son kontrol,
+  // kayit ve imza doktordadir.
   function setValue(element, value) {
     if (!element || value === null || value === undefined || value === "") return false;
     const proto = element instanceof HTMLTextAreaElement
@@ -1381,9 +1338,6 @@
     if (!snapshot || String(snapshot.visit_id) !== String(visitId)) {
       throw new Error("Bu kartta temizlenebilecek bir Klinot taslağı yok");
     }
-    if (snapshot.native_post_applied) {
-      throw new Error("Bu aktarım COMED POST ile kaydedildi; güvenli otomatik geri alma yapılamaz");
-    }
     bridgeStatus("Klinot taslağı geri alınıyor");
     await restorePersistedDraft(snapshot);
     await restoreSystemInquiry(snapshot);
@@ -1724,36 +1678,12 @@
         created_at: new Date().toISOString(),
         system_inquiry: null,
         persisted_baseline: persistedBaseline,
-        native_post_applied: false,
       });
-      const nativeRequests = transfer.bundle.native_requests || [];
-      const hasMainPost = nativeRequests.some(
-        (item) => item.endpoint === "forms/document/saveDocumentProcesses",
-      );
-      const hasDiagnosisPost = nativeRequests.some(
-        (item) => item.endpoint === "medical/treatment/savevisitdiagnoses",
-      );
-      let postResults = [];
-      let postError = null;
-      if (hasMainPost) {
-        bridgeStatus("Doğrulanmış COMED POST'ları gönderiliyor");
-        try {
-          postResults = await executeNativePosts(transfer.visit_id, nativeRequests);
-          const snapshot = readDraftSnapshot();
-          if (snapshot) {
-            snapshot.native_post_applied = postResults.length > 0;
-            writeDraftSnapshot(snapshot);
-          }
-        } catch (error) {
-          postError = error;
-          bridgeStatus("POST tamamlanamadı · alanlar eklentiyle dolduruluyor");
-        }
-      } else {
-        bridgeStatus("POST şablonu yok · alanlar eklentiyle dolduruluyor");
-      }
-
-      const diagnosisPosted = !postError && hasDiagnosisPost && postResults.length > 0;
-      const formResult = await fillFormDraft(transfer, {skipDiagnoses: diagnosisPosted});
+      // Tum alanlar eklenti uzerinden doldurulur. Dogrulanmis POST sablonu
+      // akisi kaldirildi: her protokolde sablon bulunmadigi icin davranis
+      // ongorulemez oluyor ve doktora "POST sablonu yok" gibi anlamsiz
+      // mesajlar gidiyordu.
+      const formResult = await fillFormDraft(transfer, {skipDiagnoses: false});
       if (!formResult.systemSaved) {
         const systemError = new Error(formResult.systemError || "Sistem Sorgulama kaydedilemedi");
         systemError.klinotDebug = {
@@ -1766,17 +1696,15 @@
         };
         throw systemError;
       }
-      if (!postResults.length && !formResult.filled) {
-        throw postError || new Error("COMED form alanları bulunamadı; kartı yenileyip tekrar deneyin");
+      if (!formResult.filled) {
+        throw new Error("COMED form alanları bulunamadı; kartı yenileyip tekrar deneyin");
       }
       bridgeStatus("Son alanlar doğrulanıyor");
       await waitForDomQuiet(document.body, 400, 3500);
       const unresolved = formResult.fieldResults.filter(
         (item) => !["filled", "saved", "reused"].includes(item.status),
       );
-      const mode = postResults.length
-        ? "POST + form tamamlama"
-        : postError ? "POST fallback + eklenti form doldurma" : "eklenti form doldurma";
+      const mode = "eklenti form doldurma";
       const note = `${mode}; ${formResult.filled} alan işlendi${unresolved.length
         ? `, ${unresolved.length} alan doktor kontrolüne bırakıldı`
         : " ve tarayıcı güncellemeleri tamamlandı"}. Doktor Kaydet/İmzala kontrolünü yapmalıdır.`;
@@ -1784,12 +1712,6 @@
         started_at: startedAt,
         finished_at: new Date().toISOString(),
         mode,
-        post: {
-          attempted: hasMainPost,
-          error: postError?.message || null,
-          requests: postResults,
-          fields: postResults.flatMap((item) => item.patched_fields || []),
-        },
         extension: {
           filled_count: formResult.filled,
           system_inquiry_saved: formResult.systemSaved,

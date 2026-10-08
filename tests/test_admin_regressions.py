@@ -106,8 +106,10 @@ class BrowserStateRegressionTests(unittest.TestCase):
 
         self.assertIn("goztepetest.comed.mlpcare.com", manifest)
         self.assertIn("ready_for_review", content)
-        self.assertIn("klinot-comed-native-command-v1", content)
-        self.assertIn("executeNativePosts(transfer.visit_id, nativeRequests)", content)
+        # Dogrulanmis POST sablonu akisi kaldirildi; tum alanlar form
+        # doldurularak hazirlanir, kaydi ve imzayi doktor yapar.
+        self.assertNotIn("klinot-comed-native-command-v1", content)
+        self.assertNotIn("executeNativePosts", content)
         self.assertIn("function cardByTitle", content)
         self.assertIn("function inputByLabel", content)
         self.assertIn("function setValue", content)
@@ -117,8 +119,9 @@ class BrowserStateRegressionTests(unittest.TestCase):
         self.assertNotIn("x-authentication-token", background.lower())
         self.assertIn('"world": "MAIN"', manifest)
         self.assertIn("klinot-comed-trace-v1", trace)
-        self.assertIn("klinot-comed-native-command-v1", trace)
-        self.assertIn("NATIVE_ENDPOINTS", trace)
+        # page_trace yalnizca gozlemcidir; COMED'e istek gondermez.
+        self.assertNotIn("klinot-comed-native-command-v1", trace)
+        self.assertNotIn("NATIVE_ENDPOINTS", trace)
         self.assertIn("data-klinot-comed-trace-installed", trace)
         self.assertNotIn("window.__klinotComedTrace", trace)
         self.assertNotIn("getAllCookieStores", trace)
