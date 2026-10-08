@@ -151,8 +151,16 @@
     const match = location.pathname.match(CARD_RE);
     const patientNo = body.match(/Hasta\s*No[:\s]*(\d+)/i)?.[1] || "";
     const protocol = body.match(/\bV-(\d+)\b/)?.[0] || (match ? `V-${match[1]}` : "");
-    const patientName = body.match(/^(.{3,80}?)(?=\s+(?:K|E|\d{1,3}\s*y|Hasta\s*No|V-))/i)?.[1]?.trim() || "";
-    return [patientName, patientNo && `Hasta ${patientNo}`, protocol].filter(Boolean).join(" · ");
+    // Hasta adi YALNIZCA hasta kartinda okunur. Is listesi sayfasinda sayfa
+    // govdesinin basi arac cubugudur ("Is Listesi Havuz Is Listesi Randevular
+    // ...") ve bu metin hasta adi sanilip seride basiliyordu.
+    const patientName = match
+      ? cleanPatientName(
+        body.match(/^(.{3,80}?)(?=\s+(?:K|E|\d{1,3}\s*y|Hasta\s*No|V-))/i)?.[1],
+      )
+      : "";
+    return [patientName, patientNo && `Hasta ${patientNo}`, protocol]
+      .filter(Boolean).join(" · ");
   }
 
   function bridgeFieldLabel(field) {
@@ -210,6 +218,10 @@
       #klinot-comed-bridge [data-klinot-log-caption][data-state="ok"]{background:#0b5f47F2}
       #klinot-comed-bridge [data-klinot-log-caption][data-state="bad"]{background:#8d2a26F2}
       #klinot-comed-bridge [data-klinot-log-caption][data-final="1"]{white-space:nowrap}
+      /* Fare balonun uzerine gelince balon 56px -> 196px acildigi icin seridin
+         ustune biniyordu; serit de ayni anda sola kayar. */
+      #klinot-comed-bridge [data-klinot-log-shell]:hover [data-klinot-log-caption]{right:208px}
+      #klinot-comed-bridge [data-klinot-log-orb][aria-expanded="true"] ~ [data-klinot-log-caption]{right:68px}
       @media(max-width:620px){#klinot-comed-bridge [data-klinot-log-caption]{display:none}}
       #klinot-comed-bridge [data-klinot-log-panel]{position:absolute;right:72px;top:50%;width:min(420px,calc(100vw - 112px));max-height:min(520px,calc(100vh - 32px));display:flex;flex-direction:column;overflow:hidden;background:#fff;color:#173143;border:1px solid #d6e5e7;border-radius:20px;box-shadow:0 22px 56px #102b3a33;opacity:0;visibility:hidden;transform:translate(26px,-50%) scale(.94);transform-origin:right center;transition:opacity .24s ease,transform .3s cubic-bezier(.22,1,.36,1),visibility .24s;pointer-events:none}
       #klinot-comed-bridge [data-klinot-log-panel][aria-hidden="false"]{opacity:1;visibility:visible;transform:translate(0,-50%) scale(1);pointer-events:auto}
@@ -332,9 +344,11 @@
     caption.dataset.final = isFinal ? "1" : "0";
     caption.querySelector("[data-klinot-caption-text]").textContent =
       isFinal ? "Aktarım bitti" : text;
+    // Alt satir tek satirda durmali; uzun baglam metni kirpilir.
+    const context = bridgeContext() || "COMED aktarımı";
     caption.querySelector("[data-klinot-caption-sub]").textContent = isFinal
       ? "Lütfen kontrol edip Kaydet ve İmzala"
-      : (bridgeContext() || "COMED aktarımı");
+      : (context.length > 54 ? `${context.slice(0, 53)}…` : context);
     caption.dataset.show = panelOpen ? "0" : "1";
 
     clearTimeout(captionTimer);

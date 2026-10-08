@@ -1,5 +1,10 @@
 # Sürüm Geçmişi
 
+## v2.16.2 — 8 Ekim 2026
+
+- **Fare balonun üzerine gelince şerit artık ezilmiyor.** Balon 56 px'den 196 px'e açılırken şeridin üstüne biniyordu. Şerit de aynı anda sola kayıyor; aralarında boşluk kalıyor.
+- **Alt satırdaki bağlam metni düzeltildi.** İş listesi sayfasında hasta adı okunamadığı için sayfa gövdesinin başı — yani araç çubuğu metni ("İş Listesi Havuz İş Listesi Randevular Tıbbi İkinci Görüş…") — hasta adı sanılıp şeride basılıyor ve kutuya sığmıyordu. Hasta adı artık yalnızca hasta kartında okunuyor, ad temizleyiciden geçiyor ve bağlam metni tek satırda kalacak şekilde kırpılıyor.
+
 ## v2.16.1 — 8 Ekim 2026
 
 - **Durum şeridi yana doğru açılıyor.** Şerit mutlak konumlu ve kapsayıcısı yalnızca balon kadar (56 px) geniş olduğu için tarayıcı "shrink-to-fit" uygulayıp her kelimeyi alt satıra atıyordu; mesaj dar ve uzun bir sütun gibi görünüyordu. `width:max-content` ile şerit artık içeriği kadar yana genişliyor (ölçüldü: 211×52 px).

@@ -95,6 +95,20 @@ class ComedExtensionTests(unittest.TestCase):
 
         self.assertIn("width:max-content", source)
         self.assertIn('[data-klinot-log-caption][data-final="1"]{white-space:nowrap}', source)
+        # Balon hover'da 196px'e acilir; serit de sola kayip bindirmeyi onler.
+        self.assertIn(
+            "[data-klinot-log-shell]:hover [data-klinot-log-caption]{right:208px}",
+            source,
+        )
+
+    def test_caption_context_never_shows_toolbar_text_as_patient_name(self):
+        """Is listesi sayfasinda sayfa basi arac cubugudur, hasta adi degil."""
+        source = (EXTENSION / "content.js").read_text(encoding="utf-8")
+
+        # Hasta adi yalnizca kart sayfasinda ve temizleyiciden gecerek okunur.
+        self.assertIn("const patientName = match\n      ? cleanPatientName(", source)
+        # Uzun baglam metni tek satirda kalacak sekilde kirpilir.
+        self.assertIn("context.length > 54", source)
 
     def test_empty_worklist_never_replaces_stored_patients(self):
         """Boş ayrıştırma sayfa yüklenmemiş demektir; kayıtlı liste silinmemeli."""
