@@ -1,5 +1,11 @@
 # Sürüm Geçmişi
 
+## v2.16.0 — 8 Ekim 2026
+
+- **Aktarım sırasında canlı durum şeridi.** Eskiden alanlar doldurulurken ekranda yalnızca balon görünüyordu; ne olduğunu anlamak için günlüğü açmak gerekiyordu. Artık balonun yanında kısa bir şerit beliriyor ve "Şikayet dolduruldu", "Özgeçmiş ve soygeçmiş hazırlanıyor" gibi anlık adımları gösteriyor. Altında hasta/protokol bilgisi var. Şerit 6 saniye sonra sönüyor, günlük açılınca gizleniyor; detaylı günlük eskisi gibi balona tıklanınca açılıyor.
+- **Son adım kalıcı.** Aktarım bittiğinde şerit sönmüyor ve "Aktarım bitti · Lütfen kontrol edip Kaydet ve İmzala" olarak ekranda kalıyor.
+- **Düşme riski ve soygeçmiş artık eklentide de garanti.** Düşme riski `exists` değeri `true` değilse (null dâhil) "Yok" işaretleniyor. Soygeçmişte hiçbir satır eşleşmezse "Özellik Yok" basılıyor. Daha önce bu durumlarda alanlar boş kalabiliyor ve COMED formu kaydedilemiyordu; sunucu tarafındaki zorunluluk artık eklenti tarafında da aynen uygulanıyor.
+
 ## v2.15.1 — 7 Ekim 2026
 
 - **İş listesi otomatik son 3 aya açılıyor (düzeltildi).** v2.15.0'daki deneme çalışmıyordu. İki nedeni vardı: (1) bayrak denemeden *önce* set edildiği için sayfa yüklenmeden yapılan ilk deneme başarısız olunca özellik kalıcı olarak devre dışı kalıyordu; (2) COMED'in tarih kutusu `disabled` bir `input` — ona tıklamak hiçbir olay tetiklemiyor, takvimi yalnızca yanındaki `[data-test="co-button-icon-calendar"]` düğmesi açıyor. Artık gerçek seçiciler kullanılıyor, aralığın genişlediği doğrulanıyor ve bayrak yalnızca başarıdan sonra set ediliyor. Canlı COMED test ortamında ölçüldü: aralık `07.10.2026 - 07.10.2026` → `09.07.2026 - 07.10.2026`, liste 0 → 2 hasta.

@@ -54,6 +54,29 @@ class ComedExtensionTests(unittest.TestCase):
         self.assertIn("function rangeIsWide", source)
         self.assertNotIn("dateRangeApplied = true;\n    try {", source)
 
+    def test_live_caption_shows_progress_without_opening_the_log(self):
+        """Aktarim sirasinda panel acmadan yanda anlik durum gorunmeli."""
+        source = (EXTENSION / "content.js").read_text(encoding="utf-8")
+
+        self.assertIn("data-klinot-log-caption", source)
+        self.assertIn("function renderBridgeCaption", source)
+        self.assertIn("renderBridgeCaption(box, text, state)", source)
+        # Son adim doktorun imzasidir; mesaj kendiliginden kaybolmamali.
+        self.assertIn("Lütfen kontrol edip Kaydet ve İmzala", source)
+        self.assertIn("if (!isFinal) {", source)
+        # Gunluk acikken serit gizlenir.
+        self.assertIn('if (open && caption) caption.dataset.show = "0";', source)
+
+    def test_family_history_and_fall_risk_are_always_answered(self):
+        """Ikisi de COMED'de zorunlu; bilgi yoksa 'yok' isaretlenmeli."""
+        source = (EXTENSION / "content.js").read_text(encoding="utf-8")
+
+        # Dusme riski: exists true degilse her durumda "Yok".
+        self.assertIn('if (exists !== true) return clickCardOption("Düşme Riski", "Yok");', source)
+        # Soygecmis: hicbir satir isaretlenemediyse "Ozellik Yok".
+        self.assertIn('if (!added) return clickCardOption("Soygeçmiş", "Özellik Yok") ? 1 : 0;', source)
+        self.assertIn('clickCardOption("Soygeçmiş", "Görüldü")', source)
+
     def test_empty_worklist_never_replaces_stored_patients(self):
         """Boş ayrıştırma sayfa yüklenmemiş demektir; kayıtlı liste silinmemeli."""
         source = (EXTENSION / "content.js").read_text(encoding="utf-8")

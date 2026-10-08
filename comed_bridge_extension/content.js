@@ -32,6 +32,7 @@
   let lastIdentityFingerprint = "";
   let dateRangeApplied = false;
   let dateRangeTries = 0;
+  let captionTimer = null;
   let identitySyncTimer = null;
   let openingVisitId = null;
   let traceEnabled = true;
@@ -198,6 +199,15 @@
       #klinot-comed-bridge [data-klinot-log-orb]:hover [data-klinot-log-label],#klinot-comed-bridge [data-klinot-log-orb]:focus-visible [data-klinot-log-label]{opacity:1;transform:none}
       #klinot-comed-bridge [data-klinot-log-orb][aria-expanded="true"] [data-klinot-log-label]{opacity:0;transform:translateX(-10px)}
       #klinot-comed-bridge [data-klinot-log-count]{position:absolute;right:-3px;top:-5px;display:grid;place-items:center;min-width:22px;height:22px;padding:0 6px;border:2px solid #fff;border-radius:99px;background:#3158c8;color:#fff;font:800 10px system-ui;pointer-events:none;box-shadow:0 3px 9px #0b253355}
+      /* Islem sirasinda panel acmadan gorunen canli durum seridi. */
+      #klinot-comed-bridge [data-klinot-log-caption]{position:absolute;right:68px;top:50%;transform:translate(10px,-50%);max-width:min(330px,calc(100vw - 110px));padding:9px 14px;border-radius:14px;background:#0f2f3aF2;color:#fff;font:650 12.5px/1.35 system-ui;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:0 10px 26px #0a222c45;opacity:0;visibility:hidden;transition:opacity .2s ease,transform .26s cubic-bezier(.22,1,.36,1),visibility .2s;pointer-events:none}
+      #klinot-comed-bridge [data-klinot-log-caption][data-show="1"]{opacity:1;visibility:visible;transform:translate(0,-50%)}
+      #klinot-comed-bridge [data-klinot-log-caption] b{display:block;font-weight:800}
+      #klinot-comed-bridge [data-klinot-log-caption] i{display:block;margin-top:2px;font-style:normal;font-weight:600;opacity:.78;font-size:11px}
+      #klinot-comed-bridge [data-klinot-log-caption][data-state="ok"]{background:#0b5f47F2}
+      #klinot-comed-bridge [data-klinot-log-caption][data-state="bad"]{background:#8d2a26F2}
+      #klinot-comed-bridge [data-klinot-log-caption][data-final="1"]{white-space:normal;max-width:min(300px,calc(100vw - 110px))}
+      @media(max-width:620px){#klinot-comed-bridge [data-klinot-log-caption]{display:none}}
       #klinot-comed-bridge [data-klinot-log-panel]{position:absolute;right:72px;top:50%;width:min(420px,calc(100vw - 112px));max-height:min(520px,calc(100vh - 32px));display:flex;flex-direction:column;overflow:hidden;background:#fff;color:#173143;border:1px solid #d6e5e7;border-radius:20px;box-shadow:0 22px 56px #102b3a33;opacity:0;visibility:hidden;transform:translate(26px,-50%) scale(.94);transform-origin:right center;transition:opacity .24s ease,transform .3s cubic-bezier(.22,1,.36,1),visibility .24s;pointer-events:none}
       #klinot-comed-bridge [data-klinot-log-panel][aria-hidden="false"]{opacity:1;visibility:visible;transform:translate(0,-50%) scale(1);pointer-events:auto}
       #klinot-comed-bridge [data-klinot-log-header]{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 15px;background:#f4f9f9;border-bottom:1px solid #e0edee}
@@ -208,7 +218,7 @@
       #klinot-comed-bridge [data-klinot-log-summary]{padding:11px 15px;background:linear-gradient(135deg,#0a9289,#06706c);color:#fff}
       #klinot-comed-bridge [data-klinot-log-list]{flex:1 1 auto;min-height:0;overflow:auto;padding:5px 11px;overscroll-behavior:contain}
       @media(max-width:620px){#klinot-comed-bridge [data-klinot-log-panel]{right:66px;width:calc(100vw - 96px)}}
-    </style><div data-klinot-log-shell><section data-klinot-log-panel aria-hidden="true"><div data-klinot-log-header><span><strong style="display:block;font-size:13px">İşlem günlüğü</strong><small data-klinot-log-panel-count style="color:#60777d;font-weight:600"></small></span><button data-klinot-log-close type="button" aria-label="İşlem günlüğünü aşağı indir" title="Aşağı indir"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button></div><div data-klinot-log-summary><strong data-klinot-log-title>Klinot hazır</strong><small data-klinot-log-context style="display:block;margin-top:3px;opacity:.82;font-weight:500;overflow-wrap:anywhere"></small></div><div data-klinot-log-list></div></section><button data-klinot-log-orb type="button" aria-expanded="false" aria-label="Klinot işlem günlüğünü aç"><span data-klinot-log-mark aria-hidden="true">K</span><span data-klinot-log-label><b>Klinot</b><i data-klinot-log-tag>İşlem günlüğü</i></span></button><span data-klinot-log-count>0</span></div>`;
+    </style><div data-klinot-log-shell><section data-klinot-log-panel aria-hidden="true"><div data-klinot-log-header><span><strong style="display:block;font-size:13px">İşlem günlüğü</strong><small data-klinot-log-panel-count style="color:#60777d;font-weight:600"></small></span><button data-klinot-log-close type="button" aria-label="İşlem günlüğünü aşağı indir" title="Aşağı indir"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button></div><div data-klinot-log-summary><strong data-klinot-log-title>Klinot hazır</strong><small data-klinot-log-context style="display:block;margin-top:3px;opacity:.82;font-weight:500;overflow-wrap:anywhere"></small></div><div data-klinot-log-list></div></section><div data-klinot-log-caption data-show="0" aria-live="polite"><b data-klinot-caption-text></b><i data-klinot-caption-sub></i></div><button data-klinot-log-orb type="button" aria-expanded="false" aria-label="Klinot işlem günlüğünü aç"><span data-klinot-log-mark aria-hidden="true">K</span><span data-klinot-log-label><b>Klinot</b><i data-klinot-log-tag>İşlem günlüğü</i></span></button><span data-klinot-log-count>0</span></div>`;
     const shell = box.querySelector("[data-klinot-log-shell]");
     const orb = box.querySelector("[data-klinot-log-orb]");
     const panel = box.querySelector("[data-klinot-log-panel]");
@@ -216,6 +226,9 @@
       panel.setAttribute("aria-hidden", String(!open));
       orb.setAttribute("aria-expanded", String(open));
       orb.setAttribute("aria-label", open ? "Klinot işlem günlüğünü kapat" : "Klinot işlem günlüğünü aç");
+      // Gunluk acikken canli serit panelin uzerine binmesin.
+      const caption = box.querySelector("[data-klinot-log-caption]");
+      if (open && caption) caption.dataset.show = "0";
     };
     let drag = null;
     let suppressClick = false;
@@ -267,6 +280,7 @@
     box.querySelector("[data-klinot-log-count]").style.background = theme.solid;
     box.querySelector("[data-klinot-log-summary]").style.background = theme.grad;
     box.querySelector("[data-klinot-log-title]").textContent = `Klinot · ${text}`;
+    renderBridgeCaption(box, text, state);
     box.querySelector("[data-klinot-log-context]").textContent = bridgeContext();
     const logs = bridgeLogs().slice().reverse();
     box.querySelector("[data-klinot-log-count]").textContent = String(logs.length);
@@ -298,6 +312,33 @@
       row.append(dot, copy, time);
       return row;
     }));
+  }
+
+  /* Panel acmadan, orbun yaninda gorunen canli durum seridi. Doktor aktarim
+     sirasinda hangi alanin islendigini anlik gorur; detayli gunluk yine
+     balona tiklayinca acilir. Son adimda mesaj kalici kalir. */
+  const BRIDGE_FINAL_TEXT = "Aktarım bitti · Genel doktor kontrolü gerekli";
+
+  function renderBridgeCaption(box, text, state) {
+    const caption = box.querySelector("[data-klinot-log-caption]");
+    if (!caption) return;
+    const panelOpen = box.querySelector("[data-klinot-log-panel]")
+      ?.getAttribute("aria-hidden") === "false";
+    const isFinal = String(text).startsWith(BRIDGE_FINAL_TEXT);
+    caption.dataset.state = state;
+    caption.dataset.final = isFinal ? "1" : "0";
+    caption.querySelector("[data-klinot-caption-text]").textContent =
+      isFinal ? "Aktarım bitti" : text;
+    caption.querySelector("[data-klinot-caption-sub]").textContent = isFinal
+      ? "Lütfen kontrol edip Kaydet ve İmzala"
+      : (bridgeContext() || "COMED aktarımı");
+    caption.dataset.show = panelOpen ? "0" : "1";
+
+    clearTimeout(captionTimer);
+    // Son mesaj doktorun imza adimidir; kendiliginden kaybolmaz.
+    if (!isFinal) {
+      captionTimer = setTimeout(() => { caption.dataset.show = "0"; }, 6000);
+    }
   }
 
   function bridgeStatus(text, state = "idle") {
@@ -905,8 +946,11 @@
 
   async function fillFallRisk(value) {
     const exists = typeof value === "object" ? value?.exists : value;
-    if (exists === false) return clickCardOption("Düşme Riski", "Yok");
-    if (exists !== true || typeof value !== "object") return false;
+    // Dusme riski COMED'de zorunlu alandir. Gorusmede konu hic gecmemisse
+    // "bilinmiyor" degil "yok" isaretlenir; aksi halde alan bos kalip form
+    // kaydedilemiyordu. Doktor son kontrolde aksini gorurse duzeltir.
+    if (exists !== true) return clickCardOption("Düşme Riski", "Yok");
+    if (typeof value !== "object") return clickCardOption("Düşme Riski", "Yok");
     const normalized = {...value};
     if (!["65_plus", "under_65"].includes(normalized.age_group)) {
       const age = Number(textOf(document.body).match(/\b(\d{1,3})\s*y[ıi]l\b/i)?.[1]);
@@ -1024,6 +1068,9 @@
     if (related && typeof profile.parents_related === "boolean"
       && related.checked !== profile.parents_related) related.click();
     clickText("Görüldü", card);
+    // Soygecmis COMED'de zorunludur. Hicbir satir isaretlenemediyse alan bos
+    // kalmamali; "Ozellik Yok" basilarak kayit edilebilir hale getirilir.
+    if (!added) return clickCardOption("Soygeçmiş", "Özellik Yok") ? 1 : 0;
     return added;
   }
 
