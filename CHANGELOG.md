@@ -1,5 +1,11 @@
 # Sürüm Geçmişi
 
+## v2.18.0 — 8 Ekim 2026
+
+- **Hasta ekranında kayıt bölümü yukarı alındı.** Randevu seçme kartı ekranın en değerli yerini kaplıyor, "Kaydı başlat" düğmesini aşağı itiyor ve kullanıcının kaydırması gerekiyordu. Hastanın randevusu zaten belli olduğu için seçim sunmak gereksizdi.
+- Tek randevulu hastada artık seçme kartı yerine kayıt kartının **altında** kısa bir bilgi şeridi var: "Bu görüşme randevunuza işlenecek" + bölüm, doktor ve hasta numarası tek satırda, yanında yenileme düğmesi. Uygulama açılınca ilk görülen şey kayıt ekranı oluyor.
+- Birden fazla randevu varsa, yükleme sürerken veya hata durumunda tam seçici korunuyor; doktor ekranı hiç değişmedi.
+
 ## v2.17.1 — 8 Ekim 2026
 
 - **Hasta girişindeki "T.C. kimlik numarası geçersiz" hatası düzeltildi.** Giriş, resmi T.C. kimlik kontrol basamağı algoritmasını uyguluyordu. COMED test ortamındaki hastalar ise uydurma numaralar taşıyor (ör. `12345678912`) ve bu algoritmayı geçmiyor; giriş daha ilk adımda kapanıyordu. Önceki test hastasının numarası (`28411425816`) tesadüfen geçerli bir numara olduğu için sorun fark edilmemişti.

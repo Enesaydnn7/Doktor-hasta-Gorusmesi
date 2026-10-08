@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Klinot COMED Köprüsü",
-  "version": "2.17.1",
+  "version": "2.18.0",
   "description": "Klinot taslaklarını doğrulanmış POST veya güvenli form doldurma ile COMED test kartına aktarır.",
   "permissions": ["storage", "tabs"],
   "host_permissions": [

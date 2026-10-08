@@ -381,20 +381,28 @@ class _RecorderScreenState extends State<RecorderScreen> {
                 style: const TextStyle(color: Color(0xFF60777D), height: 1.45),
               ),
               const SizedBox(height: 22),
-              _ComedPatientSelector(
-                patientMode: _patientMode,
-                patients: _worklist,
-                selected: _selectedPatient,
-                loading: _loadingWorklist,
-                error: _worklistError,
-                locked: _isRecording || processing,
-                onChanged: (patient) => setState(() {
-                  _selectedPatient = patient;
-                  _error = null;
-                }),
-                onRefresh: _loadWorklist,
-              ),
-              const SizedBox(height: 14),
+              // Hastada randevu zaten belli; secim karti ekranin en degerli
+              // yerini kapliyor ve kayit dugmesini asagi itiyordu. Tek randevu
+              // varsa yalnizca kisa bir bilgi seridi gosterilir ve kayit karti
+              // basa alinir. Birden fazla randevuda secim sart oldugu icin tam
+              // secici korunur.
+              if (!_patientMode || _worklist.length > 1 || _loadingWorklist
+                  || _worklistError != null) ...[
+                _ComedPatientSelector(
+                  patientMode: _patientMode,
+                  patients: _worklist,
+                  selected: _selectedPatient,
+                  loading: _loadingWorklist,
+                  error: _worklistError,
+                  locked: _isRecording || processing,
+                  onChanged: (patient) => setState(() {
+                    _selectedPatient = patient;
+                    _error = null;
+                  }),
+                  onRefresh: _loadWorklist,
+                ),
+                const SizedBox(height: 14),
+              ],
               Card(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(22, 28, 22, 24),
@@ -457,6 +465,16 @@ class _RecorderScreenState extends State<RecorderScreen> {
                       Expanded(child: Text(_error!)),
                     ],
                   ),
+                ),
+              ],
+              // Tek randevulu hastada bilgi seridi kayit kartinin ALTINDA
+              // durur; boylece uygulama acildiginda ilk gorulen sey kayit olur.
+              if (_patientMode && _worklist.length == 1 && !_loadingWorklist
+                  && _worklistError == null && _selectedPatient != null) ...[
+                const SizedBox(height: 14),
+                _PatientAppointmentStrip(
+                  patient: _selectedPatient!,
+                  onRefresh: _loadingWorklist ? null : _loadWorklist,
                 ),
               ],
               const SizedBox(height: 18),
@@ -643,6 +661,75 @@ class _ComedPatientSelector extends StatelessWidget {
             ],
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Tek randevulu hastada secim karti yerine gosterilen kompakt bilgi seridi.
+/// Secim sunmaz; yalnizca gorusmenin hangi randevuya islenecegini bildirir.
+class _PatientAppointmentStrip extends StatelessWidget {
+  const _PatientAppointmentStrip({required this.patient, this.onRefresh});
+
+  final ComedPatient patient;
+  final VoidCallback? onRefresh;
+
+  @override
+  Widget build(BuildContext context) {
+    final detay = [
+      patient.department,
+      patient.doctorName,
+      'Hasta No ${patient.patientNo}',
+    ].where((value) => value.trim().isNotEmpty).join(' · ');
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF2F8F8),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFDCE9EB)),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.event_available_outlined,
+            size: 20,
+            color: klinotTeal,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Bu görüşme randevunuza işlenecek',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                    color: klinotNavy,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  detay,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Color(0xFF60777D),
+                    fontSize: 12,
+                    height: 1.3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            onPressed: onRefresh,
+            tooltip: 'Randevuları yenile',
+            icon: const Icon(Icons.refresh_rounded, size: 20),
+            color: klinotTeal,
+          ),
+        ],
       ),
     );
   }
