@@ -48,6 +48,19 @@ class DoctorAccountTests(unittest.TestCase):
         )
         self.assertEqual(rejected_without_client_hint.status_code, 403)
 
+    def test_test_environment_tckn_is_accepted_but_malformed_is_not(self):
+        """COMED test hastalari uydurma TCKN tasir; bicim kontrolu yine de surer."""
+        # COMED test ortamindaki gercek ornekler.
+        self.assertTrue(auth.valid_tckn("12345678912"))
+        self.assertTrue(auth.valid_tckn("28411425816"))
+        # Bicim hatalari her durumda reddedilir.
+        for bad in ("123", "01234567891", "", "abcdefghijk"):
+            self.assertFalse(auth.valid_tckn(bad), bad)
+        # Resmi kontrol basamagi istenirse acilabilir.
+        with patch.object(auth, "PATIENT_TCKN_CHECKSUM", True):
+            self.assertFalse(auth.valid_tckn("12345678912"))
+            self.assertTrue(auth.valid_tckn("28411425816"))
+
     def test_only_configured_doctors_are_accepted(self):
         self.assertIsNone(auth.api_giris_rolu("doctor", "1"))
         self.assertIsNone(auth.api_giris_rolu("Kullanici.aydin1", "1"))

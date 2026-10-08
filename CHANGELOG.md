@@ -1,5 +1,10 @@
 # Sürüm Geçmişi
 
+## v2.17.1 — 8 Ekim 2026
+
+- **Hasta girişindeki "T.C. kimlik numarası geçersiz" hatası düzeltildi.** Giriş, resmi T.C. kimlik kontrol basamağı algoritmasını uyguluyordu. COMED test ortamındaki hastalar ise uydurma numaralar taşıyor (ör. `12345678912`) ve bu algoritmayı geçmiyor; giriş daha ilk adımda kapanıyordu. Önceki test hastasının numarası (`28411425816`) tesadüfen geçerli bir numara olduğu için sorun fark edilmemişti.
+- Kontrol basamağı doğrulaması artık `PATIENT_TCKN_CHECKSUM` ile yönetiliyor ve **varsayılan olarak kapalı**. Biçim kontrolü (11 hane, sıfırla başlamaz) her durumda sürüyor. Girişin asıl güvenliği zaten numaranın kendisi değil; TCKN + doğum tarihi özetinin COMED'den eşitlenmiş gerçek bir randevuyla eşleşmesi ve ardından gelen SMS doğrulaması. Uydurma bir numara hiçbir randevuyla eşleşemez. Gerçek hasta verisine geçerken `PATIENT_TCKN_CHECKSUM=true` yapılmalı.
+
 ## v2.17.0 — 8 Ekim 2026
 
 - **Tek balon.** Ayrı durum şeridi kaldırıldı. Artık tek bir balon var: fare üzerine gelince de işlem sırasında da aynı balon yana açılıyor ve o anki adımı kendi içinde gösteriyor. İki kutunun yan yana durması ve üst üste binmesi sorunu kökten bitti. Balon içeriği kadar genişliyor (ölçüldü: 304 px / 257 px / boşta 56 px).

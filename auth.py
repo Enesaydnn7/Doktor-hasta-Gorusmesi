@@ -122,6 +122,12 @@ PATIENT_TEST_OTP_ENABLED = os.getenv("PATIENT_TEST_OTP_ENABLED", "true").strip()
     "1", "true", "yes", "on",
 }
 PATIENT_TEST_OTP = "000000"
+# COMED test ortamindaki hastalar uydurma TCKN tasiyor; resmi kontrol
+# basamagi dogrulamasi varsayilan olarak KAPALI. Gercek hasta verisine
+# gecerken PATIENT_TCKN_CHECKSUM=true yapin.
+PATIENT_TCKN_CHECKSUM = os.getenv("PATIENT_TCKN_CHECKSUM", "false").strip().lower() in {
+    "1", "true", "yes", "on",
+}
 PATIENT_OTP_TTL_SECONDS = int(os.getenv("PATIENT_OTP_TTL_SECONDS", "300"))
 PATIENT_OTP_MAX_ATTEMPTS = int(os.getenv("PATIENT_OTP_MAX_ATTEMPTS", "5"))
 _PATIENT_OTP_LOCK = threading.Lock()
@@ -133,10 +139,24 @@ def normalize_tckn(value: str) -> str:
 
 
 def valid_tckn(value: str) -> bool:
-    """T.C. kimlik numarasının biçim ve resmi kontrol basamaklarını doğrula."""
+    """T.C. kimlik numarasının biçimini doğrula.
+
+    Biçim kontrolü (11 hane, sıfırla başlamaz) her zaman uygulanır. Resmi
+    kontrol basamağı doğrulaması ise yalnızca PATIENT_TCKN_CHECKSUM=true iken
+    çalışır ve VARSAYILAN OLARAK KAPALIDIR.
+
+    Sebebi: COMED test ortamındaki hastalar uydurma numaralar taşıyor
+    (ör. 12345678912) ve bunlar resmi algoritmayı geçmiyor. Girişin asıl
+    güvenliği zaten numaranın kendisi değil, TCKN + doğum tarihi özetinin
+    COMED'den eşitlenmiş gerçek bir randevuyla eşleşmesi ve ardından gelen SMS
+    doğrulamasıdır; uydurma bir numara hiçbir randevuyla eşleşemez. Gerçek
+    hasta verisine geçerken bu değişkeni true yapın.
+    """
     digits = normalize_tckn(value)
     if len(digits) != 11 or digits[0] == "0":
         return False
+    if not PATIENT_TCKN_CHECKSUM:
+        return True
     values = [int(char) for char in digits]
     tenth = ((sum(values[0:9:2]) * 7) - sum(values[1:8:2])) % 10
     eleventh = sum(values[:10]) % 10

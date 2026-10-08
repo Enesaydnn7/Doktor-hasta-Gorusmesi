@@ -30,6 +30,7 @@
   let dateRangeApplied = false;
   let dateRangeTries = 0;
   let captionTimer = null;
+  let identityPanelTried = false;
   let identitySyncTimer = null;
   let openingVisitId = null;
   let traceEnabled = true;
@@ -461,9 +462,45 @@
     }, 10000);
   }
 
+  /* COMED, TCKN ve dogum tarihini yalnizca "Hasta Bilgileri" panelinde tutar ve
+     bu panel ACILANA KADAR DOM'a hic basilmaz (lazy render). Hasta mobil girisi
+     bu iki alanin ozetine dayandigi icin, kimlik yoksa kopru paneli bir kez
+     kendisi acar, okur ve hemen kapatir. Canli COMED test ortaminda dogrulandi:
+       acici : button[data-test="co-button-icon-patient-profile"]
+       kapatici: button[data-test="co-button-icon-close"]  (Escape calismiyor)
+     Bayrak kart degisince sifirlanir. */
+  async function ensurePatientIdentityPanel() {
+    if (identityPanelTried || !CARD_RE.test(location.pathname)) return null;
+    const current = parsePatientIdentity();
+    if (current.tckn && current.birth_date) return current;
+    identityPanelTried = true;
+    const opener = document.querySelector('[data-test="co-button-icon-patient-profile"]');
+    if (!opener) return null;
+    let identity = null;
+    try {
+      activateNode(opener);
+      // Kimlik DOM'da YALNIZCA panel acikken bulunur; okunan deger burada
+      // yakalanip DONDURULUR. Panel kapandiktan sonra tekrar okumak bos doner.
+      identity = await waitFor(() => {
+        const value = parsePatientIdentity();
+        return value.tckn && value.birth_date ? value : null;
+      }, 5000);
+    } finally {
+      const close = document.querySelector('[data-test="co-button-icon-close"]');
+      if (close) {
+        activateNode(close);
+        await sleep(260);
+      }
+    }
+    return identity;
+  }
+
   async function syncCurrentCard() {
     const match = location.pathname.match(CARD_RE);
     if (!match) return;
+    // Panel kapandiktan sonra kimlik DOM'dan silindigi icin DONEN deger
+    // kullanilir; dogrudan tekrar okumak bos sonuc verirdi.
+    const panelIdentity = await ensurePatientIdentityPanel();
     let selected = null;
     try {
       selected = JSON.parse(sessionStorage.getItem(SELECTED_PATIENT_KEY) || "null");
@@ -479,7 +516,7 @@
     const item = {
       ...fallback,
       ...(selected?.visit_id === match[1] ? selected : {}),
-      ...parsePatientIdentity(),
+      ...(panelIdentity || parsePatientIdentity()),
       visit_id: match[1],
       clinical_card_id: match[2] || selected?.clinical_card_id || "",
       clinical_card_url: location.href,
@@ -1764,6 +1801,8 @@
         lastPath = path;
         openingVisitId = null;
         lastIdentityFingerprint = "";
+        // Yeni kartta kimlik paneli bir kez daha acilabilmeli.
+        identityPanelTried = false;
       }
       if (WORKLIST_RE.test(path)) {
         // Tarih araligi her turda (5 sn) denenir; basarili olunca kendini

@@ -25,12 +25,25 @@ class ComedExtensionTests(unittest.TestCase):
         ):
             self.assertNotIn(removed, source)
 
-    def test_patient_identity_is_read_even_when_info_panel_is_collapsed(self):
-        """TCKN ve doğum tarihi yalnız açılır panelde; gizliyken de okunmalı."""
+    def test_bridge_opens_the_patient_info_panel_to_read_identity(self):
+        """COMED kimlik alanlarini panel ACILANA kadar DOM'a basmaz (lazy render).
+
+        Canli COMED test ortaminda dogrulanan secicilier:
+          acici   : button[data-test="co-button-icon-patient-profile"]
+          kapatici: button[data-test="co-button-icon-close"]   (Escape calismaz)
+        """
         source = (EXTENSION / "content.js").read_text(encoding="utf-8")
 
+        self.assertIn("async function ensurePatientIdentityPanel", source)
+        self.assertIn('[data-test="co-button-icon-patient-profile"]', source)
+        self.assertIn('[data-test="co-button-icon-close"]', source)
+        self.assertIn("await ensurePatientIdentityPanel();", source)
+        # Panel her kosulda kapatilmali.
+        self.assertIn("} finally {", source)
+        # Yeni kartta yeniden denenebilmeli.
+        self.assertIn("identityPanelTried = false;", source)
+        # Gizli dugum taramasi da korunur.
         self.assertIn("function deepTextOf", source)
-        self.assertIn("root?.textContent", source)
         self.assertIn("deepTextOf(document.body)", source)
 
     def test_patient_name_strips_comed_header_metadata(self):
