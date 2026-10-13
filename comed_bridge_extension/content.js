@@ -103,6 +103,51 @@
   const BRIDGE_LOG_KEY = "klinot_comed_bridge_log_v1";
   const BRIDGE_WIDGET_KEY = "klinot_comed_bridge_widget_v2";
 
+  /* ---- doldurma hizi ----
+     Doktor aktarimi izlerken yavaslatabilsin, acelesi varken hizlandirabilsin.
+     Deger buyudukce bekleme sureleri kisalir; 1 = varsayilan hiz.
+     Balondaki panelden canli degistirilir, chrome.storage'da saklanir. */
+  const FILL_SPEEDS = [
+    {value: 0.5, label: "0.5×", title: "Çok yavaş · adımları rahat takip et"},
+    {value: 0.75, label: "0.75×", title: "Yavaş"},
+    {value: 1, label: "1×", title: "Normal (varsayılan)"},
+    {value: 1.5, label: "1.5×", title: "Hızlı"},
+    {value: 2.5, label: "2.5×", title: "Çok hızlı"},
+  ];
+  const DEFAULT_FILL_SPEED = 1;
+  let fillSpeed = DEFAULT_FILL_SPEED;
+
+  function normalizeFillSpeed(value) {
+    const number = Number(value);
+    if (!Number.isFinite(number)) return DEFAULT_FILL_SPEED;
+    return FILL_SPEEDS.some((item) => item.value === number) ? number : DEFAULT_FILL_SPEED;
+  }
+
+  function applyFillSpeed(value, {persist = false} = {}) {
+    fillSpeed = normalizeFillSpeed(value);
+    if (persist) chrome.storage.local.set({fillSpeed});
+    syncSpeedButtons();
+  }
+
+  function syncSpeedButtons() {
+    const box = document.getElementById("klinot-comed-bridge");
+    if (!box) return;
+    box.querySelectorAll("[data-klinot-speed-set]").forEach((button) => {
+      const on = Number(button.dataset.klinotSpeedSet) === fillSpeed;
+      button.setAttribute("aria-pressed", String(on));
+    });
+    const note = box.querySelector("[data-klinot-speed-note]");
+    if (note) {
+      note.textContent = FILL_SPEEDS.find((item) => item.value === fillSpeed)?.title || "";
+    }
+  }
+
+  chrome.storage.local.get(["fillSpeed"], (value) => applyFillSpeed(value.fillSpeed));
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area !== "local" || !changes.fillSpeed) return;
+    applyFillSpeed(changes.fillSpeed.newValue);
+  });
+
   function bridgeLogs() {
     try { return JSON.parse(sessionStorage.getItem(BRIDGE_LOG_KEY) || "[]"); }
     catch (_) { return []; }
@@ -139,7 +184,8 @@
       patient_complaint: "Hasta yakınması", patient_story: "Öykü",
       complaint_start_date: "Başlangıç tarihi", review_of_system_simple: "Sistem sorgusu özeti",
       exam_simple_textarea: "Muayene notu", treatment_note_v2: "İzlem ve tedavi planı",
-      profile_and_family_history: "Özgeçmiş ve soygeçmiş", psychological_status: "Psikolojik durum",
+      profile_and_family_history: "Özgeçmiş ve soygeçmiş", family_history: "Soygeçmiş",
+      psychological_status: "Psikolojik durum",
       fall_risk: "Düşme riski", pain: "Ağrı değerlendirmesi", diagnoses: "Tanılar (ICD-10)",
       treatment_plan_label: "Tedavi türü", is_surgery_will_planned: "Ameliyat planı",
       is_control_suggested: "Kontrol önerisi", "review_of_system.document": "Sistem sorgulama belgesi",
@@ -194,8 +240,16 @@
       #klinot-comed-bridge [data-klinot-log-close]:hover{background:#d2e2e2}
       #klinot-comed-bridge [data-klinot-log-summary]{padding:11px 15px;background:linear-gradient(135deg,#0a9289,#06706c);color:#fff}
       #klinot-comed-bridge [data-klinot-log-list]{flex:1 1 auto;min-height:0;overflow:auto;padding:5px 11px;overscroll-behavior:contain}
+      #klinot-comed-bridge [data-klinot-speed]{display:flex;align-items:center;gap:9px;padding:10px 15px;background:#f4f9f9;border-bottom:1px solid #e0edee;color:#36535a}
+      #klinot-comed-bridge [data-klinot-speed-copy]{flex:1 1 auto;min-width:0}
+      #klinot-comed-bridge [data-klinot-speed-copy] strong{display:block;font:800 12px system-ui;color:#173143}
+      #klinot-comed-bridge [data-klinot-speed-note]{display:block;margin-top:1px;font:600 10.5px system-ui;color:#60777d}
+      #klinot-comed-bridge [data-klinot-speed-buttons]{display:flex;flex:0 0 auto;gap:3px;padding:3px;border-radius:11px;background:#e4eeee}
+      #klinot-comed-bridge [data-klinot-speed-set]{border:0;border-radius:8px;padding:5px 8px;background:transparent;color:#36535a;font:800 11px system-ui;cursor:pointer;transition:background .14s ease,color .14s ease}
+      #klinot-comed-bridge [data-klinot-speed-set]:hover{background:#d2e2e2}
+      #klinot-comed-bridge [data-klinot-speed-set][aria-pressed="true"]{background:#0a9289;color:#fff}
       @media(max-width:620px){#klinot-comed-bridge [data-klinot-log-panel]{right:66px;width:calc(100vw - 96px)}}
-    </style><div data-klinot-log-shell><section data-klinot-log-panel aria-hidden="true"><div data-klinot-log-header><span><strong style="display:block;font-size:13px">İşlem günlüğü</strong><small data-klinot-log-panel-count style="color:#60777d;font-weight:600"></small></span><button data-klinot-log-close type="button" aria-label="İşlem günlüğünü aşağı indir" title="Aşağı indir"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button></div><div data-klinot-log-summary><strong data-klinot-log-title>Klinot hazır</strong><small data-klinot-log-context style="display:block;margin-top:3px;opacity:.82;font-weight:500;overflow-wrap:anywhere"></small></div><div data-klinot-log-list></div></section><button data-klinot-log-orb type="button" data-live="0" aria-expanded="false" aria-label="Klinot işlem günlüğünü aç"><span data-klinot-log-mark aria-hidden="true">K</span><span data-klinot-log-label aria-live="polite"><b data-klinot-caption-text>Klinot</b><i data-klinot-caption-sub>İşlem günlüğü</i></span></button><span data-klinot-log-count>0</span></div>`;
+    </style><div data-klinot-log-shell><section data-klinot-log-panel aria-hidden="true"><div data-klinot-log-header><span><strong style="display:block;font-size:13px">İşlem günlüğü</strong><small data-klinot-log-panel-count style="color:#60777d;font-weight:600"></small></span><button data-klinot-log-close type="button" aria-label="İşlem günlüğünü aşağı indir" title="Aşağı indir"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button></div><div data-klinot-log-summary><strong data-klinot-log-title>Klinot hazır</strong><small data-klinot-log-context style="display:block;margin-top:3px;opacity:.82;font-weight:500;overflow-wrap:anywhere"></small></div><div data-klinot-speed><span data-klinot-speed-copy><strong>Doldurma hızı</strong><small data-klinot-speed-note></small></span><span data-klinot-speed-buttons>${FILL_SPEEDS.map((item) => `<button type="button" data-klinot-speed-set="${item.value}" aria-pressed="false" title="${item.title}">${item.label}</button>`).join("")}</span></div><div data-klinot-log-list></div></section><button data-klinot-log-orb type="button" data-live="0" aria-expanded="false" aria-label="Klinot işlem günlüğünü aç"><span data-klinot-log-mark aria-hidden="true">K</span><span data-klinot-log-label aria-live="polite"><b data-klinot-caption-text>Klinot</b><i data-klinot-caption-sub>İşlem günlüğü</i></span></button><span data-klinot-log-count>0</span></div>`;
     const shell = box.querySelector("[data-klinot-log-shell]");
     const orb = box.querySelector("[data-klinot-log-orb]");
     const panel = box.querySelector("[data-klinot-log-panel]");
@@ -239,7 +293,16 @@
       if (!suppressClick) setOpen(orb.getAttribute("aria-expanded") !== "true");
     });
     box.querySelector("[data-klinot-log-close]").addEventListener("click", () => setOpen(false));
+    // Hiz, aktarim surerken bile degistirilebilir; bir sonraki bekleme
+    // yeni hizla calisir.
+    box.querySelectorAll("[data-klinot-speed-set]").forEach((button) => {
+      button.addEventListener("click", (event) => {
+        event.stopPropagation();
+        applyFillSpeed(button.dataset.klinotSpeedSet, {persist: true});
+      });
+    });
     document.body.appendChild(box);
+    syncSpeedButtons();
     return box;
   }
 
@@ -726,6 +789,43 @@
     return card ? clickText(text, card) : false;
   }
 
+  /* COMED etiketleri bazen "Özellik Yok", bazen "Özellik yok" yazilir.
+     Tam eslesme arayan clickText bu yuzden kaciriyordu. */
+  function clickTextLoose(labels, root = document) {
+    const wanted = labels.map((item) => item.toLocaleLowerCase("tr-TR").replace(/\s+/g, " ").trim());
+    const nodes = [...root.querySelectorAll(
+      "button,label,[role=radio],[role=checkbox],.toggle-button__item,.autocomplete__item,span",
+    )].filter((element) => element.offsetParent !== null);
+    for (const label of wanted) {
+      const node = nodes.find(
+        (element) => textOf(element).toLocaleLowerCase("tr-TR").replace(/\s+/g, " ").trim() === label,
+      );
+      if (activateNode(node)) return true;
+    }
+    return false;
+  }
+
+  /* Zorunlu kartlari (Soygecmis, Dusme Riski) bos birakmamak icin:
+     karti ac, secenek gorunene kadar bekle, sonra sirayla dene.
+     Bir denemede olmazsa karti yeniden acip tekrar dener. */
+  async function markCardOption(cardTitle, labels, tries = 3) {
+    for (let attempt = 0; attempt < tries; attempt += 1) {
+      const card = await ensureCardOpen(cardTitle);
+      if (card) {
+        await waitFor(
+          () => [...card.querySelectorAll("button,label,[role=radio],.toggle-button__item")]
+            .some((element) => element.offsetParent !== null),
+          1200,
+        );
+        if (clickTextLoose(labels, card)) return true;
+      }
+      // Kart bulunamadiysa sayfa genelinde de ara; bazi alanlar modal icinde acilir.
+      if (clickTextLoose(labels)) return true;
+      await sleep(260);
+    }
+    return false;
+  }
+
   function clickFieldOption(label, text, root = document) {
     const group = fieldGroupByLabel(label, root);
     return group ? clickText(text, group) : false;
@@ -758,16 +858,24 @@
     return (labelNode.getAttribute("aria-checked") === "true") === checked;
   }
 
-  function sleep(ms) {
+  function rawSleep(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
+  /* Adimlar arasi bekleme. Hiz ayari burada uygulanir, boylece tek yerden
+     tum doldurma temposu yavaslar ya da hizlanir. Alt sinir 15 ms: cok hizli
+     ayarda bile COMED'in olay islemesine firsat kalsin. */
+  function sleep(ms) {
+    return rawSleep(Math.max(15, Math.round(ms / (fillSpeed || 1))));
+  }
+
   async function waitFor(getter, timeoutMs = 4500) {
+    // Yoklama araligi hiz ayarindan etkilenmez; zaman asimi sabit kalsin.
     const deadline = Date.now() + timeoutMs;
     while (Date.now() < deadline) {
       const value = getter();
       if (value) return value;
-      await sleep(120);
+      await rawSleep(120);
     }
     return null;
   }
@@ -960,8 +1068,8 @@
     // Dusme riski COMED'de zorunlu alandir. Gorusmede konu hic gecmemisse
     // "bilinmiyor" degil "yok" isaretlenir; aksi halde alan bos kalip form
     // kaydedilemiyordu. Doktor son kontrolde aksini gorurse duzeltir.
-    if (exists !== true) return clickCardOption("Düşme Riski", "Yok");
-    if (typeof value !== "object") return clickCardOption("Düşme Riski", "Yok");
+    if (exists !== true) return markCardOption("Düşme Riski", ["Yok"]);
+    if (typeof value !== "object") return markCardOption("Düşme Riski", ["Yok"]);
     const normalized = {...value};
     if (!["65_plus", "under_65"].includes(normalized.age_group)) {
       const age = Number(textOf(document.body).match(/\b(\d{1,3})\s*y[ıi]l\b/i)?.[1]);
@@ -972,12 +1080,17 @@
     detailKeys.forEach((key) => {
       if (typeof normalized[key] !== "boolean") normalized[key] = false;
     });
-    if (!["65_plus", "under_65"].includes(normalized.age_group)) return false;
-    if (!clickCardOption("Düşme Riski", "Var")) return false;
+    // Detayli akis tutmazsa alan bos kalmasin; "Yok" ile kart tamamlanir.
+    if (!["65_plus", "under_65"].includes(normalized.age_group)) {
+      return markCardOption("Düşme Riski", ["Yok"]);
+    }
+    if (!await markCardOption("Düşme Riski", ["Var"], 2)) {
+      return markCardOption("Düşme Riski", ["Yok"]);
+    }
     const popover = await waitFor(() => [...document.querySelectorAll(
       ".co-menu__content .co-popover,.co-menu__content,.co-popover.bottom,.co-popover",
     )].find((item) => item.offsetParent !== null && textOf(item).includes("Düşme Hikayesi")));
-    if (!popover) return false;
+    if (!popover) return markCardOption("Düşme Riski", ["Yok"]);
     const choices = [
       ["Yaş", normalized.age_group === "65_plus", "65 yaş üstü", "65 yaş altı"],
       ["Düşme Hikayesi", normalized.history, "Var", "Yok"],
@@ -1041,16 +1154,24 @@
     return scoreFilled;
   }
 
+  /* Soygecmis COMED'de zorunlu. Veri olsun olmasin kart asla bos kalmamali:
+     once "Ozellik Yok", olmazsa "Gorulduveya benzeri etiketler denenir. */
+  const FAMILY_EMPTY_LABELS = ["Özellik Yok", "Özellik yok", "Görüldü", "Görüldü."];
+
+  async function markFamilyHistoryEmpty() {
+    const ok = await markCardOption("Soygeçmiş", FAMILY_EMPTY_LABELS);
+    bridgeFieldStatus("family_history", ok);
+    return ok ? 1 : 0;
+  }
+
   async function fillFamilyHistory(profile = {}) {
-    if (profile.no_known_family_history === true) {
-      return clickCardOption("Soygeçmiş", "Özellik Yok") ? 1 : 0;
-    }
+    if (profile.no_known_family_history === true) return markFamilyHistoryEmpty();
     const entries = profile.family_history || [];
     if (!entries.length && typeof profile.parents_related !== "boolean") {
-      return clickCardOption("Soygeçmiş", "Görüldü") ? 1 : 0;
+      return markFamilyHistoryEmpty();
     }
     const card = await ensureCardOpen("Soygeçmiş");
-    if (!card) return 0;
+    if (!card) return markFamilyHistoryEmpty();
     await waitFor(() => [...card.querySelectorAll("input,textarea,table")]
       .find((element) => element.offsetParent !== null), 1800);
     let added = 0;
@@ -1078,10 +1199,11 @@
       .find((input) => /anne ile baba akraba/i.test(textOf(input.closest("label") || input.parentElement)));
     if (related && typeof profile.parents_related === "boolean"
       && related.checked !== profile.parents_related) related.click();
-    clickText("Görüldü", card);
-    // Soygecmis COMED'de zorunludur. Hicbir satir isaretlenemediyse alan bos
-    // kalmamali; "Ozellik Yok" basilarak kayit edilebilir hale getirilir.
-    if (!added) return clickCardOption("Soygeçmiş", "Özellik Yok") ? 1 : 0;
+    // Satir isaretlenebildiyse "Goruldu" ile kart tamamlanmis sayilir;
+    // hicbiri tutmadiysa kart bos kalmasin diye "Ozellik Yok"a dusulur.
+    if (!added) return markFamilyHistoryEmpty();
+    clickTextLoose(["Görüldü"], card);
+    bridgeFieldStatus("family_history", true);
     return added;
   }
 

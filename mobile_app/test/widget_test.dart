@@ -247,7 +247,7 @@ void main() {
     );
 
     expect(find.text('Klinot'), findsOneWidget);
-    expect(find.textContaining('v2.18.0'), findsOneWidget);
+    expect(find.textContaining('v2.19.0'), findsOneWidget);
     await tester.enterText(find.byKey(const Key('usernameField')), 'admin');
     await tester.enterText(find.byKey(const Key('passwordField')), 'secret');
     await tester.tap(find.byKey(const Key('loginButton')));
@@ -376,7 +376,7 @@ void main() {
       ),
     );
 
-    expect(find.text('Doktor epikrizi'), findsOneWidget);
+    expect(find.widgetWithText(AppBar, 'AI epikriz'), findsOneWidget);
     expect(find.textContaining('Test Hasta · V-22207357'), findsOneWidget);
     expect(find.text('Bacak ağrısı'), findsOneWidget);
     expect(find.text('İletişim önerileri'), findsOneWidget);
@@ -568,7 +568,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
 
       expect(find.text('Görüşme tamamlandı'), findsNothing);
-      expect(find.text('Epikriz hazırlanıyor'), findsWidgets);
+      expect(find.text('AI epikriz hazırlanıyor'), findsWidgets);
       expect(find.byKey(const Key('epikrizLoadingIndicator')), findsOneWidget);
       expect(find.byKey(const Key('privateAnalysisNotice')), findsOneWidget);
       expect(find.byKey(const Key('analysisProgress')), findsOneWidget);
@@ -582,7 +582,7 @@ void main() {
       api.analysisGate.complete();
       await tester.pumpAndSettle();
 
-      expect(find.text('Doktor epikrizi'), findsOneWidget);
+      expect(find.widgetWithText(AppBar, 'AI epikriz'), findsOneWidget);
       expect(find.text('Doktora özel epikriz'), findsOneWidget);
       expect(find.text('Kırmızı bayrakları sorgulayın'), findsOneWidget);
 

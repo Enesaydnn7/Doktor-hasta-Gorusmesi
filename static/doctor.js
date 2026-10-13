@@ -51,32 +51,113 @@ function renderStats() {
   $("stat-cost").textContent = fmtUsd(stat.cost_usd);
 }
 
-/* ---------- COMED is listesi ---------- */
+/* ---------- COMED is listesi ----------
+   Kartlar sirayla farkli renk alir; yan yana iki kart hicbir zaman ayni
+   renkte olmaz, boylece hangi bilginin hangi hastaya ait oldugu karismaz. */
+const CARD_COLORS = [
+  {c: "#0e8a80", bg: "#e6f5f3"}, {c: "#4256c8", bg: "#eaedfb"},
+  {c: "#b06a07", bg: "#fdf1df"}, {c: "#b83a66", bg: "#fdeaf0"},
+  {c: "#6f42c0", bg: "#f1eafb"}, {c: "#0b7ba4", bg: "#e4f3fa"},
+  {c: "#4a7d1f", bg: "#eef7e3"}, {c: "#8a5a2b", bg: "#f7efe6"},
+];
+
+function initials(name) {
+  const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "H";
+  const first = parts[0][0] || "";
+  const last = parts.length > 1 ? parts[parts.length - 1][0] : "";
+  return (first + last).toUpperCase();
+}
+
+/* Bu hastaya bagli kayitlar: kart artik sadece isim degil, is durumu gosterir. */
+function patientRecords(p) {
+  const key = patientKey(p);
+  if (!key) return [];
+  return overview.records.filter(
+    r => String((r.metadata || {}).comed_patient?.visit_id || "") === key
+  );
+}
+
+function patientBadge(records) {
+  if (!records.length) {
+    return '<span class="pc-tag wait"><i class="bi bi-mic"></i> Kayıt bekleniyor</span>';
+  }
+  const done = records.some(r => r.comed_status === "completed");
+  const review = records.some(r => r.comed_status === "ready_for_review");
+  const busy = records.some(r => r.comed_status && !["completed", "ready_for_review"].includes(r.comed_status));
+  if (done) return '<span class="pc-tag ok"><i class="bi bi-check-circle-fill"></i> COMED tamam</span>';
+  if (review) return '<span class="pc-tag review"><i class="bi bi-eye-fill"></i> Kontrol bekliyor</span>';
+  if (busy) return '<span class="pc-tag busy"><i class="bi bi-arrow-repeat"></i> Aktarılıyor</span>';
+  return `<span class="pc-tag ready"><i class="bi bi-file-earmark-text-fill"></i> ${records.length} rapor hazır</span>`;
+}
+
 function renderWorklist() {
   $("worklist-count").textContent = `${overview.worklist.length} hasta`;
   $("worklist").innerHTML = overview.worklist.length
-    ? overview.worklist.map((p, i) => `<button class="patient-card ${patientKey(p) === patientKey(selectedPatient) ? "selected" : ""}" data-patient="${i}">
-        <span class="patient-avatar">${esc((p.patient_name || "H").trim().charAt(0).toUpperCase())}</span>
-        <span class="patient-copy"><strong>${esc(p.patient_name)}</strong>
-          <small>${esc(p.protocol_no || p.visit_id)} · ${esc(p.department || p.task || "COMED")}</small>
-          <em>${esc(p.status || "Görüşme bekliyor")}</em></span>
-      </button>`).join("")
+    ? overview.worklist.map((p, i) => {
+        const color = CARD_COLORS[i % CARD_COLORS.length];
+        const on = patientKey(p) === patientKey(selectedPatient);
+        const records = patientRecords(p);
+        const sub = [p.department || p.task, p.doctor_name].filter(Boolean).join(" · ");
+        return `<button class="patient-card ${on ? "selected" : ""}" data-patient="${i}"
+            style="--c:${color.c};--cbg:${color.bg}"
+            title="${esc(p.patient_name)} — seçmek için tıklayın">
+          <span class="pc-head">
+            <span class="patient-avatar">${esc(initials(p.patient_name))}</span>
+            <span class="pc-id">
+              <strong>${esc(p.patient_name || "İsimsiz hasta")}</strong>
+              <small>${esc(p.protocol_no || p.patient_no || p.visit_id)}</small>
+            </span>
+            <span class="pc-check"><i class="bi bi-check-lg"></i></span>
+          </span>
+          ${sub ? `<span class="pc-sub"><i class="bi bi-hospital"></i> ${esc(sub)}</span>` : ""}
+          <span class="pc-tags">
+            ${patientBadge(records)}
+            ${p.birth_date ? `<span class="pc-tag plain"><i class="bi bi-cake2"></i> ${esc(p.birth_date)}</span>` : ""}
+            ${p.status ? `<span class="pc-tag plain"><i class="bi bi-clock-history"></i> ${esc(p.status)}</span>` : ""}
+          </span>
+        </button>`;
+      }).join("")
     : '<div class="empty-box">Bu doktor için eşitlenmiş COMED hastası yok. Eklentiyi aynı doktor hesabıyla bağlayıp COMED iş listesini açın.</div>';
   document.querySelectorAll("[data-patient]").forEach(el => el.onclick = () => {
     const picked = overview.worklist[+el.dataset.patient];
     selectedPatient = patientKey(picked) === patientKey(selectedPatient) ? null : picked;
     renderWorklist();
+    renderRecords();
   });
 }
 
 /* ---------- kayit listesi (yonetici paneliyle ayni satir duzeni) ---------- */
 function renderRecords() {
   const list = $("rec-list");
+  // Liste komple yeniden yazilir; calan ses once parka alinir, detay
+  // yeniden cizilince (drawDetail → restoreLiveAudio) yerine geri doner.
+  parkLiveAudio(list);
   if (!overview.records.length) {
     list.innerHTML = '<div class="empty-box"><i class="bi bi-inbox"></i><p>Size atanmış görüşme kaydı yok. Mobil uygulamadan bir görüşme analiz edildiğinde burada listelenir.</p></div>';
     return;
   }
-  list.innerHTML = overview.records.map(k => {
+  // Hasta kartina tiklamak listeyi suzsun: o hastanin kayitlari + henuz
+  // hicbir hastaya baglanmamis kayitlar (aktarilacak adaylar) kalir.
+  const key = patientKey(selectedPatient);
+  const shown = key
+    ? overview.records.filter(r => {
+        const link = String((r.metadata || {}).comed_patient?.visit_id || "");
+        return !link || link === key;
+      })
+    : overview.records;
+  const banner = key
+    ? `<div class="rec-filter"><span><i class="bi bi-funnel-fill"></i>
+         <b>${esc(selectedPatient.patient_name || "Seçili hasta")}</b> için süzüldü · ${shown.length} kayıt</span>
+       <button class="mini-btn" id="filtre-temizle"><i class="bi bi-x-lg"></i> Tümünü göster</button></div>`
+    : "";
+  if (!shown.length) {
+    list.innerHTML = banner + '<div class="empty-box"><i class="bi bi-inbox"></i><p>Bu hastaya bağlı kayıt yok. Mobil uygulamadan görüşmeyi kaydedip analiz edin.</p></div>';
+    const clear = $("filtre-temizle");
+    if (clear) clear.onclick = () => { selectedPatient = null; renderWorklist(); renderRecords(); };
+    return;
+  }
+  list.innerHTML = banner + shown.map(k => {
     const comed = k.comed_status === "completed"
       ? '<span class="badge-comed done" title="COMED"><i class="bi bi-check-circle"></i> COMED</span>'
       : k.comed_status === "ready_for_review"
@@ -99,6 +180,8 @@ function renderRecords() {
       <div class="rec-detail hidden" id="det-${k.id}"></div>
     </div>`;
   }).join("");
+  const clear = $("filtre-temizle");
+  if (clear) clear.onclick = () => { selectedPatient = null; renderWorklist(); renderRecords(); };
 }
 
 function render() { renderStats(); renderWorklist(); renderRecords(); }
@@ -136,9 +219,53 @@ async function openDetail(id, sekme) {
   drawDetail(id, sekme || "doktor");
 }
 
+/* ---------- calan sesi yeniden cizimden koru ----------
+   Panel yenilendiginde detay HTML'i bastan yazilir ve <audio> dugumu yok
+   olurdu; ses bu yuzden kendi kendine duruyordu.
+
+   Onemli: Chrome bir medya dugumunu DOM'dan CIKARINCA oynatmayi durdurur,
+   bu yuzden remove() ise yaramaz. Dugum bunun yerine gorunmez bir park
+   kabina TASINIR -- tasima tek islemdir, eleman belgeden hic ayrilmaz --
+   ve yeni HTML hazir olunca yerine geri takilir. */
+function audioPark() {
+  let park = document.getElementById("audio-park");
+  if (!park) {
+    park = document.createElement("div");
+    park.id = "audio-park";
+    park.setAttribute("aria-hidden", "true");
+    park.style.cssText =
+      "position:absolute;width:0;height:0;overflow:hidden;opacity:0;pointer-events:none";
+    document.body.appendChild(park);
+  }
+  return park;
+}
+
+/* Calan sesi parka al. Duran/hic baslamamis sesler korunmaz, park sisirmesin. */
+function parkLiveAudio(root) {
+  const park = audioPark();
+  // Onceki turlardan kalan, artik calmayan dugumleri temizle.
+  park.querySelectorAll("audio").forEach(old => { if (old.paused) old.remove(); });
+  const audio = root?.querySelector("audio");
+  if (!audio || (audio.paused && !audio.currentTime)) return null;
+  park.appendChild(audio);
+  return audio;
+}
+
+/* Yeni HTML'deki bos oynaticiyi, parktaki ayni kaydin calan dugumuyle degistir. */
+function restoreLiveAudio(root) {
+  const slot = root?.querySelector("audio");
+  if (!slot) return;
+  const src = slot.getAttribute("src");
+  const kept = [...audioPark().querySelectorAll("audio")]
+    .find(audio => audio.getAttribute("src") === src);
+  if (kept) slot.replaceWith(kept);
+  else prepareAudioTimeline(slot);
+}
+
 function drawDetail(id, sekme) {
   const k = cache[id];
   const det = $("det-" + id);
+  parkLiveAudio(det);
   const u = k.usage || {};
   const ua = u.analiz || {}, us = u.ses || {}, ur = us.role_usage || {}, uf = us.fallback_usage || {};
   const totTok = (ua.total || 0) + (us.total || 0) + (uf.total || 0) + (ur.total || 0);
@@ -157,7 +284,7 @@ function drawDetail(id, sekme) {
       <audio controls preload="metadata" src="/doctor/audio/${k.id}"></audio>
     </div>` : "";
 
-  const tabs = [["doktor", "Doktor epikrizi", "file-medical"], ["comed", "COMED taslağı", "send-check"],
+  const tabs = [["doktor", "AI epikriz", "file-medical"], ["comed", "COMED taslağı", "send-check"],
                 ["hasta", "Hasta özeti", "person-heart"], ["yonetim", "Yönetim raporu", "shield-check"],
                 ["transkript", "Görüşme metni", "chat-left-text"]];
   const patient = linkedPatient(k) || {};
@@ -183,8 +310,7 @@ function drawDetail(id, sekme) {
      </div>` : ""}
     <div class="det-body">${bodyHTML(k, sekme)}</div>`;
 
-  const audioEl = det.querySelector("audio");
-  if (audioEl) prepareAudioTimeline(audioEl);
+  restoreLiveAudio(det);
 }
 
 async function indirPdf(btn) {
@@ -307,19 +433,27 @@ if (q) q.addEventListener("input", () => {
 });
 
 /* ---------- yukleme ---------- */
+function audioPlaying() {
+  return [...document.querySelectorAll("audio")].some(a => !a.paused && !a.ended);
+}
+
 async function load({silent = false} = {}) {
   if (loading) return;
+  // Ses calarken arka plan yenilemesi listeyi bastan cizip oynatmayi kesiyordu.
+  if (silent && audioPlaying()) return;
   loading = true;
   try {
     const next = await json("/doctor/api/overview");
     const prior = patientKey(selectedPatient);
-    const openIds = [...document.querySelectorAll(".rec-detail:not(.hidden)")]
-      .map(el => el.id.replace("det-", ""));
+    // Acik detaylar kapanmasin, acik sekme de "doktor"a geri atlamasin.
+    const open = [...document.querySelectorAll(".rec-detail:not(.hidden)")].map(el => ({
+      id: el.id.replace("det-", ""),
+      tab: el.querySelector(".det-tab.active")?.dataset.tab || "doktor",
+    }));
     overview = next;
     if (prior) selectedPatient = overview.worklist.find(p => patientKey(p) === prior) || selectedPatient;
     render();
-    // Acik duran detaylar yenilemeden sonra kapanmasin.
-    openIds.forEach(id => { if (cache[id]) openDetail(id, "doktor"); });
+    open.forEach(({id, tab}) => { if (cache[id]) openDetail(id, tab); });
   } catch (e) {
     if (!silent) toast(e.message, true);
   } finally { loading = false; }

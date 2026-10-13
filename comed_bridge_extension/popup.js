@@ -12,6 +12,38 @@ const connectedName = document.getElementById("connected-name");
 const connectedUser = document.getElementById("connected-user");
 const switchAccount = document.getElementById("switch-account");
 const cancelSwitch = document.getElementById("cancel-switch");
+const speedButtons = document.getElementById("speed-buttons");
+const speedNote = document.getElementById("speed-note");
+
+/* Form doldurma hizi: content.js her bekleme suresini bu degere boler.
+   Buyuk deger daha hizli doldurur. Ayni deger COMED sayfasindaki balonda da
+   gosterilir; iki taraf chrome.storage uzerinden anlik esitlenir. */
+const SPEED_VALUES = [0.5, 0.75, 1, 1.5, 2.5];
+const DEFAULT_SPEED = 1;
+
+function normalizeSpeed(value) {
+  const number = Number(value);
+  return SPEED_VALUES.includes(number) ? number : DEFAULT_SPEED;
+}
+
+function paintSpeed(value) {
+  const speed = normalizeSpeed(value);
+  let title = "";
+  speedButtons.querySelectorAll("[data-speed]").forEach((item) => {
+    const on = Number(item.dataset.speed) === speed;
+    item.setAttribute("aria-pressed", String(on));
+    if (on) title = item.title;
+  });
+  speedNote.textContent = title;
+}
+
+speedButtons.addEventListener("click", (event) => {
+  const item = event.target.closest("[data-speed]");
+  if (!item) return;
+  const speed = normalizeSpeed(item.dataset.speed);
+  paintSpeed(speed);
+  chrome.storage.local.set({fillSpeed: speed});
+});
 
 const COMED_CARD_RE = /^https:\/\/goztepetest\.comed\.mlpcare\.com\/tr-tr\/medical\//i;
 
@@ -38,20 +70,23 @@ function show(text, ok = false) {
 }
 
 chrome.storage.local.get(
-  ["apiBase", "username", "displayName", "token", "traceEnabled"],
+  ["apiBase", "username", "displayName", "token", "traceEnabled", "fillSpeed"],
   (saved) => {
     if (saved.apiBase) api.value = saved.apiBase;
     if (saved.username) user.value = saved.username;
     traceEnabled.checked = saved.traceEnabled !== false;
+    paintSpeed(saved.fillSpeed);
     connected = saved.token ? saved : null;
     paint();
   },
 );
 
 // Token baska bir yerde silinirse (ornegin 401 sonrasi) popup aninda giris
-// ekranina doner.
+// ekranina doner. Hiz COMED sayfasindaki balondan degisirse burada da guncellenir.
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area !== "local" || !changes.token) return;
+  if (area !== "local") return;
+  if (changes.fillSpeed) paintSpeed(changes.fillSpeed.newValue);
+  if (!changes.token) return;
   if (!changes.token.newValue) {
     connected = null;
     paint();

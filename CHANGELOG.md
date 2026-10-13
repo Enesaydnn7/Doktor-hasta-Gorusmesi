@@ -1,3 +1,21 @@
+## v2.19.0 — 13 Ekim 2026
+
+- Doktor panelindeki ses oynatıcı artık takılmıyor. `/doctor/audio/{kid}` ucu
+  yönetici ucuyla aynı HTTP byte-range (206) desteğini kullanıyor ve 15 saniyelik
+  arka plan yenilemesi çalan kaydı artık yeniden çizmiyor.
+- COMED iş listesi kart tasarımı yenilendi: her kart sırayla farklı renk alır,
+  hastaya bağlı rapor/aktarım durumu kartta görünür, karta tıklayınca kayıt
+  listesi o hastaya göre süzülür.
+- Eklentiye form doldurma hız ayarı eklendi (0.5× – 2.5×). Hız, aktarım
+  sürerken COMED sayfasındaki Klinot balonundan da değiştirilebilir.
+- Soygeçmiş ve düşme riski artık hiçbir koşulda boş bırakılmıyor; kart önce
+  açılır, etiket büyük/küçük harf farkı gözetmeden aranır ve gerekirse
+  "Özellik Yok" / "Görüldü" işaretlenir.
+- Hasta girişinde doğum tarihi elle de yazılabiliyor; noktalar otomatik eklenir,
+  takvim zorunlu değil.
+- KVKK aydınlatma metni bağlantısının altı çizildi.
+- Epikriz raporunun adı her yerde "AI epikriz" oldu.
+
 # Sürüm Geçmişi
 
 ## v2.18.0 — 8 Ekim 2026

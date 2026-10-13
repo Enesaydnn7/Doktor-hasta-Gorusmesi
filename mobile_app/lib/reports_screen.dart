@@ -85,7 +85,7 @@ class _ReportsScreenState extends State<ReportsScreen>
       _notice(
         savedPath == null
             ? 'PDF kaydetme işlemi iptal edildi.'
-            : '${patientMode ? 'Sağlık raporu' : 'Epikriz'} PDF olarak kaydedildi.',
+            : '${patientMode ? 'Sağlık raporu' : 'AI epikriz'} PDF olarak kaydedildi.',
       );
     } catch (error) {
       if (mounted) _notice('PDF indirilemedi: $error', error: true);
@@ -212,7 +212,7 @@ class _ReportsScreenState extends State<ReportsScreen>
     final patient = widget.result.comedPatient;
     return Scaffold(
       appBar: AppBar(
-        title: Text(patientMode ? 'Sağlık raporum' : 'Doktor epikrizi'),
+        title: Text(patientMode ? 'Sağlık raporum' : 'AI epikriz'),
       ),
       body: SafeArea(
         child: Center(
@@ -324,7 +324,7 @@ class _ReadyHeader extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                patientMode ? 'Sağlık raporu hazır' : 'Epikriz hazır',
+                patientMode ? 'Sağlık raporu hazır' : 'AI epikriz hazır',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 20,
@@ -477,7 +477,7 @@ class _ReportActions extends StatelessWidget {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.picture_as_pdf_rounded),
-                label: Text(downloading ? 'Hazırlanıyor…' : 'Epikriz PDF'),
+                label: Text(downloading ? 'Hazırlanıyor…' : 'AI epikriz PDF'),
               ),
             ),
             const SizedBox(width: 8),
@@ -1046,7 +1046,7 @@ class _FallbackReport extends StatelessWidget {
 
 String _humanize(String value) {
   const labels = {
-    'epikriz': 'Epikriz',
+    'epikriz': 'AI epikriz',
     'oneriler': 'Öneriler',
     'koclugu': 'İletişim koçluğu',
     'gorusmeTarihi': 'Görüşme tarihi',

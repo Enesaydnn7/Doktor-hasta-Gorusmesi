@@ -9,3 +9,15 @@
 .connected-dot{flex:0 0 auto;width:10px;height:10px;border-radius:50%;background:#15a08f;box-shadow:0 0 0 3px #15a08f22}
 .link-button{width:100%;margin-top:10px;padding:7px;border:0;border-radius:9px;background:transparent;color:#2b6f8a;font:600 12px system-ui;cursor:pointer;text-decoration:underline}
 .link-button:hover{background:#eef5f8}
+
+/* ---- Form doldurma hizi ----
+   Popup yalnizca 330px genis; basliklar dugmelerin yanina sigmadigi icin
+   ustte, dugme seridi altta tam genislikte durur. */
+.speed-row{display:flex;flex-direction:column;gap:8px;padding:11px;margin:0 0 7px;border:1px solid #cfe0e3;border-radius:10px;background:#fff}
+.speed-row>span{display:flex;flex-direction:column;gap:2px;min-width:0}
+.speed-row b{font-size:11.5px;color:#1c4653}
+.speed-row small{font-weight:500;line-height:1.3;color:#71848a}
+.speed-buttons{display:flex;gap:3px;padding:3px;border-radius:10px;background:#eef4f5}
+.speed-buttons button{flex:1 1 0;width:auto;padding:6px 2px;border-radius:7px;background:transparent;color:#3d5a63;font:800 11px system-ui}
+.speed-buttons button:hover{background:#dfe9eb}
+.speed-buttons button[aria-pressed="true"]{background:#087f78;color:#fff}

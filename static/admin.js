@@ -81,7 +81,7 @@ function drawDetail(id, sekme) {
       <audio controls preload="metadata" src="/admin/ses/${k.id}"></audio>
     </div>` : "";
 
-  const tabs = [["doktor", "Doktor epikrizi", "file-medical"], ["comed", "COMED taslağı", "send-check"],
+  const tabs = [["doktor", "AI epikriz", "file-medical"], ["comed", "COMED taslağı", "send-check"],
                 ["hasta", "Hasta özeti", "person-heart"], ["yonetim", "Yönetim raporu", "shield-check"],
                 ["transkript", "Görüşme metni", "chat-left-text"]];
   const patient = (k.metadata || {}).comed_patient || {};

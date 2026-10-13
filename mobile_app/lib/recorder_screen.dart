@@ -282,7 +282,7 @@ class _RecorderScreenState extends State<RecorderScreen> {
         _processingPercent = 100;
         _processingPhase = _patientMode
             ? 'Sağlık raporu hazır'
-            : 'Epikriz hazır';
+            : 'AI epikriz hazır';
       });
 
       await _recorder.allowSleep();
@@ -331,7 +331,7 @@ class _RecorderScreenState extends State<RecorderScreen> {
     'doktor' =>
       _patientMode
           ? 'Sağlık raporu son kontrollerden geçiyor'
-          : 'Detaylı epikriz hazırlanıyor',
+          : 'AI epikriz hazırlanıyor',
     'yonetim' => 'Görüşme kaydı tamamlanıyor',
     _ => 'Klinik raporlar hazırlanıyor',
   };
@@ -362,7 +362,7 @@ class _RecorderScreenState extends State<RecorderScreen> {
                     : processing
                     ? (_patientMode
                           ? 'Sağlık raporu hazırlanıyor'
-                          : 'Epikriz hazırlanıyor')
+                          : 'AI epikriz hazırlanıyor')
                     : ready
                     ? 'Görüşme tamamlandı'
                     : 'Yeni görüşme',
@@ -374,7 +374,7 @@ class _RecorderScreenState extends State<RecorderScreen> {
                 _isRecording
                     ? 'Telefonu masanın ortasında bırakın ve doğal biçimde konuşun.'
                     : processing
-                    ? 'Görüşmeniz güvenli biçimde analiz ediliyor. ${_patientMode ? 'Sağlık raporu' : 'Epikriz'} hazır olduğunda otomatik açılacak.'
+                    ? 'Görüşmeniz güvenli biçimde analiz ediliyor. ${_patientMode ? 'Sağlık raporu' : 'AI epikriz'} hazır olduğunda otomatik açılacak.'
                     : ready
                     ? 'Görüşme metni ekranda gösterilmez; kayıt analiz için hazır.'
                     : 'Telefonu doktor ile hastanın arasına, mikrofonu açık kalacak şekilde yerleştirin.',
@@ -887,7 +887,11 @@ class _IdleRecording extends StatelessWidget {
         key: const Key('privacyNoticeButton'),
         onPressed: () => _showPrivacyNotice(context),
         icon: const Icon(Icons.shield_outlined, size: 18),
-        label: const Text('Aydınlatma metnini incele'),
+        // KVKK baglantisi oldugu belli olsun diye alti cizili.
+        label: const Text(
+          'Aydınlatma metnini incele',
+          style: TextStyle(decoration: TextDecoration.underline),
+        ),
       ),
       const SizedBox(height: 20),
       SizedBox(
@@ -1053,7 +1057,7 @@ class _ReadyRecording extends StatelessWidget {
       Text(
         analyzed
             ? 'Ses kaydı cihazda korunuyor. Aynı görüşmeyi yeniden analiz edebilir veya kaydı silip yeni görüşmeye başlayabilirsiniz.'
-            : 'Analiz başladığında görüşme metni ve işlem adımları gösterilmez. ${patientMode ? 'Sağlık raporu' : 'Epikriz'} hazır olunca ekran otomatik açılır.',
+            : 'Analiz başladığında görüşme metni ve işlem adımları gösterilmez. ${patientMode ? 'Sağlık raporu' : 'AI epikriz'} hazır olunca ekran otomatik açılır.',
         textAlign: TextAlign.center,
         style: TextStyle(color: Color(0xFF60777D), height: 1.45),
       ),
@@ -1133,7 +1137,7 @@ class _ProcessingRecording extends StatelessWidget {
       ),
       const SizedBox(height: 26),
       Text(
-        patientMode ? 'Sağlık raporu hazırlanıyor' : 'Epikriz hazırlanıyor',
+        patientMode ? 'Sağlık raporu hazırlanıyor' : 'AI epikriz hazırlanıyor',
         style: Theme.of(context).textTheme.titleLarge
             ?.copyWith(fontWeight: FontWeight.w800, color: klinotNavy),
       ),

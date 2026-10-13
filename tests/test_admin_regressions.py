@@ -82,13 +82,86 @@ class BrowserStateRegressionTests(unittest.TestCase):
         for tab in ("doktor", "hasta", "yonetim", "comed", "transkript"):
             self.assertIn(f'"{tab}"', js)
         self.assertIn("bodyHTML(k, sekme)", js)
-        self.assertIn("prepareAudioTimeline(audioEl)", js)
+        self.assertIn("prepareAudioTimeline(slot)", js)
         self.assertIn("/doctor/audio/", js)
         self.assertIn("/doctor/pdf/", js)
         self.assertIn("comed-action-bar", js)
         # Ortak katmandaki esc/val/fmtUsd ile cakismamali.
         self.assertNotIn("function esc(", js)
         self.assertNotIn("const esc =", js)
+
+    def test_doctor_audio_endpoint_supports_byte_range(self):
+        """Ses oynatici takilmasin: doktor ucu da admin gibi 206 donmeli.
+
+        Range destegi olmadan tarayici ses dosyasinda ileri/geri atlayamiyor
+        ve oynatma kendi kendine duruyordu.
+        """
+        main_py = (ROOT / "main.py").read_text(encoding="utf-8")
+        self.assertIn("def _audio_response(", main_py)
+        self.assertIn("Accept-Ranges", main_py)
+        # Iki uc da ayni yardimciyi kullanmali ki davranis ayrismasin.
+        self.assertEqual(main_py.count("return _audio_response(request, data, mime"), 2)
+
+    def test_doctor_panel_does_not_restart_playing_audio(self):
+        """15 saniyelik arka plan yenilemesi calan kaydi kesmemeli."""
+        js = (ROOT / "static" / "doctor.js").read_text(encoding="utf-8")
+        self.assertIn("function audioPlaying(", js)
+        self.assertIn("if (silent && audioPlaying()) return;", js)
+        # Chrome, DOM'dan CIKARILAN medya dugumunu durdurur. Bu yuzden dugum
+        # remove() edilmez, gorunmez park kabina TASINIR ve geri takilir.
+        self.assertIn("function audioPark(", js)
+        self.assertIn("park.appendChild(audio)", js)
+        self.assertNotIn("audio.remove()", js)
+        # Detay ve kayit listesi yeniden yazilmadan once park edilir.
+        self.assertIn("parkLiveAudio(det)", js)
+        self.assertIn("parkLiveAudio(list)", js)
+        self.assertIn("restoreLiveAudio(det)", js)
+
+    def test_doctor_worklist_cards_get_distinct_colors(self):
+        """Yan yana iki hasta karti ayni renkte olmamali."""
+        js = (ROOT / "static" / "doctor.js").read_text(encoding="utf-8")
+        css = (ROOT / "static" / "doctor.css").read_text(encoding="utf-8")
+        self.assertIn("CARD_COLORS", js)
+        self.assertIn("CARD_COLORS[i % CARD_COLORS.length]", js)
+        self.assertIn("--c:${color.c};--cbg:${color.bg}", js)
+        self.assertIn(".patient-card{--c:", css)
+        # Kart artik islevli: tiklayinca kayit listesi suzulur.
+        self.assertIn("rec-filter", js)
+        self.assertIn("rec-filter", css)
+
+    def test_extension_fill_speed_is_adjustable(self):
+        """Doktor doldurma hizini yavaslatip hizlandirabilmeli."""
+        content = (ROOT / "comed_bridge_extension" / "content.js").read_text(
+            encoding="utf-8"
+        )
+        popup_js = (ROOT / "comed_bridge_extension" / "popup.js").read_text(
+            encoding="utf-8"
+        )
+        popup_html = (ROOT / "comed_bridge_extension" / "popup.html").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("FILL_SPEEDS", content)
+        # Tum beklemeler tek yerden olceklenir.
+        self.assertIn("Math.max(15, Math.round(ms / (fillSpeed || 1)))", content)
+        # Zaman asimi yoklamasi hizdan etkilenmemeli.
+        self.assertIn("await rawSleep(120);", content)
+        # Iki taraf chrome.storage uzerinden esitlenir.
+        self.assertIn("changes.fillSpeed", content)
+        self.assertIn("changes.fillSpeed", popup_js)
+        self.assertIn('data-speed="1"', popup_html)
+
+    def test_family_history_is_never_left_empty(self):
+        """Soygecmis zorunlu: veri yoksa bile Ozellik Yok/Goruldu isaretlenir."""
+        content = (ROOT / "comed_bridge_extension" / "content.js").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("async function markCardOption(", content)
+        self.assertIn("async function markFamilyHistoryEmpty(", content)
+        self.assertIn('FAMILY_EMPTY_LABELS = ["Özellik Yok"', content)
+        self.assertIn("Görüldü", content)
+        # Erken cikislarin hepsi bos birakmak yerine isaretlemeye dusmeli.
+        self.assertNotIn('clickCardOption("Soygeçmiş"', content)
+        self.assertNotIn('clickCardOption("Düşme Riski"', content)
 
     def test_comed_bridge_never_auto_signs_or_embeds_credentials(self):
         manifest = (ROOT / "comed_bridge_extension" / "manifest.json").read_text(

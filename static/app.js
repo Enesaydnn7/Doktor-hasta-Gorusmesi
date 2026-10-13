@@ -46,7 +46,7 @@ function showTab(name) {
 
 const ANALYSIS_STEP_LABELS = {
   hasta: "Hasta özeti",
-  doktor: "Detaylı epikriz",
+  doktor: "AI epikriz",
   yonetim: "Yönetim raporu"
 };
 
@@ -237,7 +237,7 @@ function renderDoktor(d) {
   $("panel-doktor").innerHTML = `
     <div class="panel-head head-doktor"><span class="ph-icon"><i class="bi bi-file-medical"></i></span>
       <div class="ph-txt"><h3>Doktor raporu</h3><div class="ph-sub">detaylı epikriz (sigorta/kayıt uyumlu) + iletişim koçluğu</div></div>
-      <button class="pdf-btn" data-pdf="doktor"><i class="bi bi-file-earmark-pdf"></i> Epikrizi PDF indir</button></div>
+      <button class="pdf-btn" data-pdf="doktor"><i class="bi bi-file-earmark-pdf"></i> AI epikrizi PDF indir</button></div>
     <div class="panel-body">
       <div class="sec">${meta}</div>
       <div class="sec"><div class="sec-title"><i class="bi bi-file-earmark-medical"></i> Şikayet & öykü</div>${fields}</div>

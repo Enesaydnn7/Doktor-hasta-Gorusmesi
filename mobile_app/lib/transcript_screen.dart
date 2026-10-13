@@ -42,7 +42,7 @@ class _TranscriptScreenState extends State<TranscriptScreen> {
 
   String _stepLabel(String step) => switch (step) {
     'hasta' => 'Klinik bulgular düzenleniyor',
-    'doktor' => 'Detaylı epikriz hazırlanıyor',
+    'doktor' => 'AI epikriz hazırlanıyor',
     'yonetim' => 'Görüşme kaydı tamamlanıyor',
     _ => 'Analiz hazırlanıyor',
   };
@@ -159,7 +159,7 @@ class _TranscriptScreenState extends State<TranscriptScreen> {
                     label: Text(
                       _analyzing
                           ? 'Analiz sürüyor · %$_percent'
-                          : 'Epikrizi hazırla',
+                          : 'AI epikrizi hazırla',
                     ),
                   ),
                   const SizedBox(height: 12),
