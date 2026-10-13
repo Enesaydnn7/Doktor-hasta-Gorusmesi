@@ -112,6 +112,11 @@ PATIENT_TEST_OTP_ENABLED=false
 2. Bu klasördeki dosyaları oraya yükle. **`.env` dosyasını YÜKLEME** (`.gitignore` bunu
    zaten engelliyor; anahtarın herkese açık olmasın).
 
+> **Kendi sunucunuza mı taşıyorsunuz?** Ubuntu sunucu kurulumu (systemd + nginx +
+> HTTPS), Supabase/Postgres geçişi, ortam değişkenlerinin **tam** listesi ve
+> taşıma günü kontrol listesi için: **[`docs/TASIMA.md`](docs/TASIMA.md)**.
+> Aşağıdaki Render anlatımı yalnızca mevcut demo ortamı içindir.
+
 ### Seçenek A — Render.com (en kolay, GitHub'a bağlanır) — ÖNERİLEN
 1. render.com'a GitHub ile giriş yap (kart bilgisi istemez).
 2. **New +  →  Web Service  →** repoyu seç.
