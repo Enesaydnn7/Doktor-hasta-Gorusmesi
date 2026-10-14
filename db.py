@@ -191,6 +191,10 @@ def init():
             c.execute("ALTER TABLE comed_worklist ADD COLUMN birth_date TEXT")
         if "phone_masked" not in worklist_columns:
             c.execute("ALTER TABLE comed_worklist ADD COLUMN phone_masked TEXT")
+        # Hasta numarası + doğum tarihi özeti. COMED iş listesinde T.C. kimlik
+        # yok; bu özet sayesinde hasta, doktor kartı açmadan eşleşebiliyor.
+        if "patient_number_hash" not in worklist_columns:
+            c.execute("ALTER TABLE comed_worklist ADD COLUMN patient_number_hash TEXT")
         c.execute(
             "CREATE INDEX IF NOT EXISTS ix_comed_worklist_synced "
             "ON comed_worklist(synced_at DESC)"
@@ -531,8 +535,8 @@ def comed_worklist_sync(items: list[dict], synced_by: str = "",
                    (visit_id, clinical_card_id, patient_id, patient_name, patient_no,
                     protocol_no, department, doctor_name, task, status,
                     clinical_card_url, synced_at, synced_by, patient_identity_hash,
-                    birth_date, phone_masked)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                    birth_date, phone_masked, patient_number_hash)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                    ON CONFLICT(visit_id, synced_by) DO UPDATE SET
                      clinical_card_id=COALESCE(NULLIF(excluded.clinical_card_id,''), comed_worklist.clinical_card_id),
                      patient_id=excluded.patient_id,
@@ -548,7 +552,8 @@ def comed_worklist_sync(items: list[dict], synced_by: str = "",
                      synced_by=excluded.synced_by,
                      patient_identity_hash=COALESCE(NULLIF(excluded.patient_identity_hash,''), comed_worklist.patient_identity_hash),
                      birth_date='',
-                     phone_masked=COALESCE(NULLIF(excluded.phone_masked,''), comed_worklist.phone_masked)""",
+                     phone_masked=COALESCE(NULLIF(excluded.phone_masked,''), comed_worklist.phone_masked),
+                     patient_number_hash=COALESCE(NULLIF(excluded.patient_number_hash,''), comed_worklist.patient_number_hash)""",
                 (
                     visit_id, card_id, str(item.get("patient_id") or ""), name,
                     str(item.get("patient_no") or ""),
@@ -560,6 +565,7 @@ def comed_worklist_sync(items: list[dict], synced_by: str = "",
                     str(item.get("patient_identity_hash") or ""),
                     "",
                     str(item.get("phone_masked") or ""),
+                    str(item.get("patient_number_hash") or ""),
                 ),
             )
             if url:
@@ -637,6 +643,26 @@ def comed_patient_by_identity(identity_hash: str) -> dict | None:
                WHERE patient_identity_hash=?
                ORDER BY synced_at DESC LIMIT 1""",
             (identity_hash,),
+        ).fetchone()
+    return dict(row) if row else None
+
+
+def comed_patient_by_number(number_hash: str) -> dict | None:
+    """Hasta numarası + doğum tarihi özetiyle eşleşen hastayı bul.
+
+    COMED iş listesinde T.C. kimlik numarası bulunmuyor; bu yüzden kimlik
+    özeti ancak doktor hasta kartını açtığında oluşabiliyordu. Hasta
+    numarası ise iş listesinde hazır olduğu için bu arama kart açılmadan
+    çalışır.
+    """
+    if not number_hash:
+        return None
+    with _lock, _conn() as c:
+        row = c.execute(
+            """SELECT * FROM comed_worklist
+               WHERE patient_number_hash=?
+               ORDER BY synced_at DESC LIMIT 1""",
+            (number_hash,),
         ).fetchone()
     return dict(row) if row else None
 

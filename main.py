@@ -493,14 +493,34 @@ async def mobile_login(body: MobileLoginIn):
 
 @app.post("/api/v1/mobile/auth/patient/otp/start")
 async def mobile_patient_otp_start(body: PatientOtpStartIn):
-    """T.C. kimlik + doğum tarihi eşleşmesinden tek kullanımlık SMS oturumu başlat."""
-    if not auth.valid_tckn(body.tckn):
-        raise HTTPException(status_code=422, detail="T.C. kimlik numarası geçersiz")
+    """Kimlik eşleşmesinden tek kullanımlık SMS oturumu başlat.
+
+    Girilen numara T.C. kimlik numarası YA DA hasta numarası olabilir. COMED
+    iş listesinde T.C. kimlik numarası bulunmuyor; kimlik ancak doktor hasta
+    kartını açtığında — o da her kurulumda değil — okunabiliyor. Hasta
+    numarası ise iş listesinde hazır olduğundan, hasta numarasıyla eşleşme
+    doktorun kartı açmasını beklemeden çalışır.
+    """
+    numara = (body.tckn or "").strip()
+    if not auth.valid_patient_lookup_number(numara):
+        raise HTTPException(
+            status_code=422,
+            detail="T.C. kimlik numaranızı ya da hasta numaranızı girin",
+        )
     try:
-        identity_hash = auth.patient_identity_hash(body.tckn, body.birth_date)
+        birth_date = auth.normalize_birth_date(body.birth_date)
     except ValueError:
         raise HTTPException(status_code=422, detail="Doğum tarihi geçersiz") from None
-    patient = db.comed_patient_by_identity(identity_hash)
+
+    patient = None
+    if auth.valid_tckn(numara):
+        patient = db.comed_patient_by_identity(
+            auth.patient_identity_hash(numara, birth_date)
+        )
+    if not patient:
+        patient = db.comed_patient_by_number(
+            auth.patient_number_hash(numara, birth_date)
+        )
     if not patient:
         raise HTTPException(
             status_code=404,
@@ -745,6 +765,27 @@ def comed_clinical_card_url(visit_id) -> str:
     )
 
 
+@app.get("/api/v1/mobile/comed/worklist/missing-identity")
+async def mobile_comed_missing_identity(user: dict = Depends(mobile_doctor)):
+    """Kimliği henüz alınmamış hastaları köprüye bildir.
+
+    COMED iş listesi satırında T.C. kimlik numarası yok; kimlik yalnızca hasta
+    kartındaki "Hasta Bilgileri" panelinde yazıyor. Köprü bu listeyi alıp
+    ilgili kartı arka planda açar, kimliği okur ve kapatır; böylece hasta,
+    doktorun kartı açmasını beklemeden randevusuna bağlanabilir.
+    """
+    items = [
+        {
+            "visit_id": item.get("visit_id"),
+            "clinical_card_url": item.get("clinical_card_url")
+            or comed_clinical_card_url(item.get("visit_id")),
+        }
+        for item in db.comed_worklist(limit=50, synced_by=user["user"])
+        if not str(item.get("patient_identity_hash") or "").strip()
+    ]
+    return {"items": [item for item in items if item["clinical_card_url"]]}
+
+
 @app.post("/api/v1/mobile/comed/worklist/sync")
 async def mobile_comed_worklist_sync(
     body: ComedWorklistSyncIn,
@@ -760,6 +801,16 @@ async def mobile_comed_worklist_sync(
                 item["patient_identity_hash"] = auth.patient_identity_hash(tckn, birth_date)
             except ValueError:
                 logger.warning("COMED hasta kimliği doğum tarihi geçersiz; visit=%s", item.get("visit_id"))
+        # COMED iş listesinde T.C. kimlik numarası YOK; kimlik ancak hasta
+        # kartı açıldığında -- o da her kurulumda değil -- okunabiliyor.
+        # Hasta numarası ise satırda hazır. İkinci bir özet üretiyoruz ki
+        # hasta, doktor kartı açmadan randevusuna bağlanabilsin.
+        patient_no = str(item.get("patient_no") or "")
+        if patient_no and birth_date:
+            try:
+                item["patient_number_hash"] = auth.patient_number_hash(patient_no, birth_date)
+            except ValueError:
+                logger.warning("COMED hasta numarası özeti üretilemedi; visit=%s", item.get("visit_id"))
         item.pop("phone", None)
         # Kart adresi boşsa ziyaret kimliğinden üret. Boş kaldığında doktor
         # panelinden aktarım hiç başlamıyor, boş bir sekme açılıyordu.

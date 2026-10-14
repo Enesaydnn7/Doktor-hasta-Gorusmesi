@@ -1956,11 +1956,88 @@
     }
   }
 
+  /* ---- arka planda kimlik toplama ----
+     COMED is listesinde T.C. kimlik numarasi yok; kimlik yalnizca hasta
+     kartindaki "Hasta Bilgileri" panelinde yaziyor. Hastanin randevusu bu
+     yuzden doktor karti acana kadar baglanamiyordu.
+
+     Cozum: is listesindeyken, kimligi henuz alinmamis hastalarin kartini
+     ARKA PLANDA acip kimligi okuyup kapatiyoruz. Doktorun ekraninda hicbir
+     sey degismiyor. */
+  let backgroundRole = null;          // bu sekme arka plan karti mi?
+  const identityAsked = new Set();    // ayni hastayi tekrar tekrar deneme
+
+  function askBackground(type) {
+    return new Promise((resolve) => {
+      try {
+        chrome.runtime.sendMessage({type}, (response) => {
+          void chrome.runtime.lastError;
+          resolve(response || {});
+        });
+      } catch (_) {
+        resolve({});
+      }
+    });
+  }
+
+  async function isBackgroundCard() {
+    if (backgroundRole === null) {
+      const response = await askBackground("klinot-background-card-role");
+      backgroundRole = Boolean(response.background);
+    }
+    return backgroundRole;
+  }
+
+  /** Arka plan kartinda: kimligi oku, gonder, sekmeyi kapat. */
+  async function runBackgroundIdentityCard() {
+    try {
+      await waitFor(() => CARD_RE.test(location.pathname) && document.body, 15000);
+      const identity = await ensurePatientIdentityPanel();
+      if (identity?.tckn && identity?.birth_date) await syncCurrentCard();
+    } catch (_) {
+      // Kimlik alinamadiysa sessiz gec; bir sonraki turda yeniden denenir.
+    } finally {
+      await askBackground("klinot-background-card-done");
+    }
+  }
+
+  /** Is listesinde: kimligi eksik ilk hasta icin arka planda kart ac. */
+  async function collectMissingIdentities() {
+    let bekleyen;
+    try {
+      bekleyen = await request("/api/v1/mobile/comed/worklist/missing-identity");
+    } catch (_) {
+      return;                      // sunucu eski surumse sessiz gec
+    }
+    const hedef = (bekleyen?.items || []).find(
+      (item) => item.visit_id && !identityAsked.has(String(item.visit_id)),
+    );
+    if (!hedef) return;
+    const url = hedef.clinical_card_url || cardUrlForVisit(hedef.visit_id);
+    if (!url) return;
+    identityAsked.add(String(hedef.visit_id));
+    await new Promise((resolve) => {
+      try {
+        chrome.runtime.sendMessage(
+          {type: "klinot-collect-identity", url},
+          () => { void chrome.runtime.lastError; resolve(); },
+        );
+      } catch (_) {
+        resolve();
+      }
+    });
+  }
+
   async function monitorRoute() {
     if (routeBusy) return;
     routeBusy = true;
     try {
       const path = location.pathname;
+      // Arka plan kartiysa normal akisa hic girme: sadece kimligi al ve kapan.
+      if (CARD_RE.test(path) && await isBackgroundCard()) {
+        await runBackgroundIdentityCard();
+        return;
+      }
       const routeChanged = path !== lastPath;
       if (routeChanged) {
         lastPath = path;
@@ -1981,6 +2058,9 @@
           lastWorklistSyncAt = Date.now();
         }
         await openPendingTransferFromWorklist();
+        // Kimligi eksik hastalari arka planda tamamla: hasta, doktor karti
+        // acmadan da randevusuna baglanabilsin.
+        await collectMissingIdentities();
       } else if (CARD_RE.test(path)) {
         if (routeChanged || Date.now() - lastCardSyncAt >= 15000) {
           await syncCurrentCard();

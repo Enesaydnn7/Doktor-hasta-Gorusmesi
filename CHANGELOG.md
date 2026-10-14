@@ -1,3 +1,36 @@
+## v2.26.0 — 14 Ekim 2026
+
+### Hasta randevusu artık doktoru beklemiyor
+
+COMED iş listesi satırında T.C. kimlik numarası yok; kimlik yalnızca hasta
+kartındaki "Hasta Bilgileri" panelinde yazıyor. Bu yüzden hasta, doktor o
+kartı **elle açana kadar** randevusuna bağlanamıyordu: doktorda "3 hasta
+eşitlendi" yazarken hasta telefonda "randevu bulunamadı" alıyordu.
+
+Köprü artık kimliği eksik kartları **arka planda** açıp kimliği okuyor ve
+sekmeyi kapatıyor. Doktorun ekranında hiçbir şey değişmiyor, açık sekmesi
+bozulmuyor:
+
+- Sekme `active: false` ile açılır, iş bitince kendini kapattırır.
+- Aynı anda yalnızca bir kart açılır.
+- Sekme bir şekilde kapanmazsa 60 saniyede güvenlik ağı kapatır.
+- Arka plan kartında normal aktarım akışı çalışmaz; yalnız kimlik okunur.
+
+Yeni uç: `GET /api/v1/mobile/comed/worklist/missing-identity`.
+
+### Yedek eşleşme: hasta numarası
+
+Kimlik hiç okunamazsa (kurulum kimliği göstermiyorsa) hasta **hasta
+numarasıyla** da giriş yapabilir. Hasta numarası iş listesinde hazır olduğu
+için bu yol kart açılmadan çalışır. Doğum tarihi yine ham saklanmıyor, HMAC
+özetiyle eşleşiliyor.
+
+### Not
+
+`SESSION_SECRET` boş bırakılsa bile özet anahtarı yönetici bilgilerinden
+türetildiği için kararlıdır; sunucu yeniden başladığında eşleşmeler bozulmaz.
+Bu araştırma sırasında doğrulandı.
+
 ## v2.23.0 — 14 Ekim 2026
 
 COMED aktarımı yeniden eski sağlamlığında. v2.22.0'da iki şey bozulmuştu,

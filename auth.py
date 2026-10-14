@@ -173,8 +173,40 @@ def normalize_birth_date(value: str) -> str:
     raise ValueError("Doğum tarihi geçersiz")
 
 
+def valid_patient_lookup_number(value: str) -> bool:
+    """Hasta girisinde T.C. kimlik VEYA hasta numarasi kabul edilir.
+
+    COMED is listesinde T.C. kimlik numarasi olmadigi icin hastanin yalnizca
+    kimlikle eslesmesi doktorun karti acmasina bagli kaliyordu. Hasta
+    numarasi is listesinde hazir oldugundan ikinci bir yol aciyoruz.
+    """
+    digits = re.sub(r"\D", "", value or "")
+    if len(digits) == 11:
+        return valid_tckn(digits)
+    # Hasta numarasi COMED'de degisken uzunlukta (ornek: 476644, 1300013).
+    return 4 <= len(digits) <= 12
+
+
 def patient_identity_hash(tckn: str, birth_date: str) -> str:
     normalized = f"{normalize_tckn(tckn)}|{normalize_birth_date(birth_date)}"
+    return hmac.new(SECRET, normalized.encode("utf-8"), hashlib.sha256).hexdigest()
+
+
+def patient_number_hash(patient_no: str, birth_date: str) -> str:
+    """Hasta numarasi + dogum tarihinden eslesme ozeti uret.
+
+    COMED is listesi satirinda T.C. kimlik numarasi YOK; yalnizca hasta
+    numarasi ve dogum tarihi var. Kimlik ancak hasta karti acildiginda -- o da
+    her kurulumda degil -- gorulebiliyor. Bu yuzden hastanin randevusu doktor
+    karti acana kadar baglanamiyordu.
+
+    Bu ikinci ozet is listesi esitlenir esitlenmez uretilebildigi icin
+    eslesme kart acilmadan calisir. Dogum tarihi ham olarak saklanmaz.
+    """
+    digits = re.sub(r"\D", "", patient_no or "")
+    if not digits:
+        raise ValueError("Hasta numarasi gecersiz")
+    normalized = f"no:{digits}|{normalize_birth_date(birth_date)}"
     return hmac.new(SECRET, normalized.encode("utf-8"), hashlib.sha256).hexdigest()
 
 
