@@ -2,19 +2,23 @@ const DEFAULT_API = "https://doktor-hasta-gorusmesi.onrender.com";
 const COMED_HOST = "goztepetest.comed.mlpcare.com";
 const PENDING_COMED_KEY = "pendingComedNavigation";
 
-/* Eklenti kurulup guncellendiginde ACIK sekmelerdeki content script'ler
-   sahipsiz kalir ve kopru sessizce calismaz hale gelir. Doktora "sayfayi
-   yenileyin" dedirtmemek icin ilgili sekmeleri KENDIMIZ yeniliyoruz. */
-const BRIDGE_PAGES = [
+/* Eklenti guncellendiginde acik sekmelerdeki content script'ler sahipsiz
+   kalir. Doktora "sayfayi yenileyin" dedirtmemek icin KLINOT PANELI
+   sekmelerini kendimiz yeniliyoruz.
+
+   COMED sekmeleri BILEREK yenilenmez: doldurulmus bir muayene formu varsa
+   tarayici "siteden ayrilmak istiyor musunuz?" diye soruyor ve doktorun
+   kaydedilmemis verisi riske giriyor. COMED tarafindaki kopru zaten doktorun
+   bir sonraki sayfa gecisinde kendiliginden toparliyor. */
+const BRIDGE_PANEL_PAGES = [
   "https://doktor-hasta-gorusmesi.onrender.com/*",
   "http://127.0.0.1:8000/*",
   "http://localhost:8000/*",
-  `https://${COMED_HOST}/tr-tr/medical/*`,
 ];
 
 chrome.runtime.onInstalled.addListener(async () => {
   try {
-    const tabs = await chrome.tabs.query({url: BRIDGE_PAGES});
+    const tabs = await chrome.tabs.query({url: BRIDGE_PANEL_PAGES});
     for (const tab of tabs) {
       chrome.tabs.reload(tab.id, {bypassCache: false}).catch(() => {});
     }

@@ -329,9 +329,11 @@ function drawDetail(id, sekme) {
   const calisiyor = ["queued", "filling"].includes(transfer.status) && !transfer.stale;
   const bitti = ["ready_for_review", "completed"].includes(transfer.status);
   const takildi = Boolean(transfer.stale);
-  const locked = calisiyor || bitti;
+  // Yalnizca GERCEKTEN suren aktarim kilitler. Aktarim bittiyse de yeniden
+  // gonderilebilir: doktor COMED'de kaydi silip tekrar aktarmak isteyebiliyor.
+  const locked = calisiyor;
   const gonderEtiket = bitti
-    ? '<i class="bi bi-check-circle"></i> COMED\'e aktarıldı'
+    ? '<i class="bi bi-arrow-repeat"></i> Tekrar aktar'
     : takildi
       ? '<i class="bi bi-arrow-clockwise"></i> Yeniden aktar'
       : '<i class="bi bi-send"></i> COMED\'e aktar ve kartı aç';

@@ -11,6 +11,7 @@ import pdf_report
 
 
 ROOT = Path(__file__).resolve().parents[1]
+COMED_HOST_IN_TESTS = "goztepetest.comed.mlpcare.com"
 
 
 class BrowserStateRegressionTests(unittest.TestCase):
@@ -216,12 +217,38 @@ class BrowserStateRegressionTests(unittest.TestCase):
         # Eklenti dogrudan hedef adresle sekme acar (about:blank bos kaliyordu)
         self.assertIn("chrome.tabs.create({url: target.href", background)
         self.assertNotIn('url: "about:blank"', background)
-        # Eklenti guncellenince acik sekmeler KENDILIGINDEN yenilenir;
-        # doktora "sayfayi yenileyin" dedirtmiyoruz.
+        # Eklenti guncellenince Klinot PANELI sekmeleri kendiliginden yenilenir
         self.assertIn("chrome.runtime.onInstalled.addListener", background)
         self.assertIn("chrome.tabs.reload", background)
+        self.assertIn("BRIDGE_PANEL_PAGES", background)
         for page in ("doktor-hasta-gorusmesi.onrender.com", "127.0.0.1:8000"):
             self.assertIn(page, background)
+        # COMED sekmesi BILEREK yenilenmez: doldurulmus formda tarayici
+        # "siteden ayrilmak istiyor musunuz?" diye soruyor ve doktorun
+        # kaydedilmemis verisi riske giriyor.
+        panel_pages = background[
+            background.index("const BRIDGE_PANEL_PAGES"):background.index("chrome.runtime.onInstalled")
+        ]
+        self.assertNotIn(COMED_HOST_IN_TESTS, panel_pages)
+
+    def test_transfer_reports_its_duration_and_speed(self):
+        """Doktor hız ayarının etkisini tahmin değil rakamla görmeli."""
+        content = (ROOT / "comed_bridge_extension" / "content.js").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("Date.parse(startedAt)", content)
+        self.assertIn("${gecen} sn · ${hizEtiketi} hız", content)
+        # Balondaki kisa metin de olcumu gostersin
+        self.assertIn("`Aktarım bitti${olcum}`", content)
+
+    def test_doctor_can_transfer_again_after_it_finished(self):
+        """Doktor COMED'de kaydı silip yeniden aktarabilmeli."""
+        js = (ROOT / "static" / "doctor.js").read_text(encoding="utf-8")
+        # Yalnizca GERCEKTEN suren aktarim dugmeyi kilitler
+        self.assertIn("const locked = calisiyor;", js)
+        self.assertIn("Tekrar aktar", js)
+        # Bitmis aktarim artik kilitlemiyor
+        self.assertNotIn("const locked = calisiyor || bitti;", js)
 
     def test_failed_bridge_does_not_cancel_the_queued_transfer(self):
         """REGRESYON TESTI: sekme acilamasa bile aktarim sirada kalmali.

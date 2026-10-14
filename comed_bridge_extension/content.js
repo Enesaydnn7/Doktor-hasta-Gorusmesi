@@ -356,8 +356,11 @@
     const isFinal = String(text).startsWith(BRIDGE_FINAL_TEXT);
     // Uzun baglam metni tek satirda kalmali.
     const context = bridgeContext() || "COMED aktarımı";
+    // Son mesajin sonunda "· 19 sn · 1× hız" olabilir; balonda da gorunsun
+    // ki doktor hiz ayarinin etkisini rakamla karsilastirabilsin.
+    const olcum = isFinal ? String(text).slice(BRIDGE_FINAL_TEXT.length) : "";
     orb.querySelector("[data-klinot-caption-text]").textContent =
-      isFinal ? "Aktarım bitti" : text;
+      isFinal ? `Aktarım bitti${olcum}` : text;
     orb.querySelector("[data-klinot-caption-sub]").textContent = isFinal
       ? "Lütfen kontrol edip Kaydet ve İmzala"
       : (context.length > 54 ? `${context.slice(0, 53)}…` : context);
@@ -1916,7 +1919,15 @@
       await updateStatus(transfer.id, "ready_for_review", note, debug);
       sessionStorage.setItem(ACTIVE_TRANSFER_KEY, String(transfer.id));
       activeTransferId = transfer.id;
-      bridgeStatus("Aktarım bitti · Genel doktor kontrolü gerekli", "ok");
+      // Sure ve hiz yaziliyor ki doktor hiz ayarinin ise yarayip
+      // yaramadigini tahmin etmek yerine rakamla gorsun.
+      const gecen = Math.round((Date.now() - Date.parse(startedAt)) / 1000);
+      const hizEtiketi = FILL_SPEEDS.find((item) => item.value === fillSpeed)?.label
+        || `${fillSpeed}×`;
+      bridgeStatus(
+        `${BRIDGE_FINAL_TEXT} · ${gecen} sn · ${hizEtiketi} hız`,
+        "ok",
+      );
     } catch (error) {
       await updateStatus(transfer.id, "failed", error.message, {
         started_at: startedAt,
