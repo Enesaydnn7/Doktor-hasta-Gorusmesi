@@ -17,7 +17,7 @@ import json
 import sqlite3
 import threading
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 DB_PATH = os.getenv("DB_PATH", os.path.join(os.path.dirname(os.path.abspath(__file__)), "kayitlar.db"))
@@ -682,6 +682,10 @@ def comed_transfer_create(record_id: int, patient: dict, bundle: dict,
 # köprü yanıt vermediyse aktarım "queued" durumunda sonsuza kadar kalıyordu.
 COMED_TRANSFER_STUCK_SECONDS = 75
 
+# Bu yaştan eski bekleyen aktarımlar köprüye artık verilmez. Alınamayanlar
+# birikince kuyruk tıkanıyor ve doktorun YENİ isteği listeye giremiyordu.
+COMED_TRANSFER_PENDING_MAX_AGE = 3600
+
 
 def _transfer_dict(row) -> dict | None:
     if not row:
@@ -730,8 +734,19 @@ def comed_transfer_latest_for_record(record_id: int) -> dict | None:
 def comed_transfer_pending(visit_id: str | None = None,
                            requested_by: str | None = None,
                            limit: int = 20) -> list[dict]:
-    params: list = ["queued", "filling"]
-    where = "status IN (?,?)"
+    """Köprünün işleyeceği bekleyen aktarımlar; en yenisi başta.
+
+    Eskiden sıralama en eskiden başlıyordu ve sınır 20'ydi. Alınamayan
+    aktarımlar "queued" durumunda biriktiği için kuyruk tıkanıyor, doktorun
+    YENİ isteği listeye hiç giremiyor ve eklenti onu hiç görmüyordu. Artık
+    hem en yeniden başlanıyor hem de bayatlamış istekler elenip kuyruk
+    kendiliğinden temizleniyor.
+    """
+    cutoff = (
+        datetime.now() - timedelta(seconds=COMED_TRANSFER_PENDING_MAX_AGE)
+    ).isoformat(timespec="seconds")
+    params: list = ["queued", "filling", cutoff]
+    where = "status IN (?,?) AND COALESCE(updated_at, created_at) >= ?"
     if visit_id:
         where += " AND visit_id=?"
         params.append(str(visit_id))
@@ -741,7 +756,7 @@ def comed_transfer_pending(visit_id: str | None = None,
     params.append(limit)
     with _lock, _conn() as c:
         rows = c.execute(
-            f"SELECT * FROM comed_transfers WHERE {where} ORDER BY id LIMIT ?",
+            f"SELECT * FROM comed_transfers WHERE {where} ORDER BY id DESC LIMIT ?",
             params,
         ).fetchall()
     return [_transfer_dict(row) for row in rows]

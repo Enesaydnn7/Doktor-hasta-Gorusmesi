@@ -201,19 +201,52 @@ class BrowserStateRegressionTests(unittest.TestCase):
         self.assertIn("data-comed-cancel", js)
         self.assertIn("comedVazgec", js)
 
-    def test_bridge_open_does_not_leave_a_blank_tab(self):
-        """Kopru yanit vermezse bos sekme acilmamali."""
+    def test_card_always_opens_without_asking_the_doctor_for_anything(self):
+        """Doktor hiçbir ek adım yapmamalı: kart her durumda açılmalı."""
         js = (ROOT / "static" / "doctor.js").read_text(encoding="utf-8")
         background = (ROOT / "comed_bridge_extension" / "background.js").read_text(
             encoding="utf-8"
         )
         # MV3 service worker uyanmasi icin sure uzatildi
         self.assertIn("BRIDGE_OPEN_TIMEOUT_MS = 7000", js)
-        # window.open yedegi kaldirildi; bos sekme biraktiriyordu
-        self.assertNotIn("window.open(", js)
-        # Eklenti dogrudan hedef adresle sekme acar
+        # Kopru yanit vermezse kart YINE DE acilir (eski calisan davranis)
+        self.assertIn('window.open(patient.clinical_card_url, "_blank")', js)
+        # Eklenti dogrudan hedef adresle sekme acar (about:blank bos kaliyordu)
         self.assertIn("chrome.tabs.create({url: target.href", background)
         self.assertNotIn('url: "about:blank"', background)
+        # Eklenti guncellenince acik sekmeler KENDILIGINDEN yenilenir;
+        # doktora "sayfayi yenileyin" dedirtmiyoruz.
+        self.assertIn("chrome.runtime.onInstalled.addListener", background)
+        self.assertIn("chrome.tabs.reload", background)
+        for page in ("doktor-hasta-gorusmesi.onrender.com", "127.0.0.1:8000"):
+            self.assertIn(page, background)
+
+    def test_failed_bridge_does_not_cancel_the_queued_transfer(self):
+        """REGRESYON TESTI: sekme acilamasa bile aktarim sirada kalmali.
+
+        Sekme acma yalnizca bir kolayliktir; asil doldurmayi COMED
+        sayfasindaki eklenti yapar. Aktarim "queued" kaldigi surece doktor
+        COMED kartina kendi gecince is yurur. Bir ara surumde kopru yanit
+        vermeyince aktarim iptal ediliyordu ve calisan tek yol da kapanmisti.
+        """
+        js = (ROOT / "static" / "doctor.js").read_text(encoding="utf-8")
+        gonder = js[js.index("async function comedAktar("):js.index("async function pollTransfer(")]
+        # Basarisiz acilista iptal ucu CAGRILMAMALI
+        self.assertNotIn("/cancel", gonder)
+        # Ve yoklama yine baslar: eklenti isi alinca panel durumu gorur
+        self.assertIn("await pollTransfer(id, activeTransfer.id);", gonder)
+
+    def test_doctor_bridge_always_answers_the_panel(self):
+        """Kopru sessizce olmemeli; panel bosuna zaman asimi beklemesin."""
+        bridge = (ROOT / "comed_bridge_extension" / "doctor_bridge.js").read_text(
+            encoding="utf-8"
+        )
+        # Sahipsiz content script senkron hata atar; yakalanmazsa panel
+        # yalnizca zaman asimi gorur.
+        self.assertIn("} catch (error) {", bridge)
+        self.assertIn("reply(requestId", bridge)
+        # MV3 arka plan betigi uykudaysa bir kez yeniden denenir
+        self.assertIn("ask(message, requestId, false)", bridge)
 
     def test_patient_waits_for_appointment_without_manual_refresh(self):
         """Hasta randevusu baglanana kadar uygulama kendisi denemeli."""

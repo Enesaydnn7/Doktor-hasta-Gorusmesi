@@ -105,6 +105,37 @@ class ComedTransferRecoveryTests(unittest.TestCase):
         bekleyen = db.comed_transfer_pending(requested_by=self.doctor)
         self.assertNotIn(transfer["id"], [item["id"] for item in bekleyen])
 
+    def test_old_stuck_transfers_do_not_block_the_queue(self):
+        """Alınamayan eski aktarımlar birikince YENİ istek kuyruğa girememişti.
+
+        Köprüye verilen liste 20 ile sınırlı ve eskiden en eskiden
+        başlıyordu. Takılan aktarımlar biriktikçe doktorun yeni isteği
+        listeye hiç giremiyor, eklenti onu hiç görmüyordu.
+        """
+        # Sınırın üzerinde "takılmış" aktarım üret.
+        eskiler = [self._create()["id"] for _ in range(22)]
+        yeni = self._create()
+
+        bekleyen = db.comed_transfer_pending(requested_by=self.doctor)
+        self.assertIn(
+            yeni["id"],
+            [item["id"] for item in bekleyen],
+            "Yeni aktarım kuyruğa giremedi: eski takılmışlar listeyi doldurmuş",
+        )
+        # En yeni başta gelmeli ki köprü önce onu işlesin.
+        self.assertEqual(bekleyen[0]["id"], yeni["id"])
+
+        # Bayatlayanlar kuyruktan kendiliğinden düşer.
+        bayat = datetime.now() + timedelta(
+            seconds=db.COMED_TRANSFER_PENDING_MAX_AGE + 60
+        )
+        with patch.object(db, "datetime") as sahte:
+            sahte.now.return_value = bayat
+            sahte.fromisoformat = datetime.fromisoformat
+            temiz = db.comed_transfer_pending(requested_by=self.doctor)
+        self.assertEqual(temiz, [], "Bayatlamış istekler hâlâ kuyruğu tutuyor")
+        self.assertTrue(eskiler)  # üretildiklerini doğrula
+
     def test_completed_transfer_cannot_be_released(self):
         """COMED'e işlenmiş aktarım yanlışlıkla bırakılamamalı."""
         transfer = self._create()

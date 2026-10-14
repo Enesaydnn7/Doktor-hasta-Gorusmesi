@@ -440,24 +440,21 @@ async function comedAktar(id, btn) {
     cache[id].comed_transfer = activeTransfer;
     drawDetail(id, "comed");
     const opened = await openComedWithBridge(patient.clinical_card_url, activeTransfer.id);
+    /* Doktoru hicbir sekilde ugrastirmiyoruz:
+       1. Once kopru denenir  -> ACIK COMED sekmesi kullanilir (en iyisi).
+       2. Kopru yanit vermezse kart yine de yeni sekmede acilir.
+       3. Her durumda aktarim "queued" kalir; COMED sayfasindaki eklenti onu
+          alip doldurur. (Bir ara surumde burada iptal ediliyordu ve calisan
+          tek yol da kapanmisti - sekme acilmasa bile IPTAL ETME.) */
     if (opened.ok) {
       toast(opened.reused
         ? "Açık COMED sekmesi kullanıldı; giriş gerekirse aktarım girişten sonra devam eder."
         : "COMED kartı açıldı; giriş gerekirse aktarım otomatik devam eder.");
     } else {
-      /* window.open ile YEDEK sekme ACMIYORUZ: acilan sekme cogu zaman bos
-         kaliyor (pop-up engeli / yarim yuklenme) ve doktor "sekme acildi ama
-         girmedi" diye kaliyordu. Bunun yerine aktarimi birakip net yol
-         gosteriyoruz; yanindaki "COMED'de ac" baglantisi zaten duruyor. */
-      await json(`/doctor/api/comed/transfers/${activeTransfer.id}/cancel`, {method: "POST"})
-        .catch(() => {});
-      cache[id].comed_transfer = await json(`/doctor/api/comed/transfers/${activeTransfer.id}`)
-        .catch(() => ({...activeTransfer, status: "failed", stale: true}));
-      activeTransfer = null;
-      drawDetail(id, "comed");
-      toast("Klinot eklentisi yanıt vermedi. COMED sekmesinin açık ve eklentinin bağlı "
-        + "olduğundan emin olup yeniden deneyin.", true);
-      return;
+      toast(window.open(patient.clinical_card_url, "_blank")
+        ? "COMED kartı yeni sekmede açıldı; doldurma orada başlayacak."
+        : "COMED kartını açamadık. Yandaki \"COMED'de aç\" bağlantısını kullanın; "
+          + "aktarım sırada bekliyor.");
     }
     await pollTransfer(id, activeTransfer.id);
   } catch (error) {

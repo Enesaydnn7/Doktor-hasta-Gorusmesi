@@ -1,3 +1,35 @@
+## v2.23.0 — 14 Ekim 2026
+
+COMED aktarımı yeniden eski sağlamlığında. v2.22.0'da iki şey bozulmuştu,
+bir de uzun süredir sessizce duran gerçek bir hata vardı.
+
+### Geri alınan hata: aktarım iptal ediliyordu
+
+v2.22.0'da köprü yanıt vermeyince aktarım iptal ediliyordu. Oysa sekme açmak
+yalnızca bir kolaylık; asıl doldurmayı COMED sayfasındaki eklenti yapıyor ve
+aktarım `queued` kaldığı sürece doktor COMED kartına kendi geçince iş yürüyor.
+İptal edilince bu çalışan tek yol da kapanmıştı. Artık **hiçbir durumda iptal
+edilmiyor**.
+
+### Kuyruk tıkanması (asıl sebep)
+
+Köprüye verilen bekleyen aktarım listesi 20 ile sınırlıydı ve **en eskiden**
+başlıyordu. Alınamayan aktarımlar `queued` durumunda biriktikçe kuyruk doluyor,
+doktorun **yeni** isteği listeye hiç giremiyor ve eklenti onu hiç görmüyordu.
+Her yeniden denemede durum biraz daha kötüleşiyordu. Artık en yeniden
+başlanıyor ve bir saatten eski istekler kuyruktan kendiliğinden düşüyor.
+
+### Doktoru uğraştırmamak
+
+- Köprü yanıt vermezse kart yine de yeni sekmede açılıyor (v2.21.0'daki
+  davranış geri geldi).
+- Eklenti güncellendiğinde açık doktor paneli ve COMED sekmeleri
+  **kendiliğinden yenileniyor**. Önceden bu sekmelerdeki köprü sahipsiz kalıp
+  sessizce çalışmıyordu; artık "sayfayı yenileyin" demeye gerek yok.
+- Köprü artık sessizce ölmüyor: hata olursa panele hemen haber veriyor,
+  panel yedi saniye boşuna beklemiyor. Arka plan betiği uykudaysa mesaj bir
+  kez yineleniyor.
+
 ## v2.22.0 — 14 Ekim 2026
 
 ### COMED aktarımı artık takılı kalmıyor
