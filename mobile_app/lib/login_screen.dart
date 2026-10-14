@@ -5,6 +5,48 @@ import 'api_client.dart';
 import 'models.dart';
 import 'theme.dart';
 
+/// Hasta doğum tarihini elle yazarken noktaları otomatik ekler:
+/// `25082002` → `25.08.2002`. Takvimden seçmek hâlâ mümkün, zorunlu değil.
+class _BirthDateInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final digits = newValue.text.replaceAll(RegExp(r'\D'), '');
+    final buffer = StringBuffer();
+    for (var i = 0; i < digits.length && i < 8; i++) {
+      if (i == 2 || i == 4) buffer.write('.');
+      buffer.write(digits[i]);
+    }
+    final text = buffer.toString();
+    return TextEditingValue(
+      text: text,
+      selection: TextSelection.collapsed(offset: text.length),
+    );
+  }
+}
+
+/// Hem elle yazılan hem takvimden seçilen değeri doğrular.
+String? _validateBirthDate(String? value) {
+  final digits = (value ?? '').replaceAll(RegExp(r'\D'), '');
+  if (digits.isEmpty) return 'Doğum tarihinizi girin.';
+  if (digits.length != 8) return 'Tarihi GG.AA.YYYY olarak girin.';
+  final day = int.parse(digits.substring(0, 2));
+  final month = int.parse(digits.substring(2, 4));
+  final year = int.parse(digits.substring(4));
+  if (month < 1 || month > 12) return 'Ay 01-12 arasında olmalı.';
+  final now = DateTime.now();
+  if (year < 1900 || year > now.year) return 'Yıl geçerli değil.';
+  final parsed = DateTime(year, month, day);
+  // Taşan günleri yakala: 31.02.2002 → DateTime 03.03'e kayar.
+  if (parsed.day != day || parsed.month != month || parsed.year != year) {
+    return 'Böyle bir tarih yok.';
+  }
+  if (parsed.isAfter(now)) return 'Doğum tarihi gelecekte olamaz.';
+  return null;
+}
+
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key, required this.api, required this.onLoggedIn});
 
@@ -135,7 +177,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         Text(
                           patient
                               ? 'T.C. kimlik numaranız ve doğum tarihinizle\nrandevularınıza güvenle ulaşın.'
-                              : 'Yüz yüze görüşmeyi kaydedin,\ndoktor epikrizini güvenle hazırlayın.',
+                              : 'Yüz yüze görüşmeyi kaydedin,\nAI epikrizi güvenle hazırlayın.',
                           textAlign: TextAlign.center,
                           style: const TextStyle(color: Color(0xFF60777D), height: 1.45),
                         ),
@@ -194,14 +236,26 @@ class _LoginScreenState extends State<LoginScreen> {
                           TextFormField(
                             key: const Key('patientBirthDateField'),
                             controller: _birthDate,
-                            keyboardType: TextInputType.datetime,
+                            keyboardType: TextInputType.number,
+                            // Takvim zorunlu degil: 25082002 yazmak yeterli,
+                            // noktalar otomatik eklenir.
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                              LengthLimitingTextInputFormatter(8),
+                              _BirthDateInputFormatter(),
+                            ],
                             decoration: InputDecoration(
                               labelText: 'Doğum tarihi',
                               hintText: 'GG.AA.YYYY',
+                              helperText: 'Elle yazabilir ya da takvimden seçebilirsiniz.',
                               prefixIcon: const Icon(Icons.calendar_month_outlined),
-                              suffixIcon: IconButton(onPressed: _pickBirthDate, icon: const Icon(Icons.edit_calendar_outlined)),
+                              suffixIcon: IconButton(
+                                onPressed: _pickBirthDate,
+                                tooltip: 'Takvimden seç',
+                                icon: const Icon(Icons.edit_calendar_outlined),
+                              ),
                             ),
-                            validator: (value) => (value ?? '').isEmpty ? 'Doğum tarihinizi seçin.' : null,
+                            validator: _validateBirthDate,
                           ),
                         ] else ...[
                           Text(
@@ -245,7 +299,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           label: Text(_busy ? 'Bağlanıyor…' : patient && _challenge == null ? 'SMS kodu gönder' : 'Giriş yap'),
                         ),
                         const SizedBox(height: 18),
-                        const Text('Klinot · v2.18.0', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: Color(0xFF84969A))),
+                        const Text('Klinot · v2.23.0', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: Color(0xFF84969A))),
                       ],
                     ),
                   ),

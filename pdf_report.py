@@ -2,7 +2,7 @@
 """
 Rapor PDF'leri (reportlab).
 Üç rapor tipi için hastane epikrizi görünümünde PDF üretir:
-  - doktor  -> "EPİKRİZ"
+  - doktor  -> "AI EPİKRİZ"
   - hasta   -> "HASTA BİLGİLENDİRME ÖZETİ"
   - yonetim -> "YÖNETİM DEĞERLENDİRME RAPORU"
 Türkçe karakterler için DejaVu Sans gömülür.
@@ -125,7 +125,7 @@ def _doktor(story, d):
     oz = e.get("ozgecmis", {}) or {}
     kn = e.get("kontrol", {}) or {}
 
-    _header(story, "EPİKRİZ", e.get("gorusmeTarihi"))
+    _header(story, "AI EPİKRİZ", e.get("gorusmeTarihi"))
 
     story.append(_kv_table([
         ("Görüşme Tarihi", e.get("gorusmeTarihi")),

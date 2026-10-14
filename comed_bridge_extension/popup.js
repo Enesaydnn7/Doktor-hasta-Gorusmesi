@@ -12,6 +12,41 @@ const connectedName = document.getElementById("connected-name");
 const connectedUser = document.getElementById("connected-user");
 const switchAccount = document.getElementById("switch-account");
 const cancelSwitch = document.getElementById("cancel-switch");
+const speedSlider = document.getElementById("speed-slider");
+const speedValue = document.getElementById("speed-value");
+const speedNote = document.getElementById("speed-note");
+
+/* Form doldurma hizi. content.js her beklemeyi bu degere boler; buyuk deger
+   daha hizli doldurur. Kaydirac kademeli: dizideki sira numarasini tasir,
+   boylece 0.5-2.5 arasi dogrusal olmayan adimlar duzgun gorunur. */
+const SPEEDS = [
+  {value: 0.5, label: "0.5×", title: "Çok yavaş · adımları rahat takip et"},
+  {value: 0.75, label: "0.75×", title: "Yavaş"},
+  {value: 1, label: "1×", title: "Normal (varsayılan)"},
+  {value: 1.5, label: "1.5×", title: "Hızlı"},
+  {value: 2.5, label: "2.5×", title: "Çok hızlı"},
+];
+const DEFAULT_SPEED_INDEX = 2; // 1×
+
+function speedIndexOf(value) {
+  const index = SPEEDS.findIndex((item) => item.value === Number(value));
+  return index === -1 ? DEFAULT_SPEED_INDEX : index;
+}
+
+function paintSpeed(value) {
+  const index = speedIndexOf(value);
+  const step = SPEEDS[index];
+  speedSlider.value = String(index);
+  speedValue.textContent = step.label;
+  speedNote.textContent = step.title;
+  speedSlider.setAttribute("aria-valuetext", `${step.label} · ${step.title}`);
+}
+
+speedSlider.addEventListener("input", () => {
+  const step = SPEEDS[Number(speedSlider.value)] || SPEEDS[DEFAULT_SPEED_INDEX];
+  paintSpeed(step.value);
+  chrome.storage.local.set({fillSpeed: step.value});
+});
 
 const COMED_CARD_RE = /^https:\/\/goztepetest\.comed\.mlpcare\.com\/tr-tr\/medical\//i;
 
@@ -38,20 +73,23 @@ function show(text, ok = false) {
 }
 
 chrome.storage.local.get(
-  ["apiBase", "username", "displayName", "token", "traceEnabled"],
+  ["apiBase", "username", "displayName", "token", "traceEnabled", "fillSpeed"],
   (saved) => {
     if (saved.apiBase) api.value = saved.apiBase;
     if (saved.username) user.value = saved.username;
     traceEnabled.checked = saved.traceEnabled !== false;
+    paintSpeed(saved.fillSpeed);
     connected = saved.token ? saved : null;
     paint();
   },
 );
 
 // Token baska bir yerde silinirse (ornegin 401 sonrasi) popup aninda giris
-// ekranina doner.
+// ekranina doner. Hiz COMED sayfasindaki balondan degisirse burada da guncellenir.
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area !== "local" || !changes.token) return;
+  if (area !== "local") return;
+  if (changes.fillSpeed) paintSpeed(changes.fillSpeed.newValue);
+  if (!changes.token) return;
   if (!changes.token.newValue) {
     connected = null;
     paint();

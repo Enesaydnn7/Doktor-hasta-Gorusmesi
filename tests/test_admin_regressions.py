@@ -82,13 +82,255 @@ class BrowserStateRegressionTests(unittest.TestCase):
         for tab in ("doktor", "hasta", "yonetim", "comed", "transkript"):
             self.assertIn(f'"{tab}"', js)
         self.assertIn("bodyHTML(k, sekme)", js)
-        self.assertIn("prepareAudioTimeline(audioEl)", js)
+        self.assertIn("prepareAudioTimeline(slot)", js)
         self.assertIn("/doctor/audio/", js)
         self.assertIn("/doctor/pdf/", js)
         self.assertIn("comed-action-bar", js)
         # Ortak katmandaki esc/val/fmtUsd ile cakismamali.
         self.assertNotIn("function esc(", js)
         self.assertNotIn("const esc =", js)
+
+    def test_doctor_audio_endpoint_supports_byte_range(self):
+        """Ses oynatici takilmasin: doktor ucu da admin gibi 206 donmeli.
+
+        Range destegi olmadan tarayici ses dosyasinda ileri/geri atlayamiyor
+        ve oynatma kendi kendine duruyordu.
+        """
+        main_py = (ROOT / "main.py").read_text(encoding="utf-8")
+        self.assertIn("def _audio_response(", main_py)
+        self.assertIn("Accept-Ranges", main_py)
+        # Iki uc da ayni yardimciyi kullanmali ki davranis ayrismasin.
+        self.assertEqual(main_py.count("return _audio_response(request, data, mime"), 2)
+
+    def test_doctor_panel_does_not_restart_playing_audio(self):
+        """15 saniyelik arka plan yenilemesi calan kaydi kesmemeli."""
+        js = (ROOT / "static" / "doctor.js").read_text(encoding="utf-8")
+        self.assertIn("function audioPlaying(", js)
+        self.assertIn("if (silent && audioPlaying()) return;", js)
+        # Chrome, DOM'dan CIKARILAN medya dugumunu durdurur. Bu yuzden dugum
+        # remove() edilmez, gorunmez park kabina TASINIR ve geri takilir.
+        self.assertIn("function audioPark(", js)
+        self.assertIn("park.appendChild(audio)", js)
+        self.assertNotIn("audio.remove()", js)
+        # Detay ve kayit listesi yeniden yazilmadan once park edilir.
+        self.assertIn("parkLiveAudio(det)", js)
+        self.assertIn("parkLiveAudio(list)", js)
+        self.assertIn("restoreLiveAudio(det)", js)
+
+    def test_doctor_worklist_looks_like_the_comed_worklist(self):
+        """Is listesi COMED'deki gibi satir satir tablo olmali, kart degil."""
+        js = (ROOT / "static" / "doctor.js").read_text(encoding="utf-8")
+        css = (ROOT / "static" / "doctor.css").read_text(encoding="utf-8")
+        html = (ROOT / "templates" / "doctor.html").read_text(encoding="utf-8")
+
+        # COMED is listesindeki sutunlar
+        for column in ("Hasta", "Hasta no", "Protokol", "İşlem / bölüm", "Doktor", "Durum"):
+            self.assertIn(f'<span role="columnheader">{column}</span>', js)
+        self.assertIn('class="wl-table" role="table"', js)
+        self.assertIn('class="wl-row', js)
+        self.assertIn(".wl-head,.wl-row{display:grid", css)
+
+        # Eski kart duzeni tamamen kalkmali
+        for stale in ("CARD_COLORS", "patient-card", "patient-avatar", "pc-tag"):
+            self.assertNotIn(stale, js, f"{stale} doctor.js'te kalmis")
+            self.assertNotIn(stale, css, f"{stale} doctor.css'te kalmis")
+        self.assertNotIn("worklist-grid", html)
+
+        # Satira tiklayinca kayit listesi yine suzulur
+        self.assertIn("rec-filter", js)
+        self.assertIn("rec-filter", css)
+
+    def test_extension_speed_scales_the_slow_waits_too(self):
+        """Hiz ayari hissedilmeli: asil sure waitForDomQuiet'te geciyor.
+
+        Onceki surumde yalnizca sleep() olceklendigi icin 2.5x bile fark
+        yaratmiyordu (sleep toplami ~2.7 sn, DOM beklemeleri 1.5-12.7 sn).
+        """
+        content = (ROOT / "comed_bridge_extension" / "content.js").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("function scaled(ms, floor)", content)
+        # Asil kazanc: DOM sakinlesme beklemeleri de olceklenir.
+        self.assertIn("const sessizlik = scaled(quietMs, 40);", content)
+        self.assertIn("scaled(timeoutMs, 400)", content)
+        # waitFor'un yoklama sikligi olceklenir ama ZAMAN ASIMI olceklenmez.
+        self.assertIn("const poll = scaled(120, 40);", content)
+
+    def test_speed_change_applies_mid_transfer(self):
+        """Hiz, doldurma SURERKEN degistirilince hemen gecerli olmali.
+
+        Beklemeler tek parca setTimeout olsaydi o an suren 3,5 saniyelik
+        bekleme eski hizla biter, doktor "ayar tutmuyor" sanirdi.
+        """
+        content = (ROOT / "comed_bridge_extension" / "content.js").read_text(
+            encoding="utf-8"
+        )
+        # sleep dilim dilim bekler, her dilimde fillSpeed yeniden okunur.
+        self.assertIn("async function sleep(ms)", content)
+        self.assertIn("while (kalan > 0)", content)
+        self.assertIn("const hiz = fillSpeed || 1;", content)
+        # waitForDomQuiet periyodik kontrol yapar, sabit timer kurmaz.
+        self.assertIn("}, 30);", content)
+        self.assertIn("const sessizlik = scaled(quietMs, 40);", content)
+        self.assertNotIn("quietTimer = setTimeout(finish, quietMs)", content)
+        # Degisiklik doktora bildirilir.
+        self.assertIn("Doldurma hızı ${etiket}", content)
+
+    def test_stuck_comed_transfer_can_be_retried(self):
+        """Takilan aktarim dugmeyi sonsuza kadar pasif birakmamali.
+
+        Eklenti kapaliysa ya da kopru yanit vermediyse aktarim "queued"da
+        asili kaliyor ve doktor bir daha hic deneyemiyordu.
+        """
+        db_py = (ROOT / "db.py").read_text(encoding="utf-8")
+        main_py = (ROOT / "main.py").read_text(encoding="utf-8")
+        js = (ROOT / "static" / "doctor.js").read_text(encoding="utf-8")
+
+        # Takilma SUNUCU saatiyle hesaplanir (tarayici saat dilimi yaniltmasin)
+        self.assertIn("COMED_TRANSFER_STUCK_SECONDS", db_py)
+        self.assertIn('data["stale"]', db_py)
+        self.assertIn('data["age_seconds"]', db_py)
+        # Birakma ucu
+        self.assertIn("/doctor/api/comed/transfers/{transfer_id}/cancel", main_py)
+        self.assertIn("Doktor aktarımı bıraktı", main_py)
+        # Tamamlanmis aktarim yanlislikla birakilamaz
+        self.assertIn('{"completed", "ready_for_review"}', main_py)
+        # Panel: takildiysa kilit acilir, "Yeniden aktar" cikar
+        self.assertIn("!transfer.stale", js)
+        self.assertIn("Yeniden aktar", js)
+        self.assertIn("data-comed-cancel", js)
+        self.assertIn("comedVazgec", js)
+
+    def test_card_always_opens_without_asking_the_doctor_for_anything(self):
+        """Doktor hiçbir ek adım yapmamalı: kart her durumda açılmalı."""
+        js = (ROOT / "static" / "doctor.js").read_text(encoding="utf-8")
+        background = (ROOT / "comed_bridge_extension" / "background.js").read_text(
+            encoding="utf-8"
+        )
+        # MV3 service worker uyanmasi icin sure uzatildi
+        self.assertIn("BRIDGE_OPEN_TIMEOUT_MS = 7000", js)
+        # Kopru yanit vermezse kart YINE DE acilir (eski calisan davranis)
+        self.assertIn('window.open(patient.clinical_card_url, "_blank")', js)
+        # Eklenti dogrudan hedef adresle sekme acar (about:blank bos kaliyordu)
+        self.assertIn("chrome.tabs.create({url: target.href", background)
+        self.assertNotIn('url: "about:blank"', background)
+        # Eklenti guncellenince acik sekmeler KENDILIGINDEN yenilenir;
+        # doktora "sayfayi yenileyin" dedirtmiyoruz.
+        self.assertIn("chrome.runtime.onInstalled.addListener", background)
+        self.assertIn("chrome.tabs.reload", background)
+        for page in ("doktor-hasta-gorusmesi.onrender.com", "127.0.0.1:8000"):
+            self.assertIn(page, background)
+
+    def test_failed_bridge_does_not_cancel_the_queued_transfer(self):
+        """REGRESYON TESTI: sekme acilamasa bile aktarim sirada kalmali.
+
+        Sekme acma yalnizca bir kolayliktir; asil doldurmayi COMED
+        sayfasindaki eklenti yapar. Aktarim "queued" kaldigi surece doktor
+        COMED kartina kendi gecince is yurur. Bir ara surumde kopru yanit
+        vermeyince aktarim iptal ediliyordu ve calisan tek yol da kapanmisti.
+        """
+        js = (ROOT / "static" / "doctor.js").read_text(encoding="utf-8")
+        gonder = js[js.index("async function comedAktar("):js.index("async function pollTransfer(")]
+        # Basarisiz acilista iptal ucu CAGRILMAMALI
+        self.assertNotIn("/cancel", gonder)
+        # Ve yoklama yine baslar: eklenti isi alinca panel durumu gorur
+        self.assertIn("await pollTransfer(id, activeTransfer.id);", gonder)
+
+    def test_doctor_bridge_always_answers_the_panel(self):
+        """Kopru sessizce olmemeli; panel bosuna zaman asimi beklemesin."""
+        bridge = (ROOT / "comed_bridge_extension" / "doctor_bridge.js").read_text(
+            encoding="utf-8"
+        )
+        # Sahipsiz content script senkron hata atar; yakalanmazsa panel
+        # yalnizca zaman asimi gorur.
+        self.assertIn("} catch (error) {", bridge)
+        self.assertIn("reply(requestId", bridge)
+        # MV3 arka plan betigi uykudaysa bir kez yeniden denenir
+        self.assertIn("ask(message, requestId, false)", bridge)
+
+    def test_patient_waits_for_appointment_without_manual_refresh(self):
+        """Hasta randevusu baglanana kadar uygulama kendisi denemeli."""
+        dart = (ROOT / "mobile_app" / "lib" / "recorder_screen.dart").read_text(
+            encoding="utf-8"
+        )
+        content = (ROOT / "comed_bridge_extension" / "content.js").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("_randevuyuBeklemeyeAl", dart)
+        self.assertIn("_worklistRetry", dart)
+        self.assertIn("_maxWorklistTries", dart)
+        self.assertIn("_worklistRetry?.cancel();", dart)  # dispose'da temizlenir
+        # Beklerken ne oldugu yaziyor
+        self.assertIn("_PatientAppointmentWaiting", dart)
+        self.assertIn("Randevunuz aranıyor", dart)
+        # Is listesi satirindan dogum tarihi de toplanir
+        self.assertIn("birth_date:", content)
+
+    def test_doctor_record_rows_identify_the_patient(self):
+        """Kayit listesi COMED gibi: zebra satirlar ve hasta adi sutunu."""
+        js = (ROOT / "static" / "doctor.js").read_text(encoding="utf-8")
+        css = (ROOT / "static" / "doctor.css").read_text(encoding="utf-8")
+        html = (ROOT / "templates" / "doctor.html").read_text(encoding="utf-8")
+        self.assertIn("<span>Hasta bilgileri</span>", html)
+        self.assertIn('class="rec-patient"', js)
+        self.assertIn("rp-avatar", js)
+        self.assertIn("function initials(", js)
+        # Bir beyaz bir grimsi. Sira JS'ten gelir: suzgec seridi de listenin
+        # cocugu oldugu icin nth-child sayimi kayiyordu.
+        self.assertIn('data-zebra="${sira % 2}"', js)
+        self.assertIn('#rec-list .rec-item[data-zebra="1"] .rec-row{background:', css)
+        self.assertNotIn("nth-child(even)", css)
+        # Hasta adiyla da aranabilmeli
+        self.assertIn("${adSoyad}", js)
+
+    def test_fill_speed_is_a_slider_in_the_popup_only(self):
+        """Hiz ayari yalnizca eklenti penceresinde ve kaydiracli olmali."""
+        content = (ROOT / "comed_bridge_extension" / "content.js").read_text(
+            encoding="utf-8"
+        )
+        popup_js = (ROOT / "comed_bridge_extension" / "popup.js").read_text(
+            encoding="utf-8"
+        )
+        popup_html = (ROOT / "comed_bridge_extension" / "popup.html").read_text(
+            encoding="utf-8"
+        )
+        popup_css = (ROOT / "comed_bridge_extension" / "popup.css").read_text(
+            encoding="utf-8"
+        )
+        # Kaydirac
+        self.assertIn('type="range"', popup_html)
+        self.assertIn('id="speed-slider"', popup_html)
+        self.assertIn('speedSlider.addEventListener("input"', popup_js)
+        self.assertIn("::-webkit-slider-thumb", popup_css)
+        # COMED sayfasindaki balonda hiz ayari KALMAMALI
+        self.assertNotIn("data-klinot-speed", content)
+        self.assertNotIn("syncSpeedButtons", content)
+        # Yine de content.js hizi storage'dan okuyup uygulamali
+        self.assertIn("changes.fillSpeed", content)
+
+    def test_doctor_panel_shows_the_model_like_admin(self):
+        """Doktor paneli de hangi modelin kullanildigini gostermeli."""
+        html = (ROOT / "templates" / "doctor.html").read_text(encoding="utf-8")
+        main_py = (ROOT / "main.py").read_text(encoding="utf-8")
+        self.assertIn('<div class="s-lbl">Model</div>', html)
+        self.assertIn("{{ provider }}", html)
+        self.assertIn("{{ stt_provider }}", html)
+        # doctor.html'e provider gercekten geciriliyor mu?
+        self.assertIn('"provider": config.label()', main_py)
+        self.assertIn('"stt_provider": config.stt_label()', main_py)
+
+    def test_family_history_is_never_left_empty(self):
+        """Soygecmis zorunlu: veri yoksa bile Ozellik Yok/Goruldu isaretlenir."""
+        content = (ROOT / "comed_bridge_extension" / "content.js").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("async function markCardOption(", content)
+        self.assertIn("async function markFamilyHistoryEmpty(", content)
+        self.assertIn('FAMILY_EMPTY_LABELS = ["Özellik Yok"', content)
+        self.assertIn("Görüldü", content)
+        # Erken cikislarin hepsi bos birakmak yerine isaretlemeye dusmeli.
+        self.assertNotIn('clickCardOption("Soygeçmiş"', content)
+        self.assertNotIn('clickCardOption("Düşme Riski"', content)
 
     def test_comed_bridge_never_auto_signs_or_embeds_credentials(self):
         manifest = (ROOT / "comed_bridge_extension" / "manifest.json").read_text(

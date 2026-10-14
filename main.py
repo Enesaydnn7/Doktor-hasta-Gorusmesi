@@ -966,7 +966,13 @@ async def doctor_panel(request: Request):
     return templates.TemplateResponse(
         request,
         "doctor.html",
-        {"user": session, "version": config.APP_VERSION},
+        # Yonetici panelindeki gibi hangi modelin kullanildigi gorunsun.
+        {
+            "user": session,
+            "version": config.APP_VERSION,
+            "provider": config.label(),
+            "stt_provider": config.stt_label(),
+        },
     )
 
 
@@ -1013,6 +1019,65 @@ async def doctor_transfer_status(transfer_id: int, request: Request):
     return transfer
 
 
+@app.post("/doctor/api/comed/transfers/{transfer_id}/cancel")
+async def doctor_transfer_cancel(transfer_id: int, request: Request):
+    """Takılmış bir aktarımı bırak ki doktor yeniden deneyebilsin.
+
+    Eklenti kapalıysa, COMED sekmesi açılmadıysa ya da köprü yanıt vermediyse
+    aktarım "queued" durumunda asılı kalıyor ve "COMED'e aktar" düğmesi
+    sonsuza kadar pasif kalıyordu.
+    """
+    session = doctor_auth(request)
+    transfer = db.comed_transfer_get(transfer_id)
+    if not transfer or transfer.get("requested_by") != session["user"]:
+        raise HTTPException(status_code=404, detail="COMED aktarımı bulunamadı")
+    if transfer.get("status") in {"completed", "ready_for_review"}:
+        raise HTTPException(
+            status_code=409,
+            detail="Bu aktarım COMED'e zaten işlendi; kartı açıp kontrol edin.",
+        )
+    return db.comed_transfer_update(
+        transfer_id, "failed", "Doktor aktarımı bıraktı"
+    )
+
+
+def _audio_response(request: Request, data: bytes, mime: str, name: str) -> Response:
+    """Ses yanıtını HTTP Range destekli döndür.
+
+    Range desteği olmadan tarayıcı ses dosyasında ileri/geri atlayamıyor ve
+    oynatma sık sık takılıyor. Yönetici ve doktor panelleri aynı davranışı
+    kullansın diye tek yerde toplandı.
+    """
+    size = len(data)
+    suffix = name.rsplit(".", 1)[-1] if "." in name else ""
+    extension = "." + suffix if suffix.isascii() and suffix.isalnum() else ""
+    headers = {
+        "Accept-Ranges": "bytes",
+        "Cache-Control": "private, max-age=600",
+        "Content-Disposition": (
+            f'inline; filename="kayit{extension}"; filename*=UTF-8\'\'{quote(name)}'
+        ),
+    }
+    if request.method == "HEAD":
+        headers["Content-Length"] = str(size)
+        return Response(status_code=200, media_type=mime, headers=headers)
+    try:
+        bounds = _byte_range(request.headers.get("range"), size)
+    except (TypeError, ValueError):
+        headers["Content-Range"] = f"bytes */{size}"
+        return Response(status_code=416, headers=headers)
+    if bounds is None:
+        headers["Content-Length"] = str(size)
+        return Response(content=data, media_type=mime, headers=headers)
+    start, end = bounds
+    chunk = data[start:end + 1]
+    headers.update({
+        "Content-Range": f"bytes {start}-{end}/{size}",
+        "Content-Length": str(len(chunk)),
+    })
+    return Response(content=chunk, status_code=206, media_type=mime, headers=headers)
+
+
 @app.api_route("/doctor/audio/{kid}", methods=["GET", "HEAD"])
 async def doctor_audio(kid: int, request: Request):
     session = doctor_auth(request)
@@ -1020,13 +1085,7 @@ async def doctor_audio(kid: int, request: Request):
     if not got:
         raise HTTPException(status_code=404, detail="Bu kayıtta ses yok")
     data, mime, name = got
-    headers = {
-        "Content-Disposition": f'inline; filename*=UTF-8\'\'{quote(name)}',
-        "Content-Length": str(len(data)),
-    }
-    if request.method == "HEAD":
-        return Response(status_code=200, media_type=mime, headers=headers)
-    return Response(content=data, media_type=mime, headers=headers)
+    return _audio_response(request, data, mime, name)
 
 
 @app.get("/doctor/pdf/{kid}")
@@ -1178,33 +1237,7 @@ async def admin_ses(kid: int, request: Request):
     if not got:
         return JSONResponse({"error": "Bu kayıtta ses yok."}, status_code=404)
     data, mime, ad = got
-    size = len(data)
-    suffix = ad.rsplit(".", 1)[-1] if "." in ad else ""
-    extension = "." + suffix if suffix.isascii() and suffix.isalnum() else ""
-    headers = {
-        "Accept-Ranges": "bytes",
-        "Content-Disposition": (
-            f'inline; filename="kayit{extension}"; filename*=UTF-8\'\'{quote(ad)}'
-        ),
-    }
-    if request.method == "HEAD":
-        headers["Content-Length"] = str(size)
-        return Response(status_code=200, media_type=mime, headers=headers)
-    try:
-        bounds = _byte_range(request.headers.get("range"), size)
-    except (TypeError, ValueError):
-        headers["Content-Range"] = f"bytes */{size}"
-        return Response(status_code=416, headers=headers)
-    if bounds is None:
-        headers["Content-Length"] = str(size)
-        return Response(content=data, media_type=mime, headers=headers)
-    start, end = bounds
-    chunk = data[start:end + 1]
-    headers.update({
-        "Content-Range": f"bytes {start}-{end}/{size}",
-        "Content-Length": str(len(chunk)),
-    })
-    return Response(content=chunk, status_code=206, media_type=mime, headers=headers)
+    return _audio_response(request, data, mime, ad)
 
 
 def _admin_report_type(rec: str) -> str:

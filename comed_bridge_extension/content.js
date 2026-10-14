@@ -103,6 +103,58 @@
   const BRIDGE_LOG_KEY = "klinot_comed_bridge_log_v1";
   const BRIDGE_WIDGET_KEY = "klinot_comed_bridge_widget_v2";
 
+  /* ---- doldurma hizi ----
+     Deger buyudukce doldurma hizlanir; 1 = varsayilan. Eklenti penceresindeki
+     kaydiraçtan degistirilir, chrome.storage ile buraya anlik yansir.
+
+     DIKKAT (onceki surumdeki hata): yalnizca sleep() olceklendiginde ayar
+     hissedilmiyordu. Olculdugunde sleep'lerin toplami ~2.7 sn, buna karsilik
+     "DOM sakinlesene kadar bekle" (waitForDomQuiet) beklemeleri 1.5-12.7 sn
+     tutuyordu. Yani surenin ancak ~%15'i olcekleniyor, 2.5x bile fark
+     yaratmiyordu. Simdi her iki bekleme turu de olcekleniyor.
+
+     Olceklenmeyen tek sey waitFor()'un ZAMAN ASIMI suresi: o bir guvenlik
+     siniri, kisaltmak alanin hazir olmadan islenmesine yol acar. */
+  const FILL_SPEEDS = [
+    {value: 0.5, label: "0.5×", title: "Çok yavaş · adımları rahat takip et"},
+    {value: 0.75, label: "0.75×", title: "Yavaş"},
+    {value: 1, label: "1×", title: "Normal (varsayılan)"},
+    {value: 1.5, label: "1.5×", title: "Hızlı"},
+    {value: 2.5, label: "2.5×", title: "Çok hızlı"},
+  ];
+  const DEFAULT_FILL_SPEED = 1;
+  let fillSpeed = DEFAULT_FILL_SPEED;
+
+  function normalizeFillSpeed(value) {
+    const number = Number(value);
+    if (!Number.isFinite(number)) return DEFAULT_FILL_SPEED;
+    return FILL_SPEEDS.some((item) => item.value === number) ? number : DEFAULT_FILL_SPEED;
+  }
+
+  /* Bekleme suresini o anki hiza gore olcekle. Alt sinir, en hizli ayarda
+     bile COMED'in olayi isleyebilmesi icindir. */
+  function scaled(ms, floor) {
+    return Math.max(floor, Math.round(ms / (fillSpeed || 1)));
+  }
+
+  function applyFillSpeed(value) {
+    fillSpeed = normalizeFillSpeed(value);
+  }
+
+  chrome.storage.local.get(["fillSpeed"], (value) => applyFillSpeed(value.fillSpeed));
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area !== "local" || !changes.fillSpeed) return;
+    const onceki = fillSpeed;
+    applyFillSpeed(changes.fillSpeed.newValue);
+    if (fillSpeed === onceki) return;
+    // Doktor kaydiraci oynattiginda degisikligin ULASTIGINI gorsun; aksi
+    // halde "ayar tutuyor mu?" belirsizligi kaliyor.
+    const etiket = FILL_SPEEDS.find((item) => item.value === fillSpeed)?.label || `${fillSpeed}×`;
+    if (document.getElementById("klinot-comed-bridge")) {
+      bridgeStatus(`Doldurma hızı ${etiket}`, "ok");
+    }
+  });
+
   function bridgeLogs() {
     try { return JSON.parse(sessionStorage.getItem(BRIDGE_LOG_KEY) || "[]"); }
     catch (_) { return []; }
@@ -139,7 +191,8 @@
       patient_complaint: "Hasta yakınması", patient_story: "Öykü",
       complaint_start_date: "Başlangıç tarihi", review_of_system_simple: "Sistem sorgusu özeti",
       exam_simple_textarea: "Muayene notu", treatment_note_v2: "İzlem ve tedavi planı",
-      profile_and_family_history: "Özgeçmiş ve soygeçmiş", psychological_status: "Psikolojik durum",
+      profile_and_family_history: "Özgeçmiş ve soygeçmiş", family_history: "Soygeçmiş",
+      psychological_status: "Psikolojik durum",
       fall_risk: "Düşme riski", pain: "Ağrı değerlendirmesi", diagnoses: "Tanılar (ICD-10)",
       treatment_plan_label: "Tedavi türü", is_surgery_will_planned: "Ameliyat planı",
       is_control_suggested: "Kontrol önerisi", "review_of_system.document": "Sistem sorgulama belgesi",
@@ -416,6 +469,12 @@
     const taskText = textOf(cells[6]) || raw;
     const doctorLines = (cells[9]?.innerText || "")
       .split(/\r?\n/).map((value) => value.trim()).filter(Boolean);
+    // COMED is listesi satiri dogum tarihini gosteriyor ("28yıl 22.10.1997").
+    // TCKN burada YOK -- o yalnizca hasta kartindaki "Hasta Bilgileri"
+    // panelinde. Yine de dogum tarihini simdiden gonderiyoruz; hasta
+    // eslesmesi icin gereken ikinci parca kart acilinca tamamlanir.
+    const birthDate = (patientCell?.innerText || "")
+      .match(/\b(\d{2})[.\/-](\d{2})[.\/-](\d{4})\b/);
     return {
       visit_id: visitId,
       clinical_card_id: String(card.cardId || ""),
@@ -428,6 +487,7 @@
       task: taskText,
       status: /Bekliyor/i.test(raw) ? "Bekliyor" : "",
       clinical_card_url: card.url || "",
+      ...(birthDate ? {birth_date: `${birthDate[1]}.${birthDate[2]}.${birthDate[3]}`} : {}),
     };
   }
 
@@ -726,6 +786,43 @@
     return card ? clickText(text, card) : false;
   }
 
+  /* COMED etiketleri bazen "Özellik Yok", bazen "Özellik yok" yazilir.
+     Tam eslesme arayan clickText bu yuzden kaciriyordu. */
+  function clickTextLoose(labels, root = document) {
+    const wanted = labels.map((item) => item.toLocaleLowerCase("tr-TR").replace(/\s+/g, " ").trim());
+    const nodes = [...root.querySelectorAll(
+      "button,label,[role=radio],[role=checkbox],.toggle-button__item,.autocomplete__item,span",
+    )].filter((element) => element.offsetParent !== null);
+    for (const label of wanted) {
+      const node = nodes.find(
+        (element) => textOf(element).toLocaleLowerCase("tr-TR").replace(/\s+/g, " ").trim() === label,
+      );
+      if (activateNode(node)) return true;
+    }
+    return false;
+  }
+
+  /* Zorunlu kartlari (Soygecmis, Dusme Riski) bos birakmamak icin:
+     karti ac, secenek gorunene kadar bekle, sonra sirayla dene.
+     Bir denemede olmazsa karti yeniden acip tekrar dener. */
+  async function markCardOption(cardTitle, labels, tries = 3) {
+    for (let attempt = 0; attempt < tries; attempt += 1) {
+      const card = await ensureCardOpen(cardTitle);
+      if (card) {
+        await waitFor(
+          () => [...card.querySelectorAll("button,label,[role=radio],.toggle-button__item")]
+            .some((element) => element.offsetParent !== null),
+          1200,
+        );
+        if (clickTextLoose(labels, card)) return true;
+      }
+      // Kart bulunamadiysa sayfa genelinde de ara; bazi alanlar modal icinde acilir.
+      if (clickTextLoose(labels)) return true;
+      await sleep(260);
+    }
+    return false;
+  }
+
   function clickFieldOption(label, text, root = document) {
     const group = fieldGroupByLabel(label, root);
     return group ? clickText(text, group) : false;
@@ -758,16 +855,40 @@
     return (labelNode.getAttribute("aria-checked") === "true") === checked;
   }
 
-  function sleep(ms) {
+  function rawSleep(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
+  /* Adimlar arasi bekleme.
+
+     Hiz ORTADA degistirilebilsin diye bekleme tek parca degil dilim dilim
+     yapilir: her dilimde fillSpeed yeniden okunur. Tek parca olsaydi, doktor
+     doldurma surerken kaydiraci oynattiginda o an suren bekleme eski hizla
+     bitecek ve "ayar tutmuyor" hissi verecekti. */
+  async function sleep(ms) {
+    let kalan = ms;                       // olceklenmemis "is" miktari
+    while (kalan > 0) {
+      const hiz = fillSpeed || 1;
+      // Gercek zamanda ~60 ms'lik dilim; hiz arttikca daha cok is tuketir.
+      const dilim = Math.min(kalan, 60 * hiz);
+      const basla = performance.now();
+      await rawSleep(Math.max(5, Math.round(dilim / hiz)));
+      // setTimeout her zaman istenenden GEC uyanir. Planlanani degil gercekte
+      // gecen sureyi dusersek bu gecikme birikmez; aksi halde dilimleme
+      // toplam sureyi ~%25 uzatiyordu.
+      kalan -= (performance.now() - basla) * hiz;
+    }
+  }
+
   async function waitFor(getter, timeoutMs = 4500) {
+    // Zaman asimi BILEREK olceklenmez: bu bir guvenlik siniri. Yalnizca
+    // yoklama sikligi hizlanir, boylece eleman hazir olur olmaz devam edilir.
     const deadline = Date.now() + timeoutMs;
+    const poll = scaled(120, 40);
     while (Date.now() < deadline) {
       const value = getter();
       if (value) return value;
-      await sleep(120);
+      await rawSleep(poll);
     }
     return null;
   }
@@ -821,25 +942,31 @@
       .sort((a, b) => textOf(a).length - textOf(b).length)[0] || null;
   }
 
+  /* Doldurma suresinin BUYUK bolumu burada geciyor (olculen: 1.5-12.7 sn,
+     sleep'lerin toplami yalnizca ~2.7 sn). Hiz ayarinin hissedilmesi icin
+     hem sessizlik esigi hem ust sinir olceklenir.
+
+     Esikler sabit setTimeout yerine 30 ms'lik periyodik kontrolle olculur;
+     boylece bekleme SURERKEN hiz degisirse yeni deger hemen gecerli olur.
+     Sabit timer'da 3,5 saniyelik bir bekleme eski hizla biteceginden doktor
+     kaydiraci oynattiginda hicbir sey degismemis gibi gorunuyordu. */
   function waitForDomQuiet(root = document.body, quietMs = 220, timeoutMs = 2200) {
     if (!root) return Promise.resolve();
     return new Promise((resolve) => {
-      let quietTimer = null;
-      let timeoutTimer = null;
-      const finish = () => {
-        clearTimeout(quietTimer);
-        clearTimeout(timeoutTimer);
-        observer.disconnect();
-        resolve();
-      };
-      const arm = () => {
-        clearTimeout(quietTimer);
-        quietTimer = setTimeout(finish, quietMs);
-      };
-      const observer = new MutationObserver(arm);
+      const basladi = Date.now();
+      let sonDegisiklik = basladi;
+      const observer = new MutationObserver(() => { sonDegisiklik = Date.now(); });
       observer.observe(root, {subtree: true, childList: true, attributes: true, characterData: true});
-      timeoutTimer = setTimeout(finish, timeoutMs);
-      arm();
+      const timer = setInterval(() => {
+        const sessizlik = scaled(quietMs, 40);
+        const ustSinir = Math.max(scaled(timeoutMs, 400), sessizlik + 100);
+        const simdi = Date.now();
+        if (simdi - sonDegisiklik >= sessizlik || simdi - basladi >= ustSinir) {
+          clearInterval(timer);
+          observer.disconnect();
+          resolve();
+        }
+      }, 30);
     });
   }
 
@@ -960,8 +1087,8 @@
     // Dusme riski COMED'de zorunlu alandir. Gorusmede konu hic gecmemisse
     // "bilinmiyor" degil "yok" isaretlenir; aksi halde alan bos kalip form
     // kaydedilemiyordu. Doktor son kontrolde aksini gorurse duzeltir.
-    if (exists !== true) return clickCardOption("Düşme Riski", "Yok");
-    if (typeof value !== "object") return clickCardOption("Düşme Riski", "Yok");
+    if (exists !== true) return markCardOption("Düşme Riski", ["Yok"]);
+    if (typeof value !== "object") return markCardOption("Düşme Riski", ["Yok"]);
     const normalized = {...value};
     if (!["65_plus", "under_65"].includes(normalized.age_group)) {
       const age = Number(textOf(document.body).match(/\b(\d{1,3})\s*y[ıi]l\b/i)?.[1]);
@@ -972,12 +1099,17 @@
     detailKeys.forEach((key) => {
       if (typeof normalized[key] !== "boolean") normalized[key] = false;
     });
-    if (!["65_plus", "under_65"].includes(normalized.age_group)) return false;
-    if (!clickCardOption("Düşme Riski", "Var")) return false;
+    // Detayli akis tutmazsa alan bos kalmasin; "Yok" ile kart tamamlanir.
+    if (!["65_plus", "under_65"].includes(normalized.age_group)) {
+      return markCardOption("Düşme Riski", ["Yok"]);
+    }
+    if (!await markCardOption("Düşme Riski", ["Var"], 2)) {
+      return markCardOption("Düşme Riski", ["Yok"]);
+    }
     const popover = await waitFor(() => [...document.querySelectorAll(
       ".co-menu__content .co-popover,.co-menu__content,.co-popover.bottom,.co-popover",
     )].find((item) => item.offsetParent !== null && textOf(item).includes("Düşme Hikayesi")));
-    if (!popover) return false;
+    if (!popover) return markCardOption("Düşme Riski", ["Yok"]);
     const choices = [
       ["Yaş", normalized.age_group === "65_plus", "65 yaş üstü", "65 yaş altı"],
       ["Düşme Hikayesi", normalized.history, "Var", "Yok"],
@@ -1041,16 +1173,24 @@
     return scoreFilled;
   }
 
+  /* Soygecmis COMED'de zorunlu. Veri olsun olmasin kart asla bos kalmamali:
+     once "Ozellik Yok", olmazsa "Gorulduveya benzeri etiketler denenir. */
+  const FAMILY_EMPTY_LABELS = ["Özellik Yok", "Özellik yok", "Görüldü", "Görüldü."];
+
+  async function markFamilyHistoryEmpty() {
+    const ok = await markCardOption("Soygeçmiş", FAMILY_EMPTY_LABELS);
+    bridgeFieldStatus("family_history", ok);
+    return ok ? 1 : 0;
+  }
+
   async function fillFamilyHistory(profile = {}) {
-    if (profile.no_known_family_history === true) {
-      return clickCardOption("Soygeçmiş", "Özellik Yok") ? 1 : 0;
-    }
+    if (profile.no_known_family_history === true) return markFamilyHistoryEmpty();
     const entries = profile.family_history || [];
     if (!entries.length && typeof profile.parents_related !== "boolean") {
-      return clickCardOption("Soygeçmiş", "Görüldü") ? 1 : 0;
+      return markFamilyHistoryEmpty();
     }
     const card = await ensureCardOpen("Soygeçmiş");
-    if (!card) return 0;
+    if (!card) return markFamilyHistoryEmpty();
     await waitFor(() => [...card.querySelectorAll("input,textarea,table")]
       .find((element) => element.offsetParent !== null), 1800);
     let added = 0;
@@ -1078,10 +1218,11 @@
       .find((input) => /anne ile baba akraba/i.test(textOf(input.closest("label") || input.parentElement)));
     if (related && typeof profile.parents_related === "boolean"
       && related.checked !== profile.parents_related) related.click();
-    clickText("Görüldü", card);
-    // Soygecmis COMED'de zorunludur. Hicbir satir isaretlenemediyse alan bos
-    // kalmamali; "Ozellik Yok" basilarak kayit edilebilir hale getirilir.
-    if (!added) return clickCardOption("Soygeçmiş", "Özellik Yok") ? 1 : 0;
+    // Satir isaretlenebildiyse "Goruldu" ile kart tamamlanmis sayilir;
+    // hicbiri tutmadiysa kart bos kalmasin diye "Ozellik Yok"a dusulur.
+    if (!added) return markFamilyHistoryEmpty();
+    clickTextLoose(["Görüldü"], card);
+    bridgeFieldStatus("family_history", true);
     return added;
   }
 

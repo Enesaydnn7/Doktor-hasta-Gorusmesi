@@ -1,3 +1,125 @@
+## v2.23.0 — 14 Ekim 2026
+
+COMED aktarımı yeniden eski sağlamlığında. v2.22.0'da iki şey bozulmuştu,
+bir de uzun süredir sessizce duran gerçek bir hata vardı.
+
+### Geri alınan hata: aktarım iptal ediliyordu
+
+v2.22.0'da köprü yanıt vermeyince aktarım iptal ediliyordu. Oysa sekme açmak
+yalnızca bir kolaylık; asıl doldurmayı COMED sayfasındaki eklenti yapıyor ve
+aktarım `queued` kaldığı sürece doktor COMED kartına kendi geçince iş yürüyor.
+İptal edilince bu çalışan tek yol da kapanmıştı. Artık **hiçbir durumda iptal
+edilmiyor**.
+
+### Kuyruk tıkanması (asıl sebep)
+
+Köprüye verilen bekleyen aktarım listesi 20 ile sınırlıydı ve **en eskiden**
+başlıyordu. Alınamayan aktarımlar `queued` durumunda biriktikçe kuyruk doluyor,
+doktorun **yeni** isteği listeye hiç giremiyor ve eklenti onu hiç görmüyordu.
+Her yeniden denemede durum biraz daha kötüleşiyordu. Artık en yeniden
+başlanıyor ve bir saatten eski istekler kuyruktan kendiliğinden düşüyor.
+
+### Doktoru uğraştırmamak
+
+- Köprü yanıt vermezse kart yine de yeni sekmede açılıyor (v2.21.0'daki
+  davranış geri geldi).
+- Eklenti güncellendiğinde açık doktor paneli ve COMED sekmeleri
+  **kendiliğinden yenileniyor**. Önceden bu sekmelerdeki köprü sahipsiz kalıp
+  sessizce çalışmıyordu; artık "sayfayı yenileyin" demeye gerek yok.
+- Köprü artık sessizce ölmüyor: hata olursa panele hemen haber veriyor,
+  panel yedi saniye boşuna beklemiyor. Arka plan betiği uykudaysa mesaj bir
+  kez yineleniyor.
+
+## v2.22.0 — 14 Ekim 2026
+
+### COMED aktarımı artık takılı kalmıyor
+
+- **Kök sebep:** aktarım `queued` durumunda asılı kalırsa "COMED'e aktar"
+  düğmesi sonsuza kadar pasif kalıyordu; iptal ya da yeniden deneme yolu hiç
+  yoktu. Eklenti kapalıysa veya köprü yanıt vermediyse doktor o görüşmeyi bir
+  daha hiç aktaramıyordu.
+- Sunucu artık ilerlemeyen aktarımı `stale` işaretliyor (kendi saatiyle, 75 sn).
+  Takılan aktarımda düğme **"Yeniden aktar"** olarak açılıyor ve ne olduğunu
+  anlatan bir uyarı çıkıyor.
+- Yeni uç: `POST /doctor/api/comed/transfers/{id}/cancel`. Süren aktarımın
+  yanında **"Vazgeç"** düğmesi var. COMED'e işlenmiş aktarım bırakılamıyor (409).
+- Köprü yanıt vermezse aktarım kendiliğinden bırakılıyor; düğme hemen yeniden
+  kullanılabilir oluyor.
+
+### Boş sekme sorunu
+
+- Köprü zaman aşımı 1,8 sn → **7 sn**. Chrome MV3 arka plan betiği uykuya
+  daldığı için ilk mesajda uyanması birkaç saniye sürebiliyor; eski sınır sık
+  sık doluyordu.
+- Yanıt gelmediğinde `window.open` ile yedek sekme **açılmıyor** artık — o sekme
+  çoğu zaman boş kalıyordu.
+- Eklenti yeni sekmeyi doğrudan hedef adresle açıyor; önce `about:blank` açıp
+  sonra yönlendirmiyor.
+
+### Hasta randevusunun geç bağlanması
+
+- Hastanın randevusu COMED'de ancak doktor hasta kartını açtığında eşleşebiliyor
+  (T.C. kimlik numarası yalnızca o panelde yazıyor — COMED kısıtı). Hasta bunu
+  bilmeden elle yenilemek zorunda kalıyordu.
+- Uygulama artık **kendiliğinden tekrar deniyor** (6 saniyede bir, ~2,5 dakika)
+  ve ekranda "Randevunuz aranıyor… Doktorunuz sizi sistemde açtığında randevunuz
+  buraya otomatik gelecek" yazıyor.
+- Eklenti iş listesi satırından doğum tarihini de topluyor.
+
+## v2.21.0 — 14 Ekim 2026
+
+- Doktor panelindeki kayıt listesi COMED iş listesine benzetildi: satırlar bir
+  beyaz bir grimsi (zebra) oldu ve **hasta bilgileri sütunu** eklendi — ad
+  soyad, baş harf rozeti, protokol ve hasta numarası. Önceden iki kayıt
+  birbirinden ayırt edilemiyordu. Arama artık hasta adıyla da çalışıyor.
+- **Hız ayarı doldurma sürerken değiştirilebiliyor.** Beklemeler tek parça
+  `setTimeout` yerine dilim dilim yapılıyor ve her dilimde hız yeniden
+  okunuyor; `waitForDomQuiet` de sabit zamanlayıcı yerine periyodik kontrol
+  kullanıyor. Önceden o an süren 3,5 saniyelik bekleme eski hızla bittiği
+  için ayar tutmuyor gibi görünüyordu. Ölçüldü: 4 sn'lik işin 1. saniyesinde
+  2.5× yapılınca toplam 4000 ms yerine 2202 ms.
+- Dilimlemenin getirdiği ~%25 zamanlayıcı sapması, planlanan değil gerçekte
+  geçen süre düşülerek giderildi (sapma %0,6).
+- Hız değiştiğinde COMED sayfasındaki Klinot balonu "Doldurma hızı 2.5×"
+  bildirimi gösteriyor; ayarın ulaştığı görülüyor.
+
+## v2.20.0 — 14 Ekim 2026
+
+- **Eklenti hız ayarı artık gerçekten çalışıyor.** Önceki sürümde yalnızca
+  `sleep()` beklemeleri ölçekleniyordu; ölçüldüğünde bunların toplamı ~2,7 sn,
+  buna karşılık "DOM sakinleşene kadar bekle" beklemeleri 1,5–12,7 sn
+  tutuyordu. Yani sürenin ancak ~%15'i ölçekleniyor, 2.5× bile fark
+  yaratmıyordu. Artık her iki bekleme türü de ölçekleniyor: 2.5× ayarı
+  doldurmayı ~%58 kısaltıyor, 0.5× ise iki katına çıkarıyor. Yalnızca
+  `waitFor` zaman aşımı sabit kaldı — o bir güvenlik sınırı.
+- Hız ayarı kaydıraç (slider) oldu ve yalnızca eklenti penceresinde duruyor;
+  COMED sayfasındaki balondan kaldırıldı.
+- Doktor panelindeki COMED iş listesi kart düzeninden çıkıp COMED'in kendi iş
+  listesi gibi satır satır tabloya döndü: hasta, hasta no, protokol,
+  işlem/bölüm, doktor, durum sütunları.
+- Doktor panelinde kullanılan model artık yönetici panelindeki gibi görünüyor.
+- Hasta artık randevusunu listeden seçmiyor. T.C. kimlik numarası ve doğum
+  tarihiyle doğrulandığı için randevusu otomatik bağlanıyor; ekranda yalnızca
+  hangi muayene ve hangi doktor olduğu yazıyor.
+
+## v2.19.0 — 13 Ekim 2026
+
+- Doktor panelindeki ses oynatıcı artık takılmıyor. `/doctor/audio/{kid}` ucu
+  yönetici ucuyla aynı HTTP byte-range (206) desteğini kullanıyor ve 15 saniyelik
+  arka plan yenilemesi çalan kaydı artık yeniden çizmiyor.
+- COMED iş listesi kart tasarımı yenilendi: her kart sırayla farklı renk alır,
+  hastaya bağlı rapor/aktarım durumu kartta görünür, karta tıklayınca kayıt
+  listesi o hastaya göre süzülür.
+- Eklentiye form doldurma hız ayarı eklendi (0.5× – 2.5×). Hız, aktarım
+  sürerken COMED sayfasındaki Klinot balonundan da değiştirilebilir.
+- Soygeçmiş ve düşme riski artık hiçbir koşulda boş bırakılmıyor; kart önce
+  açılır, etiket büyük/küçük harf farkı gözetmeden aranır ve gerekirse
+  "Özellik Yok" / "Görüldü" işaretlenir.
+- Hasta girişinde doğum tarihi elle de yazılabiliyor; noktalar otomatik eklenir,
+  takvim zorunlu değil.
+- KVKK aydınlatma metni bağlantısının altı çizildi.
+- Epikriz raporunun adı her yerde "AI epikriz" oldu.
+
 # Sürüm Geçmişi
 
 ## v2.18.0 — 8 Ekim 2026

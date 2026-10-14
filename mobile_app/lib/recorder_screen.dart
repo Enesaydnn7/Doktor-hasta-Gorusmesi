@@ -52,6 +52,12 @@ class _RecorderScreenState extends State<RecorderScreen> {
   ComedPatient? _selectedPatient;
   var _loadingWorklist = true;
   String? _worklistError;
+  // Randevu heniz baglanmadiysa kendiliginden tekrar dener. Hastanin T.C.
+  // kimlik ozeti COMED'de ancak doktor hasta kartini actiginda olusuyor;
+  // o ana kadar randevu gorunmuyordu ve hasta elle yenilemek zorunda
+  // kaliyordu.
+  Timer? _worklistRetry;
+  var _worklistTries = 0;
 
   bool get _isRecording =>
       _state == RecordingState.recording || _state == RecordingState.paused;
@@ -81,7 +87,11 @@ class _RecorderScreenState extends State<RecorderScreen> {
     });
   }
 
-  Future<void> _loadWorklist() async {
+  Future<void> _loadWorklist({bool elle = true}) async {
+    if (elle) {
+      _worklistRetry?.cancel();
+      _worklistTries = 0;
+    }
     if (mounted) {
       setState(() {
         _loadingWorklist = true;
@@ -93,7 +103,14 @@ class _RecorderScreenState extends State<RecorderScreen> {
       if (!mounted) return;
       setState(() {
         _worklist = patients;
-        _selectedPatient = patients.length == 1 ? patients.first : null;
+        // Hasta zaten T.C. kimlik numarasi + dogum tarihiyle giris yapti ve
+        // sunucu yalnizca ONA ait randevulari donuyor. Kendi randevusunu
+        // listeden tekrar secmesi anlamsiz; otomatik baglanir.
+        // Doktor tarafinda secim surer: bir doktorun is listesinde birden
+        // cok hasta vardir.
+        _selectedPatient = _patientMode
+            ? (patients.isEmpty ? null : patients.first)
+            : (patients.length == 1 ? patients.first : null);
         _loadingWorklist = false;
       });
     } catch (error) {
@@ -103,11 +120,32 @@ class _RecorderScreenState extends State<RecorderScreen> {
         _worklistError = error.toString();
       });
     }
+    _randevuyuBeklemeyeAl();
   }
+
+  /// Randevu henüz görünmüyorsa arka planda sessizce tekrar dener.
+  ///
+  /// Hastanın randevusu COMED'de ancak doktor hasta kartını açtığında
+  /// eşleşebiliyor (T.C. kimlik numarası yalnızca o panelde yazıyor).
+  /// Önceden hasta bunu bilmeden elle yenilemek zorunda kalıyordu.
+  void _randevuyuBeklemeyeAl() {
+    _worklistRetry?.cancel();
+    if (!_patientMode || _selectedPatient != null || _isRecording) return;
+    if (_worklistTries >= _maxWorklistTries) return;
+    _worklistTries += 1;
+    _worklistRetry = Timer(const Duration(seconds: 6), () {
+      if (!mounted) return;
+      unawaited(_loadWorklist(elle: false));
+    });
+  }
+
+  // 6 sn x 25 = ~2,5 dakika sessiz deneme; sonra hasta elle yenileyebilir.
+  static const _maxWorklistTries = 25;
 
   @override
   void dispose() {
     _timer?.cancel();
+    _worklistRetry?.cancel();
     _processingTimer?.cancel();
     _processingStopwatch.stop();
     unawaited(_levelSubscription?.cancel());
@@ -118,8 +156,11 @@ class _RecorderScreenState extends State<RecorderScreen> {
   Future<void> _start() async {
     if (_selectedPatient == null) {
       setState(
+        // Hasta secim yapmaz; randevusu otomatik baglanir. Burasi ancak
+        // randevu hic bulunamadiginda calisir.
         () => _error = _patientMode
-            ? 'Kayda başlamadan önce randevunuzu seçin.'
+            ? 'Adınıza açık bir randevu bulunamadı. Yenile düğmesine basın ya da '
+                  'randevunuzun oluşturulduğundan emin olun.'
             : 'Kayda başlamadan önce COMED iş listesinden hastayı seçin.',
       );
       return;
@@ -219,7 +260,8 @@ class _RecorderScreenState extends State<RecorderScreen> {
     if (_selectedPatient == null) {
       setState(
         () => _error = _patientMode
-            ? 'Analizden önce randevunuzu seçin.'
+            ? 'Adınıza açık bir randevu bulunamadı. Randevu bilgisini yenileyip '
+                  'tekrar deneyin.'
             : 'Analizden önce COMED iş listesinden hastayı seçin.',
       );
       return;
@@ -282,7 +324,7 @@ class _RecorderScreenState extends State<RecorderScreen> {
         _processingPercent = 100;
         _processingPhase = _patientMode
             ? 'Sağlık raporu hazır'
-            : 'Epikriz hazır';
+            : 'AI epikriz hazır';
       });
 
       await _recorder.allowSleep();
@@ -331,7 +373,7 @@ class _RecorderScreenState extends State<RecorderScreen> {
     'doktor' =>
       _patientMode
           ? 'Sağlık raporu son kontrollerden geçiyor'
-          : 'Detaylı epikriz hazırlanıyor',
+          : 'AI epikriz hazırlanıyor',
     'yonetim' => 'Görüşme kaydı tamamlanıyor',
     _ => 'Klinik raporlar hazırlanıyor',
   };
@@ -362,7 +404,7 @@ class _RecorderScreenState extends State<RecorderScreen> {
                     : processing
                     ? (_patientMode
                           ? 'Sağlık raporu hazırlanıyor'
-                          : 'Epikriz hazırlanıyor')
+                          : 'AI epikriz hazırlanıyor')
                     : ready
                     ? 'Görüşme tamamlandı'
                     : 'Yeni görüşme',
@@ -374,20 +416,17 @@ class _RecorderScreenState extends State<RecorderScreen> {
                 _isRecording
                     ? 'Telefonu masanın ortasında bırakın ve doğal biçimde konuşun.'
                     : processing
-                    ? 'Görüşmeniz güvenli biçimde analiz ediliyor. ${_patientMode ? 'Sağlık raporu' : 'Epikriz'} hazır olduğunda otomatik açılacak.'
+                    ? 'Görüşmeniz güvenli biçimde analiz ediliyor. ${_patientMode ? 'Sağlık raporu' : 'AI epikriz'} hazır olduğunda otomatik açılacak.'
                     : ready
                     ? 'Görüşme metni ekranda gösterilmez; kayıt analiz için hazır.'
                     : 'Telefonu doktor ile hastanın arasına, mikrofonu açık kalacak şekilde yerleştirin.',
                 style: const TextStyle(color: Color(0xFF60777D), height: 1.45),
               ),
               const SizedBox(height: 22),
-              // Hastada randevu zaten belli; secim karti ekranin en degerli
-              // yerini kapliyor ve kayit dugmesini asagi itiyordu. Tek randevu
-              // varsa yalnizca kisa bir bilgi seridi gosterilir ve kayit karti
-              // basa alinir. Birden fazla randevuda secim sart oldugu icin tam
-              // secici korunur.
-              if (!_patientMode || _worklist.length > 1 || _loadingWorklist
-                  || _worklistError != null) ...[
+              // Hastada randevu secimi HIC yok: kimlik dogrulamasindan gecen
+              // hastanin randevusu zaten belli, otomatik baglanir. Secici
+              // yalnizca doktor tarafinda gosterilir.
+              if (!_patientMode) ...[
                 _ComedPatientSelector(
                   patientMode: _patientMode,
                   patients: _worklist,
@@ -467,14 +506,21 @@ class _RecorderScreenState extends State<RecorderScreen> {
                   ),
                 ),
               ],
-              // Tek randevulu hastada bilgi seridi kayit kartinin ALTINDA
-              // durur; boylece uygulama acildiginda ilk gorulen sey kayit olur.
-              if (_patientMode && _worklist.length == 1 && !_loadingWorklist
-                  && _worklistError == null && _selectedPatient != null) ...[
+              // Hastanin randevu bilgisi kayit kartinin ALTINDA durur; boylece
+              // uygulama acildiginda ilk gorulen sey kayit ekrani olur.
+              // Secim degil, yalnizca "bu randevuya islenecek" bilgisi.
+              if (_patientMode && _selectedPatient == null) ...[
+                const SizedBox(height: 14),
+                _PatientAppointmentWaiting(
+                  searching: _worklistTries < _maxWorklistTries,
+                  error: _worklistError,
+                  onRefresh: _loadingWorklist ? null : () => _loadWorklist(),
+                ),
+              ] else if (_patientMode && _selectedPatient != null) ...[
                 const SizedBox(height: 14),
                 _PatientAppointmentStrip(
                   patient: _selectedPatient!,
-                  onRefresh: _loadingWorklist ? null : _loadWorklist,
+                  onRefresh: _loadingWorklist ? null : () => _loadWorklist(),
                 ),
               ],
               const SizedBox(height: 18),
@@ -537,7 +583,7 @@ class _ComedPatientSelector extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        patientMode ? 'Randevularım' : 'COMED iş listesi',
+                        patientMode ? 'Randevum' : 'COMED iş listesi',
                         style: TextStyle(
                           fontWeight: FontWeight.w800,
                           fontSize: 16,
@@ -545,8 +591,10 @@ class _ComedPatientSelector extends StatelessWidget {
                       ),
                       SizedBox(height: 2),
                       Text(
+                        // Hasta modunda bu kart yalnizca yukleme/hata
+                        // halinde gorunur; secim yaptirmaz.
                         patientMode
-                            ? 'Görüşmenin yapılacağı randevuyu seçin'
+                            ? 'Randevunuz kimliğinizle otomatik eşleştiriliyor'
                             : 'Görüşme yapılacak hastayı seçin',
                         style: TextStyle(
                           color: Color(0xFF60777D),
@@ -666,8 +714,10 @@ class _ComedPatientSelector extends StatelessWidget {
   }
 }
 
-/// Tek randevulu hastada secim karti yerine gosterilen kompakt bilgi seridi.
-/// Secim sunmaz; yalnizca gorusmenin hangi randevuya islenecegini bildirir.
+/// Hastanin randevu bilgisi. SECIM SUNMAZ: hasta zaten T.C. kimlik numarasi
+/// ve dogum tarihiyle dogrulandi, randevusu otomatik baglandi. Burada yalnizca
+/// "hangi doktor, hangi muayene" yaziyor ki hasta dogru randevuda oldugunu
+/// gorsun.
 class _PatientAppointmentStrip extends StatelessWidget {
   const _PatientAppointmentStrip({required this.patient, this.onRefresh});
 
@@ -676,11 +726,11 @@ class _PatientAppointmentStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final detay = [
-      patient.department,
-      patient.doctorName,
-      'Hasta No ${patient.patientNo}',
-    ].where((value) => value.trim().isNotEmpty).join(' · ');
+    // "Kardiyoloji muayenesi" gibi islem adi varsa onu, yoksa bolumu goster.
+    final islem = patient.task.trim().isNotEmpty
+        ? patient.task.trim()
+        : patient.department.trim();
+    final doktor = patient.doctorName.trim();
 
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
@@ -702,21 +752,27 @@ class _PatientAppointmentStrip extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Bu görüşme randevunuza işlenecek',
+                  'Randevunuz',
                   style: TextStyle(
                     fontWeight: FontWeight.w700,
                     fontSize: 13,
                     color: klinotNavy,
                   ),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  detay,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Color(0xFF60777D),
-                    fontSize: 12,
+                if (islem.isNotEmpty) ...[
+                  const SizedBox(height: 3),
+                  _AppointmentLine(icon: Icons.medical_services_outlined, text: islem),
+                ],
+                if (doktor.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  _AppointmentLine(icon: Icons.person_outline_rounded, text: doktor),
+                ],
+                const SizedBox(height: 4),
+                const Text(
+                  'Bu görüşme randevunuza işlenecek.',
+                  style: TextStyle(
+                    color: Color(0xFF7D9298),
+                    fontSize: 11.5,
                     height: 1.3,
                   ),
                 ),
@@ -725,12 +781,135 @@ class _PatientAppointmentStrip extends StatelessWidget {
           ),
           IconButton(
             onPressed: onRefresh,
-            tooltip: 'Randevuları yenile',
+            tooltip: 'Randevuyu yenile',
             icon: const Icon(Icons.refresh_rounded, size: 20),
             color: klinotTeal,
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Randevu henüz eşleşmediğinde gösterilir.
+///
+/// Hastanın randevusu COMED'de ancak doktor hasta kartını açtığında
+/// eşleşebiliyor. Önceden ekranda hiçbir açıklama olmadığı için hasta ne
+/// olduğunu anlamıyor, elle yenilemeye çalışıyordu. Artık arka planda
+/// kendiliğinden deneniyor ve durum burada yazıyor.
+class _PatientAppointmentWaiting extends StatelessWidget {
+  const _PatientAppointmentWaiting({
+    required this.searching,
+    this.error,
+    this.onRefresh,
+  });
+
+  final bool searching;
+  final String? error;
+  final VoidCallback? onRefresh;
+
+  @override
+  Widget build(BuildContext context) {
+    final baslik = error != null
+        ? 'Randevu bilgisi alınamadı'
+        : searching
+        ? 'Randevunuz aranıyor…'
+        : 'Randevunuz henüz görünmüyor';
+    final aciklama = error != null
+        ? 'Bağlantınızı kontrol edip tekrar deneyin.'
+        : searching
+        ? 'Doktorunuz sizi sistemde açtığında randevunuz buraya otomatik gelecek. '
+              'Bir şey yapmanıza gerek yok.'
+        : 'Doktorunuz sizi sistemde açtıktan sonra yenile düğmesine basın.';
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF7E8),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFF0DFBE)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox.square(
+            dimension: 20,
+            child: searching && error == null
+                ? const CircularProgressIndicator(
+                    strokeWidth: 2.2,
+                    color: Color(0xFFB7791F),
+                  )
+                : const Icon(
+                    Icons.schedule_rounded,
+                    size: 20,
+                    color: Color(0xFFB7791F),
+                  ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  baslik,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                    color: Color(0xFF8A5A08),
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  aciklama,
+                  style: const TextStyle(
+                    color: Color(0xFF8A6A3A),
+                    fontSize: 12,
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            onPressed: onRefresh,
+            tooltip: 'Şimdi yenile',
+            icon: const Icon(Icons.refresh_rounded, size: 20),
+            color: const Color(0xFFB7791F),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Randevu seridindeki tek satir: kucuk simge + metin.
+class _AppointmentLine extends StatelessWidget {
+  const _AppointmentLine({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 14, color: const Color(0xFF7D9298)),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            text,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Color(0xFF3F5B63),
+              fontSize: 12.5,
+              fontWeight: FontWeight.w600,
+              height: 1.3,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -887,7 +1066,11 @@ class _IdleRecording extends StatelessWidget {
         key: const Key('privacyNoticeButton'),
         onPressed: () => _showPrivacyNotice(context),
         icon: const Icon(Icons.shield_outlined, size: 18),
-        label: const Text('Aydınlatma metnini incele'),
+        // KVKK baglantisi oldugu belli olsun diye alti cizili.
+        label: const Text(
+          'Aydınlatma metnini incele',
+          style: TextStyle(decoration: TextDecoration.underline),
+        ),
       ),
       const SizedBox(height: 20),
       SizedBox(
@@ -1053,7 +1236,7 @@ class _ReadyRecording extends StatelessWidget {
       Text(
         analyzed
             ? 'Ses kaydı cihazda korunuyor. Aynı görüşmeyi yeniden analiz edebilir veya kaydı silip yeni görüşmeye başlayabilirsiniz.'
-            : 'Analiz başladığında görüşme metni ve işlem adımları gösterilmez. ${patientMode ? 'Sağlık raporu' : 'Epikriz'} hazır olunca ekran otomatik açılır.',
+            : 'Analiz başladığında görüşme metni ve işlem adımları gösterilmez. ${patientMode ? 'Sağlık raporu' : 'AI epikriz'} hazır olunca ekran otomatik açılır.',
         textAlign: TextAlign.center,
         style: TextStyle(color: Color(0xFF60777D), height: 1.45),
       ),
@@ -1133,7 +1316,7 @@ class _ProcessingRecording extends StatelessWidget {
       ),
       const SizedBox(height: 26),
       Text(
-        patientMode ? 'Sağlık raporu hazırlanıyor' : 'Epikriz hazırlanıyor',
+        patientMode ? 'Sağlık raporu hazırlanıyor' : 'AI epikriz hazırlanıyor',
         style: Theme.of(context).textTheme.titleLarge
             ?.copyWith(fontWeight: FontWeight.w800, color: klinotNavy),
       ),

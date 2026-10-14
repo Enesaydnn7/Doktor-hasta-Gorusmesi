@@ -96,10 +96,17 @@ class ComedExtensionTests(unittest.TestCase):
         source = (EXTENSION / "content.js").read_text(encoding="utf-8")
 
         # Dusme riski: exists true degilse her durumda "Yok".
-        self.assertIn('if (exists !== true) return clickCardOption("Düşme Riski", "Yok");', source)
-        # Soygecmis: hicbir satir isaretlenemediyse "Ozellik Yok".
-        self.assertIn('if (!added) return clickCardOption("Soygeçmiş", "Özellik Yok") ? 1 : 0;', source)
-        self.assertIn('clickCardOption("Soygeçmiş", "Görüldü")', source)
+        self.assertIn('if (exists !== true) return markCardOption("Düşme Riski", ["Yok"]);', source)
+        # Detayli akisin her erken cikisi da bos birakmak yerine "Yok"a duser.
+        self.assertGreaterEqual(source.count('markCardOption("Düşme Riski", ["Yok"])'), 4)
+        # Soygecmis: hicbir satir isaretlenemediyse "Ozellik Yok"/"Goruldu".
+        self.assertIn("if (!added) return markFamilyHistoryEmpty();", source)
+        self.assertIn('FAMILY_EMPTY_LABELS = ["Özellik Yok", "Özellik yok", "Görüldü"', source)
+        # Kart kapaliyken etiket gorunmedigi icin once acilip beklenmeli.
+        self.assertIn("async function markCardOption(", source)
+        self.assertIn("await ensureCardOpen(cardTitle)", source)
+        # Buyuk/kucuk harf farki ("Özellik yok") kacirilmamali.
+        self.assertIn("function clickTextLoose(", source)
 
     def test_diagnosis_side_dropdown_is_selected_and_closed(self):
         """Taraf Tipi listesi acik birakilmamali; "Ayrim Yok" secilip kapanmali."""

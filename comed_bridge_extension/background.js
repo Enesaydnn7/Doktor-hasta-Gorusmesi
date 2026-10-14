@@ -2,6 +2,27 @@ const DEFAULT_API = "https://doktor-hasta-gorusmesi.onrender.com";
 const COMED_HOST = "goztepetest.comed.mlpcare.com";
 const PENDING_COMED_KEY = "pendingComedNavigation";
 
+/* Eklenti kurulup guncellendiginde ACIK sekmelerdeki content script'ler
+   sahipsiz kalir ve kopru sessizce calismaz hale gelir. Doktora "sayfayi
+   yenileyin" dedirtmemek icin ilgili sekmeleri KENDIMIZ yeniliyoruz. */
+const BRIDGE_PAGES = [
+  "https://doktor-hasta-gorusmesi.onrender.com/*",
+  "http://127.0.0.1:8000/*",
+  "http://localhost:8000/*",
+  `https://${COMED_HOST}/tr-tr/medical/*`,
+];
+
+chrome.runtime.onInstalled.addListener(async () => {
+  try {
+    const tabs = await chrome.tabs.query({url: BRIDGE_PAGES});
+    for (const tab of tabs) {
+      chrome.tabs.reload(tab.id, {bypassCache: false}).catch(() => {});
+    }
+  } catch (_) {
+    // Sekme erisimi yoksa sessiz gec; kopru bir sonraki yenilemede toparlar.
+  }
+});
+
 function parsedUrl(value) {
   try { return new URL(value); } catch (_) { return null; }
 }
@@ -66,13 +87,15 @@ async function openComedTarget(rawUrl, sender) {
     await chrome.windows.update(tab.windowId, {focused: true}).catch(() => {});
     if (sameComedTarget(tab.url, target.href)) await sessionRemove(PENDING_COMED_KEY);
   } else {
-    selected = await chrome.tabs.create({url: "about:blank", active: true});
+    // Dogrudan hedef adresle ac. Onceden "about:blank" acilip ardindan
+    // yonlendiriliyordu; ikinci adim basarisiz olursa doktorun onunde BOS
+    // bir sekme kaliyordu.
+    selected = await chrome.tabs.create({url: target.href, active: true});
     await sessionSet(PENDING_COMED_KEY, {
       tabId: selected.id,
       url: target.href,
       createdAt: Date.now(),
     });
-    selected = await chrome.tabs.update(selected.id, {url: target.href, active: true});
   }
   return {
     reused: Boolean(tab),

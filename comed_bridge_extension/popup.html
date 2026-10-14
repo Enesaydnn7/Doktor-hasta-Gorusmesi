@@ -21,6 +21,22 @@
       <p id="status" class="ok">Köprü bağlı. COMED iş listesi eşitleniyor.</p>
       <button id="clear-draft" class="danger" type="button">Bu karttaki Klinot taslağını temizle</button>
       <div class="note clear-note">Yalnızca son Klinot aktarımının kaydedilmemiş form değişikliklerini geri alır; doktorun daha önce kaydettiği verileri silmez.</div>
+      <!-- Doldurma temposu: doktor adimlari izlerken yavaslatabilir. -->
+      <div class="speed-row">
+        <div class="speed-head">
+          <b>Form doldurma hızı</b>
+          <span id="speed-value" class="speed-value">1×</span>
+        </div>
+        <input id="speed-slider" class="speed-slider" type="range"
+               min="0" max="4" step="1" value="2"
+               aria-label="Form doldurma hızı"
+               aria-valuetext="1× · Normal (varsayılan)">
+        <div class="speed-scale" aria-hidden="true">
+          <span>Yavaş</span><span>Normal</span><span>Hızlı</span>
+        </div>
+        <small id="speed-note">Normal (varsayılan)</small>
+      </div>
+      <div class="note">Değişiklik anında geçerli olur; aktarım sürerken bile kaydırabilirsiniz.</div>
       <label class="trace-toggle">
         <input id="trace-enabled" type="checkbox" checked>
         <span><b>COMED test isteği izleme</b><small>GET/POST gövdesini yakalar; parola, çerez ve oturum başlıklarını kaydetmez.</small></span>
