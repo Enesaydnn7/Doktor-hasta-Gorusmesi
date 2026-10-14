@@ -52,24 +52,10 @@ function renderStats() {
 }
 
 /* ---------- COMED is listesi ----------
-   Kartlar sirayla farkli renk alir; yan yana iki kart hicbir zaman ayni
-   renkte olmaz, boylece hangi bilginin hangi hastaya ait oldugu karismaz. */
-const CARD_COLORS = [
-  {c: "#0e8a80", bg: "#e6f5f3"}, {c: "#4256c8", bg: "#eaedfb"},
-  {c: "#b06a07", bg: "#fdf1df"}, {c: "#b83a66", bg: "#fdeaf0"},
-  {c: "#6f42c0", bg: "#f1eafb"}, {c: "#0b7ba4", bg: "#e4f3fa"},
-  {c: "#4a7d1f", bg: "#eef7e3"}, {c: "#8a5a2b", bg: "#f7efe6"},
-];
+   COMED'in kendi is listesi gibi satir satir tablo. Kart duzeni kaldirildi:
+   doktor COMED'de neyi nasil goruyorsa burada da ayni sutunlari gorur. */
 
-function initials(name) {
-  const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
-  if (!parts.length) return "H";
-  const first = parts[0][0] || "";
-  const last = parts.length > 1 ? parts[parts.length - 1][0] : "";
-  return (first + last).toUpperCase();
-}
-
-/* Bu hastaya bagli kayitlar: kart artik sadece isim degil, is durumu gosterir. */
+/* Bu hastaya bagli kayitlar: satirdaki durum sutununu besler. */
 function patientRecords(p) {
   const key = patientKey(p);
   if (!key) return [];
@@ -80,44 +66,46 @@ function patientRecords(p) {
 
 function patientBadge(records) {
   if (!records.length) {
-    return '<span class="pc-tag wait"><i class="bi bi-mic"></i> Kayıt bekleniyor</span>';
+    return '<span class="wl-tag wait"><i class="bi bi-mic"></i> Kayıt bekleniyor</span>';
   }
   const done = records.some(r => r.comed_status === "completed");
   const review = records.some(r => r.comed_status === "ready_for_review");
   const busy = records.some(r => r.comed_status && !["completed", "ready_for_review"].includes(r.comed_status));
-  if (done) return '<span class="pc-tag ok"><i class="bi bi-check-circle-fill"></i> COMED tamam</span>';
-  if (review) return '<span class="pc-tag review"><i class="bi bi-eye-fill"></i> Kontrol bekliyor</span>';
-  if (busy) return '<span class="pc-tag busy"><i class="bi bi-arrow-repeat"></i> Aktarılıyor</span>';
-  return `<span class="pc-tag ready"><i class="bi bi-file-earmark-text-fill"></i> ${records.length} rapor hazır</span>`;
+  if (done) return '<span class="wl-tag ok"><i class="bi bi-check-circle-fill"></i> COMED tamam</span>';
+  if (review) return '<span class="wl-tag review"><i class="bi bi-eye-fill"></i> Kontrol bekliyor</span>';
+  if (busy) return '<span class="wl-tag busy"><i class="bi bi-arrow-repeat"></i> Aktarılıyor</span>';
+  return `<span class="wl-tag ready"><i class="bi bi-file-earmark-text-fill"></i> ${records.length} rapor hazır</span>`;
 }
 
 function renderWorklist() {
   $("worklist-count").textContent = `${overview.worklist.length} hasta`;
   $("worklist").innerHTML = overview.worklist.length
-    ? overview.worklist.map((p, i) => {
-        const color = CARD_COLORS[i % CARD_COLORS.length];
-        const on = patientKey(p) === patientKey(selectedPatient);
-        const records = patientRecords(p);
-        const sub = [p.department || p.task, p.doctor_name].filter(Boolean).join(" · ");
-        return `<button class="patient-card ${on ? "selected" : ""}" data-patient="${i}"
-            style="--c:${color.c};--cbg:${color.bg}"
-            title="${esc(p.patient_name)} — seçmek için tıklayın">
-          <span class="pc-head">
-            <span class="patient-avatar">${esc(initials(p.patient_name))}</span>
-            <span class="pc-id">
-              <strong>${esc(p.patient_name || "İsimsiz hasta")}</strong>
-              <small>${esc(p.protocol_no || p.patient_no || p.visit_id)}</small>
+    ? `<div class="wl-table" role="table">
+        <div class="wl-head" role="row">
+          <span role="columnheader">Hasta</span>
+          <span role="columnheader">Hasta no</span>
+          <span role="columnheader">Protokol</span>
+          <span role="columnheader">İşlem / bölüm</span>
+          <span role="columnheader">Doktor</span>
+          <span role="columnheader">Durum</span>
+        </div>
+        ${overview.worklist.map((p, i) => {
+          const on = patientKey(p) === patientKey(selectedPatient);
+          return `<button class="wl-row ${on ? "selected" : ""}" role="row" data-patient="${i}"
+              title="${esc(p.patient_name)} — kayıtlarını süzmek için tıklayın">
+            <span class="wl-name" role="cell">
+              <i class="bi bi-person-fill"></i>
+              <b>${esc(p.patient_name || "İsimsiz hasta")}</b>
+              ${p.birth_date ? `<em>${esc(p.birth_date)}</em>` : ""}
             </span>
-            <span class="pc-check"><i class="bi bi-check-lg"></i></span>
-          </span>
-          ${sub ? `<span class="pc-sub"><i class="bi bi-hospital"></i> ${esc(sub)}</span>` : ""}
-          <span class="pc-tags">
-            ${patientBadge(records)}
-            ${p.birth_date ? `<span class="pc-tag plain"><i class="bi bi-cake2"></i> ${esc(p.birth_date)}</span>` : ""}
-            ${p.status ? `<span class="pc-tag plain"><i class="bi bi-clock-history"></i> ${esc(p.status)}</span>` : ""}
-          </span>
-        </button>`;
-      }).join("")
+            <span class="wl-no" role="cell">${esc(p.patient_no || "—")}</span>
+            <span class="wl-protocol" role="cell">${esc(p.protocol_no || p.visit_id || "—")}</span>
+            <span class="wl-task" role="cell">${esc(p.task || p.department || "—")}</span>
+            <span class="wl-doctor" role="cell">${esc(p.doctor_name || "—")}</span>
+            <span class="wl-state" role="cell">${patientBadge(patientRecords(p))}</span>
+          </button>`;
+        }).join("")}
+      </div>`
     : '<div class="empty-box">Bu doktor için eşitlenmiş COMED hastası yok. Eklentiyi aynı doktor hesabıyla bağlayıp COMED iş listesini açın.</div>';
   document.querySelectorAll("[data-patient]").forEach(el => el.onclick = () => {
     const picked = overview.worklist[+el.dataset.patient];

@@ -104,9 +104,17 @@
   const BRIDGE_WIDGET_KEY = "klinot_comed_bridge_widget_v2";
 
   /* ---- doldurma hizi ----
-     Doktor aktarimi izlerken yavaslatabilsin, acelesi varken hizlandirabilsin.
-     Deger buyudukce bekleme sureleri kisalir; 1 = varsayilan hiz.
-     Balondaki panelden canli degistirilir, chrome.storage'da saklanir. */
+     Deger buyudukce doldurma hizlanir; 1 = varsayilan. Eklenti penceresindeki
+     kaydiraçtan degistirilir, chrome.storage ile buraya anlik yansir.
+
+     DIKKAT (onceki surumdeki hata): yalnizca sleep() olceklendiginde ayar
+     hissedilmiyordu. Olculdugunde sleep'lerin toplami ~2.7 sn, buna karsilik
+     "DOM sakinlesene kadar bekle" (waitForDomQuiet) beklemeleri 1.5-12.7 sn
+     tutuyordu. Yani surenin ancak ~%15'i olcekleniyor, 2.5x bile fark
+     yaratmiyordu. Simdi her iki bekleme turu de olcekleniyor.
+
+     Olceklenmeyen tek sey waitFor()'un ZAMAN ASIMI suresi: o bir guvenlik
+     siniri, kisaltmak alanin hazir olmadan islenmesine yol acar. */
   const FILL_SPEEDS = [
     {value: 0.5, label: "0.5×", title: "Çok yavaş · adımları rahat takip et"},
     {value: 0.75, label: "0.75×", title: "Yavaş"},
@@ -123,23 +131,14 @@
     return FILL_SPEEDS.some((item) => item.value === number) ? number : DEFAULT_FILL_SPEED;
   }
 
-  function applyFillSpeed(value, {persist = false} = {}) {
-    fillSpeed = normalizeFillSpeed(value);
-    if (persist) chrome.storage.local.set({fillSpeed});
-    syncSpeedButtons();
+  /* Bekleme suresini o anki hiza gore olcekle. Alt sinir, en hizli ayarda
+     bile COMED'in olayi isleyebilmesi icindir. */
+  function scaled(ms, floor) {
+    return Math.max(floor, Math.round(ms / (fillSpeed || 1)));
   }
 
-  function syncSpeedButtons() {
-    const box = document.getElementById("klinot-comed-bridge");
-    if (!box) return;
-    box.querySelectorAll("[data-klinot-speed-set]").forEach((button) => {
-      const on = Number(button.dataset.klinotSpeedSet) === fillSpeed;
-      button.setAttribute("aria-pressed", String(on));
-    });
-    const note = box.querySelector("[data-klinot-speed-note]");
-    if (note) {
-      note.textContent = FILL_SPEEDS.find((item) => item.value === fillSpeed)?.title || "";
-    }
+  function applyFillSpeed(value) {
+    fillSpeed = normalizeFillSpeed(value);
   }
 
   chrome.storage.local.get(["fillSpeed"], (value) => applyFillSpeed(value.fillSpeed));
@@ -240,16 +239,8 @@
       #klinot-comed-bridge [data-klinot-log-close]:hover{background:#d2e2e2}
       #klinot-comed-bridge [data-klinot-log-summary]{padding:11px 15px;background:linear-gradient(135deg,#0a9289,#06706c);color:#fff}
       #klinot-comed-bridge [data-klinot-log-list]{flex:1 1 auto;min-height:0;overflow:auto;padding:5px 11px;overscroll-behavior:contain}
-      #klinot-comed-bridge [data-klinot-speed]{display:flex;align-items:center;gap:9px;padding:10px 15px;background:#f4f9f9;border-bottom:1px solid #e0edee;color:#36535a}
-      #klinot-comed-bridge [data-klinot-speed-copy]{flex:1 1 auto;min-width:0}
-      #klinot-comed-bridge [data-klinot-speed-copy] strong{display:block;font:800 12px system-ui;color:#173143}
-      #klinot-comed-bridge [data-klinot-speed-note]{display:block;margin-top:1px;font:600 10.5px system-ui;color:#60777d}
-      #klinot-comed-bridge [data-klinot-speed-buttons]{display:flex;flex:0 0 auto;gap:3px;padding:3px;border-radius:11px;background:#e4eeee}
-      #klinot-comed-bridge [data-klinot-speed-set]{border:0;border-radius:8px;padding:5px 8px;background:transparent;color:#36535a;font:800 11px system-ui;cursor:pointer;transition:background .14s ease,color .14s ease}
-      #klinot-comed-bridge [data-klinot-speed-set]:hover{background:#d2e2e2}
-      #klinot-comed-bridge [data-klinot-speed-set][aria-pressed="true"]{background:#0a9289;color:#fff}
       @media(max-width:620px){#klinot-comed-bridge [data-klinot-log-panel]{right:66px;width:calc(100vw - 96px)}}
-    </style><div data-klinot-log-shell><section data-klinot-log-panel aria-hidden="true"><div data-klinot-log-header><span><strong style="display:block;font-size:13px">İşlem günlüğü</strong><small data-klinot-log-panel-count style="color:#60777d;font-weight:600"></small></span><button data-klinot-log-close type="button" aria-label="İşlem günlüğünü aşağı indir" title="Aşağı indir"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button></div><div data-klinot-log-summary><strong data-klinot-log-title>Klinot hazır</strong><small data-klinot-log-context style="display:block;margin-top:3px;opacity:.82;font-weight:500;overflow-wrap:anywhere"></small></div><div data-klinot-speed><span data-klinot-speed-copy><strong>Doldurma hızı</strong><small data-klinot-speed-note></small></span><span data-klinot-speed-buttons>${FILL_SPEEDS.map((item) => `<button type="button" data-klinot-speed-set="${item.value}" aria-pressed="false" title="${item.title}">${item.label}</button>`).join("")}</span></div><div data-klinot-log-list></div></section><button data-klinot-log-orb type="button" data-live="0" aria-expanded="false" aria-label="Klinot işlem günlüğünü aç"><span data-klinot-log-mark aria-hidden="true">K</span><span data-klinot-log-label aria-live="polite"><b data-klinot-caption-text>Klinot</b><i data-klinot-caption-sub>İşlem günlüğü</i></span></button><span data-klinot-log-count>0</span></div>`;
+    </style><div data-klinot-log-shell><section data-klinot-log-panel aria-hidden="true"><div data-klinot-log-header><span><strong style="display:block;font-size:13px">İşlem günlüğü</strong><small data-klinot-log-panel-count style="color:#60777d;font-weight:600"></small></span><button data-klinot-log-close type="button" aria-label="İşlem günlüğünü aşağı indir" title="Aşağı indir"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button></div><div data-klinot-log-summary><strong data-klinot-log-title>Klinot hazır</strong><small data-klinot-log-context style="display:block;margin-top:3px;opacity:.82;font-weight:500;overflow-wrap:anywhere"></small></div><div data-klinot-log-list></div></section><button data-klinot-log-orb type="button" data-live="0" aria-expanded="false" aria-label="Klinot işlem günlüğünü aç"><span data-klinot-log-mark aria-hidden="true">K</span><span data-klinot-log-label aria-live="polite"><b data-klinot-caption-text>Klinot</b><i data-klinot-caption-sub>İşlem günlüğü</i></span></button><span data-klinot-log-count>0</span></div>`;
     const shell = box.querySelector("[data-klinot-log-shell]");
     const orb = box.querySelector("[data-klinot-log-orb]");
     const panel = box.querySelector("[data-klinot-log-panel]");
@@ -293,16 +284,7 @@
       if (!suppressClick) setOpen(orb.getAttribute("aria-expanded") !== "true");
     });
     box.querySelector("[data-klinot-log-close]").addEventListener("click", () => setOpen(false));
-    // Hiz, aktarim surerken bile degistirilebilir; bir sonraki bekleme
-    // yeni hizla calisir.
-    box.querySelectorAll("[data-klinot-speed-set]").forEach((button) => {
-      button.addEventListener("click", (event) => {
-        event.stopPropagation();
-        applyFillSpeed(button.dataset.klinotSpeedSet, {persist: true});
-      });
-    });
     document.body.appendChild(box);
-    syncSpeedButtons();
     return box;
   }
 
@@ -862,20 +844,20 @@
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
-  /* Adimlar arasi bekleme. Hiz ayari burada uygulanir, boylece tek yerden
-     tum doldurma temposu yavaslar ya da hizlanir. Alt sinir 15 ms: cok hizli
-     ayarda bile COMED'in olay islemesine firsat kalsin. */
+  /* Adimlar arasi bekleme. */
   function sleep(ms) {
-    return rawSleep(Math.max(15, Math.round(ms / (fillSpeed || 1))));
+    return rawSleep(scaled(ms, 15));
   }
 
   async function waitFor(getter, timeoutMs = 4500) {
-    // Yoklama araligi hiz ayarindan etkilenmez; zaman asimi sabit kalsin.
+    // Zaman asimi BILEREK olceklenmez: bu bir guvenlik siniri. Yalnizca
+    // yoklama sikligi hizlanir, boylece eleman hazir olur olmaz devam edilir.
     const deadline = Date.now() + timeoutMs;
+    const poll = scaled(120, 40);
     while (Date.now() < deadline) {
       const value = getter();
       if (value) return value;
-      await rawSleep(120);
+      await rawSleep(poll);
     }
     return null;
   }
@@ -929,8 +911,13 @@
       .sort((a, b) => textOf(a).length - textOf(b).length)[0] || null;
   }
 
+  /* Doldurma suresinin BUYUK bolumu burada geciyor (olculen: 1.5-12.7 sn,
+     sleep'lerin toplami yalnizca ~2.7 sn). Hiz ayarinin hissedilmesi icin
+     hem sessizlik esigi hem ust sinir olceklenir. */
   function waitForDomQuiet(root = document.body, quietMs = 220, timeoutMs = 2200) {
     if (!root) return Promise.resolve();
+    quietMs = scaled(quietMs, 40);
+    timeoutMs = Math.max(scaled(timeoutMs, 400), quietMs + 100);
     return new Promise((resolve) => {
       let quietTimer = null;
       let timeoutTimer = null;

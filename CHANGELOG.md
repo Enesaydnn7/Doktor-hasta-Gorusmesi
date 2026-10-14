@@ -1,3 +1,22 @@
+## v2.20.0 — 14 Ekim 2026
+
+- **Eklenti hız ayarı artık gerçekten çalışıyor.** Önceki sürümde yalnızca
+  `sleep()` beklemeleri ölçekleniyordu; ölçüldüğünde bunların toplamı ~2,7 sn,
+  buna karşılık "DOM sakinleşene kadar bekle" beklemeleri 1,5–12,7 sn
+  tutuyordu. Yani sürenin ancak ~%15'i ölçekleniyor, 2.5× bile fark
+  yaratmıyordu. Artık her iki bekleme türü de ölçekleniyor: 2.5× ayarı
+  doldurmayı ~%58 kısaltıyor, 0.5× ise iki katına çıkarıyor. Yalnızca
+  `waitFor` zaman aşımı sabit kaldı — o bir güvenlik sınırı.
+- Hız ayarı kaydıraç (slider) oldu ve yalnızca eklenti penceresinde duruyor;
+  COMED sayfasındaki balondan kaldırıldı.
+- Doktor panelindeki COMED iş listesi kart düzeninden çıkıp COMED'in kendi iş
+  listesi gibi satır satır tabloya döndü: hasta, hasta no, protokol,
+  işlem/bölüm, doktor, durum sütunları.
+- Doktor panelinde kullanılan model artık yönetici panelindeki gibi görünüyor.
+- Hasta artık randevusunu listeden seçmiyor. T.C. kimlik numarası ve doğum
+  tarihiyle doğrulandığı için randevusu otomatik bağlanıyor; ekranda yalnızca
+  hangi muayene ve hangi doktor olduğu yazıyor.
+
 ## v2.19.0 — 13 Ekim 2026
 
 - Doktor panelindeki ses oynatıcı artık takılmıyor. `/doctor/audio/{kid}` ucu

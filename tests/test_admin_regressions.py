@@ -117,20 +117,49 @@ class BrowserStateRegressionTests(unittest.TestCase):
         self.assertIn("parkLiveAudio(list)", js)
         self.assertIn("restoreLiveAudio(det)", js)
 
-    def test_doctor_worklist_cards_get_distinct_colors(self):
-        """Yan yana iki hasta karti ayni renkte olmamali."""
+    def test_doctor_worklist_looks_like_the_comed_worklist(self):
+        """Is listesi COMED'deki gibi satir satir tablo olmali, kart degil."""
         js = (ROOT / "static" / "doctor.js").read_text(encoding="utf-8")
         css = (ROOT / "static" / "doctor.css").read_text(encoding="utf-8")
-        self.assertIn("CARD_COLORS", js)
-        self.assertIn("CARD_COLORS[i % CARD_COLORS.length]", js)
-        self.assertIn("--c:${color.c};--cbg:${color.bg}", js)
-        self.assertIn(".patient-card{--c:", css)
-        # Kart artik islevli: tiklayinca kayit listesi suzulur.
+        html = (ROOT / "templates" / "doctor.html").read_text(encoding="utf-8")
+
+        # COMED is listesindeki sutunlar
+        for column in ("Hasta", "Hasta no", "Protokol", "İşlem / bölüm", "Doktor", "Durum"):
+            self.assertIn(f'<span role="columnheader">{column}</span>', js)
+        self.assertIn('class="wl-table" role="table"', js)
+        self.assertIn('class="wl-row', js)
+        self.assertIn(".wl-head,.wl-row{display:grid", css)
+
+        # Eski kart duzeni tamamen kalkmali
+        for stale in ("CARD_COLORS", "patient-card", "patient-avatar", "pc-tag"):
+            self.assertNotIn(stale, js, f"{stale} doctor.js'te kalmis")
+            self.assertNotIn(stale, css, f"{stale} doctor.css'te kalmis")
+        self.assertNotIn("worklist-grid", html)
+
+        # Satira tiklayinca kayit listesi yine suzulur
         self.assertIn("rec-filter", js)
         self.assertIn("rec-filter", css)
 
-    def test_extension_fill_speed_is_adjustable(self):
-        """Doktor doldurma hizini yavaslatip hizlandirabilmeli."""
+    def test_extension_speed_scales_the_slow_waits_too(self):
+        """Hiz ayari hissedilmeli: asil sure waitForDomQuiet'te geciyor.
+
+        Onceki surumde yalnizca sleep() olceklendigi icin 2.5x bile fark
+        yaratmiyordu (sleep toplami ~2.7 sn, DOM beklemeleri 1.5-12.7 sn).
+        """
+        content = (ROOT / "comed_bridge_extension" / "content.js").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("function scaled(ms, floor)", content)
+        self.assertIn("return rawSleep(scaled(ms, 15));", content)
+        # Asil kazanc: DOM sakinlesme beklemeleri de olceklenir.
+        self.assertIn("quietMs = scaled(quietMs, 40);", content)
+        self.assertIn("timeoutMs = Math.max(scaled(timeoutMs, 400)", content)
+        # waitFor'un yoklama sikligi olceklenir ama ZAMAN ASIMI olceklenmez.
+        self.assertIn("const poll = scaled(120, 40);", content)
+        self.assertNotIn("scaled(timeoutMs)", content.replace("scaled(timeoutMs, 400)", ""))
+
+    def test_fill_speed_is_a_slider_in_the_popup_only(self):
+        """Hiz ayari yalnizca eklenti penceresinde ve kaydiracli olmali."""
         content = (ROOT / "comed_bridge_extension" / "content.js").read_text(
             encoding="utf-8"
         )
@@ -140,15 +169,30 @@ class BrowserStateRegressionTests(unittest.TestCase):
         popup_html = (ROOT / "comed_bridge_extension" / "popup.html").read_text(
             encoding="utf-8"
         )
-        self.assertIn("FILL_SPEEDS", content)
-        # Tum beklemeler tek yerden olceklenir.
-        self.assertIn("Math.max(15, Math.round(ms / (fillSpeed || 1)))", content)
-        # Zaman asimi yoklamasi hizdan etkilenmemeli.
-        self.assertIn("await rawSleep(120);", content)
-        # Iki taraf chrome.storage uzerinden esitlenir.
+        popup_css = (ROOT / "comed_bridge_extension" / "popup.css").read_text(
+            encoding="utf-8"
+        )
+        # Kaydirac
+        self.assertIn('type="range"', popup_html)
+        self.assertIn('id="speed-slider"', popup_html)
+        self.assertIn('speedSlider.addEventListener("input"', popup_js)
+        self.assertIn("::-webkit-slider-thumb", popup_css)
+        # COMED sayfasindaki balonda hiz ayari KALMAMALI
+        self.assertNotIn("data-klinot-speed", content)
+        self.assertNotIn("syncSpeedButtons", content)
+        # Yine de content.js hizi storage'dan okuyup uygulamali
         self.assertIn("changes.fillSpeed", content)
-        self.assertIn("changes.fillSpeed", popup_js)
-        self.assertIn('data-speed="1"', popup_html)
+
+    def test_doctor_panel_shows_the_model_like_admin(self):
+        """Doktor paneli de hangi modelin kullanildigini gostermeli."""
+        html = (ROOT / "templates" / "doctor.html").read_text(encoding="utf-8")
+        main_py = (ROOT / "main.py").read_text(encoding="utf-8")
+        self.assertIn('<div class="s-lbl">Model</div>', html)
+        self.assertIn("{{ provider }}", html)
+        self.assertIn("{{ stt_provider }}", html)
+        # doctor.html'e provider gercekten geciriliyor mu?
+        self.assertIn('"provider": config.label()', main_py)
+        self.assertIn('"stt_provider": config.stt_label()', main_py)
 
     def test_family_history_is_never_left_empty(self):
         """Soygecmis zorunlu: veri yoksa bile Ozellik Yok/Goruldu isaretlenir."""

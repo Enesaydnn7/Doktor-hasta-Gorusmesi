@@ -147,6 +147,36 @@ class EmptyWorklistApi extends FakeApi {
   Future<List<ComedPatient>> getComedWorklist(String token) async => const [];
 }
 
+/// Ayni hastaya ait birden cok randevu. Hasta bunlardan birini SECMEMELI;
+/// kimlik dogrulamasindan gectigi icin randevusu otomatik baglanir.
+class MultiAppointmentApi extends FakeApi {
+  @override
+  Future<List<ComedPatient>> getComedWorklist(String token) async => const [
+    ComedPatient(
+      visitId: '22207362',
+      clinicalCardId: '30416840',
+      patientName: 'Enes Aydin',
+      clinicalCardUrl: 'https://goztepetest.comed.mlpcare.com/test-1',
+      patientNo: '1300013',
+      protocolNo: 'V-22207362',
+      department: 'Kardiyoloji',
+      doctorName: 'Prof. Dr. Personel Kaya',
+      task: 'Kardiyoloji muayenesi',
+    ),
+    ComedPatient(
+      visitId: '22207358',
+      clinicalCardId: '30416841',
+      patientName: 'Enes Aydin',
+      clinicalCardUrl: 'https://goztepetest.comed.mlpcare.com/test-2',
+      patientNo: '1300013',
+      protocolNo: 'V-22207358',
+      department: 'Dahiliye',
+      doctorName: 'Dr. Ikinci Hekim',
+      task: 'Dahiliye muayenesi',
+    ),
+  ];
+}
+
 class QueuedTransferApi extends FakeApi {
   var createCalls = 0;
 
@@ -247,7 +277,7 @@ void main() {
     );
 
     expect(find.text('Klinot'), findsOneWidget);
-    expect(find.textContaining('v2.19.0'), findsOneWidget);
+    expect(find.textContaining('v2.20.0'), findsOneWidget);
     await tester.enterText(find.byKey(const Key('usernameField')), 'admin');
     await tester.enterText(find.byKey(const Key('passwordField')), 'secret');
     await tester.tap(find.byKey(const Key('loginButton')));
@@ -595,6 +625,43 @@ void main() {
         findsOneWidget,
       );
       directory.deleteSync(recursive: true);
+    },
+  );
+
+  testWidgets(
+    'patient never picks an appointment even with several of them',
+    (tester) async {
+      // Hasta T.C. kimlik numarasi + dogum tarihiyle dogrulandi; sunucu
+      // yalnizca ONA ait randevulari donuyor. Listeden secim yaptirmak
+      // anlamsiz ve hataya acik oldugu icin tamamen kaldirildi.
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: buildKlinotTheme(),
+          home: RecorderScreen(
+            api: MultiAppointmentApi(),
+            session: UserSession(
+              token: 'patient-token',
+              username: '1300013',
+              role: 'patient',
+              displayName: 'Enes Aydin',
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Secim arayuzu HIC olmamali.
+      expect(find.byType(DropdownButtonFormField<ComedPatient>), findsNothing);
+      expect(find.text('Randevularim'), findsNothing);
+
+      // Bunun yerine randevu bilgisi gosterilir: hangi muayene, hangi doktor.
+      expect(find.text('Randevunuz'), findsOneWidget);
+      expect(find.text('Kardiyoloji muayenesi'), findsOneWidget);
+      expect(find.text('Prof. Dr. Personel Kaya'), findsOneWidget);
+      expect(find.textContaining('randevunuza'), findsOneWidget);
+
+      // Ikinci randevu secenek olarak sunulmamali.
+      expect(find.text('Dahiliye muayenesi'), findsNothing);
     },
   );
 }

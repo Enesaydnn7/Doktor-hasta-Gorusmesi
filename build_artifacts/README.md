@@ -1,10 +1,10 @@
 # Klinot COMED Köprüsü kurulumu
 
-Kurulacak dosya: `klinot-comed-bridge-v2.19.0.zip`
+Kurulacak dosya: `klinot-comed-bridge-v2.20.0.zip`
 
-Android uygulaması: `Klinot-v2.19.0.apk`
+Android uygulaması: `Klinot-v2.20.0.apk`
 
-> Bu klasörde yalnızca güncel sürüm tutulur (`main` = `mvp` = v2.19.0).
+> Bu klasörde yalnızca güncel sürüm tutulur (`main` = `mvp` = v2.20.0).
 > Eski paketler depo boyutunu şişirdiği için kaldırıldı; gerekirse ilgili
 > commit'ten geri alınabilir.
 
@@ -21,15 +21,12 @@ Android uygulaması: `Klinot-v2.19.0.apk`
 
 ## Form doldurma hızı
 
-Eklenti alanları tek tek doldururken temposunu değiştirebilirsiniz:
+Eklenti penceresindeki **Form doldurma hızı** kaydıracıyla temposu
+değiştirirsiniz: `0.5×` (çok yavaş), `0.75×`, `1×` (varsayılan), `1.5×`, `2.5×`.
 
-- Eklenti penceresindeki **Form doldurma hızı** satırından, veya
-- Aktarım sürerken COMED sayfasındaki Klinot balonuna tıklayıp açılan
-  paneldeki **Doldurma hızı** satırından.
-
-Seçenekler: `0.5×` (çok yavaş), `0.75×`, `1×` (varsayılan), `1.5×`, `2.5×`.
 Yavaş ayar adımları gözle takip etmek, hızlı ayar işi çabuk bitirmek içindir.
-Seçim kaydedilir ve iki yer anında eşitlenir.
+Değişiklik anında geçerli olur — aktarım sürerken bile kaydırabilirsiniz.
+Seçim kaydedilir, bir dahaki sefere aynı hızla başlar.
 
 Testten sonra son kaydedilmemiş Klinot taslağını geri almak için ilgili COMED hasta kartındayken eklentiyi açıp **Bu karttaki Klinot taslağını temizle** düğmesine basın. Sistem Sorgulama önceki seçimine döndürülür, ardından kart yenilenerek diğer kaydedilmemiş alanlar temizlenir.
 

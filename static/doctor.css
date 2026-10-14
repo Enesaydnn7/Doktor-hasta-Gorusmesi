@@ -7,36 +7,42 @@
 /* ---- COMED is listesi ---- */
 .worklist-section{margin-bottom:22px}
 .rec-head-worklist{grid-template-columns:1fr auto !important}
-.worklist-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(272px,1fr));gap:14px;margin-top:12px}
+/* COMED'in kendi is listesi gibi satir satir tablo. */
+.wl-table{margin-top:10px;border:1px solid var(--line);border-radius:14px;background:#fff;overflow:hidden}
+.wl-head,.wl-row{display:grid;grid-template-columns:minmax(190px,2.1fr) 110px 130px minmax(150px,1.6fr) minmax(140px,1.3fr) 170px;align-items:center;gap:14px;padding:11px 16px;text-align:left}
+.wl-head{background:#f3f8f8;border-bottom:1px solid var(--line);color:var(--muted);font-size:11px;font-weight:800;letter-spacing:.4px;text-transform:uppercase}
+.wl-row{width:100%;border:0;border-top:1px solid #edf3f3;background:#fff;color:var(--ink);font:inherit;cursor:pointer;transition:background .12s ease,box-shadow .12s ease}
+.wl-row:first-of-type{border-top:0}
+.wl-row:hover{background:#f6fbfb}
+.wl-row.selected{background:var(--mint);box-shadow:inset 3px 0 0 var(--teal)}
+.wl-row:focus-visible{outline:2px solid var(--teal);outline-offset:-2px}
 
-/* Her kart --c / --cbg degiskenleriyle kendi rengini alir (doctor.js atar). */
-.patient-card{--c:#078d83;--cbg:#e8f6f3;position:relative;width:100%;display:flex;flex-direction:column;gap:10px;text-align:left;padding:16px 16px 14px;background:#fff;color:var(--ink);border:1px solid var(--line);border-radius:18px;cursor:pointer;font:inherit;overflow:hidden;transition:transform .14s ease,border-color .14s ease,box-shadow .14s ease}
-.patient-card::before{content:"";position:absolute;inset:0 0 auto 0;height:5px;background:var(--c)}
-.patient-card:hover{transform:translateY(-2px);border-color:var(--c);box-shadow:0 10px 26px #0f2a3a1f}
-.patient-card.selected{border-color:var(--c);background:var(--cbg);box-shadow:inset 0 0 0 2px var(--c)}
-.patient-card:focus-visible{outline:3px solid var(--c);outline-offset:2px}
+.wl-name{display:flex;align-items:center;gap:8px;min-width:0}
+.wl-name i{flex:0 0 auto;color:var(--teal)}
+.wl-name b{font-size:14px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wl-name em{flex:0 0 auto;color:var(--muted);font-size:11.5px;font-style:normal;font-variant-numeric:tabular-nums}
+.wl-no,.wl-protocol{color:var(--muted);font-size:12.5px;font-variant-numeric:tabular-nums}
+.wl-task,.wl-doctor{font-size:12.5px;color:#3d5a63;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wl-state{display:flex;justify-content:flex-start}
 
-.pc-head{display:flex;align-items:center;gap:12px;margin-top:3px}
-.patient-avatar{width:46px;height:46px;flex:0 0 46px;border-radius:14px;background:var(--cbg);color:var(--c);display:grid;place-items:center;font-size:16px;font-weight:800;letter-spacing:.4px;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--c) 22%,transparent)}
-.patient-card.selected .patient-avatar{background:var(--c);color:#fff;box-shadow:none}
-.pc-id{min-width:0;flex:1;display:flex;flex-direction:column;gap:2px}
-.pc-id strong{font-size:15px;line-height:1.25;overflow-wrap:anywhere}
-.pc-id small{color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
-.pc-check{flex:0 0 24px;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:var(--c);color:#fff;font-size:13px;opacity:0;transform:scale(.6);transition:.14s ease}
-.patient-card.selected .pc-check{opacity:1;transform:none}
+.wl-tag{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:999px;font-size:11.5px;font-weight:700;white-space:nowrap}
+.wl-tag.wait{background:#f1f5f6;color:#6b7f88}
+.wl-tag.ready{background:#e9f1fd;color:#2f5fb8}
+.wl-tag.busy{background:#fdf2e0;color:#9a6208}
+.wl-tag.review{background:#fdeaf0;color:#ad3660}
+.wl-tag.ok{background:#e6f5ec;color:#1d7a46}
 
-.pc-sub{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:12.5px;overflow-wrap:anywhere}
-.pc-sub i{color:var(--c)}
-/* margin-top:auto → isim ya da bolum iki satira sarsa bile rozetler
-   ayni satirdaki tum kartlarda ayni hizada kalir. */
-.pc-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:auto;padding-top:2px}
-.pc-tag{display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:999px;font-size:11.5px;font-weight:700;background:var(--cbg);color:var(--c);white-space:nowrap}
-.pc-tag.plain{background:#f1f5f6;color:var(--muted)}
-.pc-tag.wait{background:#f1f5f6;color:#6b7f88}
-.pc-tag.ready{background:#e9f1fd;color:#2f5fb8}
-.pc-tag.busy{background:#fdf2e0;color:#9a6208}
-.pc-tag.review{background:#fdeaf0;color:#ad3660}
-.pc-tag.ok{background:#e6f5ec;color:#1d7a46}
+/* Dar ekranda tablo satiri kart gibi yigilir ama yine liste duzeninde kalir. */
+@media(max-width:1060px){
+  .wl-head{display:none}
+  .wl-row{grid-template-columns:1fr auto;gap:6px 12px;padding:13px 15px}
+  .wl-name{grid-column:1;order:1}
+  .wl-state{grid-column:2;grid-row:1;order:2;justify-content:flex-end}
+  .wl-no,.wl-protocol,.wl-task,.wl-doctor{grid-column:1/-1;order:3}
+  .wl-no::before{content:"Hasta no: "}
+  .wl-protocol::before{content:"Protokol: "}
+  .wl-doctor::before{content:"Doktor: "}
+}
 
 /* kayit listesi suzgec seridi */
 .rec-filter{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px;padding:10px 14px;background:var(--mint);border:1px solid #bfe3de;border-radius:12px;font-size:13px;color:#0b5d57}
@@ -58,7 +64,3 @@
 .login-card input{display:block;width:100%;margin-top:6px;padding:13px;border:1px solid #b8cbce;border-radius:11px;font:inherit}
 .login-card button{width:100%;border:0;border-radius:12px;padding:13px;background:var(--teal);color:#fff;font:inherit;font-weight:750;cursor:pointer}
 .login-card .alert{padding:12px;background:#fff0f0;color:#9d2931;border-radius:10px}
-
-@media(max-width:760px){
-  .worklist-grid{grid-template-columns:1fr}
-}

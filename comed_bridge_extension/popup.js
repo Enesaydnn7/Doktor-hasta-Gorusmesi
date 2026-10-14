@@ -12,37 +12,40 @@ const connectedName = document.getElementById("connected-name");
 const connectedUser = document.getElementById("connected-user");
 const switchAccount = document.getElementById("switch-account");
 const cancelSwitch = document.getElementById("cancel-switch");
-const speedButtons = document.getElementById("speed-buttons");
+const speedSlider = document.getElementById("speed-slider");
+const speedValue = document.getElementById("speed-value");
 const speedNote = document.getElementById("speed-note");
 
-/* Form doldurma hizi: content.js her bekleme suresini bu degere boler.
-   Buyuk deger daha hizli doldurur. Ayni deger COMED sayfasindaki balonda da
-   gosterilir; iki taraf chrome.storage uzerinden anlik esitlenir. */
-const SPEED_VALUES = [0.5, 0.75, 1, 1.5, 2.5];
-const DEFAULT_SPEED = 1;
+/* Form doldurma hizi. content.js her beklemeyi bu degere boler; buyuk deger
+   daha hizli doldurur. Kaydirac kademeli: dizideki sira numarasini tasir,
+   boylece 0.5-2.5 arasi dogrusal olmayan adimlar duzgun gorunur. */
+const SPEEDS = [
+  {value: 0.5, label: "0.5×", title: "Çok yavaş · adımları rahat takip et"},
+  {value: 0.75, label: "0.75×", title: "Yavaş"},
+  {value: 1, label: "1×", title: "Normal (varsayılan)"},
+  {value: 1.5, label: "1.5×", title: "Hızlı"},
+  {value: 2.5, label: "2.5×", title: "Çok hızlı"},
+];
+const DEFAULT_SPEED_INDEX = 2; // 1×
 
-function normalizeSpeed(value) {
-  const number = Number(value);
-  return SPEED_VALUES.includes(number) ? number : DEFAULT_SPEED;
+function speedIndexOf(value) {
+  const index = SPEEDS.findIndex((item) => item.value === Number(value));
+  return index === -1 ? DEFAULT_SPEED_INDEX : index;
 }
 
 function paintSpeed(value) {
-  const speed = normalizeSpeed(value);
-  let title = "";
-  speedButtons.querySelectorAll("[data-speed]").forEach((item) => {
-    const on = Number(item.dataset.speed) === speed;
-    item.setAttribute("aria-pressed", String(on));
-    if (on) title = item.title;
-  });
-  speedNote.textContent = title;
+  const index = speedIndexOf(value);
+  const step = SPEEDS[index];
+  speedSlider.value = String(index);
+  speedValue.textContent = step.label;
+  speedNote.textContent = step.title;
+  speedSlider.setAttribute("aria-valuetext", `${step.label} · ${step.title}`);
 }
 
-speedButtons.addEventListener("click", (event) => {
-  const item = event.target.closest("[data-speed]");
-  if (!item) return;
-  const speed = normalizeSpeed(item.dataset.speed);
-  paintSpeed(speed);
-  chrome.storage.local.set({fillSpeed: speed});
+speedSlider.addEventListener("input", () => {
+  const step = SPEEDS[Number(speedSlider.value)] || SPEEDS[DEFAULT_SPEED_INDEX];
+  paintSpeed(step.value);
+  chrome.storage.local.set({fillSpeed: step.value});
 });
 
 const COMED_CARD_RE = /^https:\/\/goztepetest\.comed\.mlpcare\.com\/tr-tr\/medical\//i;

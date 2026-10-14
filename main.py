@@ -966,7 +966,13 @@ async def doctor_panel(request: Request):
     return templates.TemplateResponse(
         request,
         "doctor.html",
-        {"user": session, "version": config.APP_VERSION},
+        # Yonetici panelindeki gibi hangi modelin kullanildigi gorunsun.
+        {
+            "user": session,
+            "version": config.APP_VERSION,
+            "provider": config.label(),
+            "stt_provider": config.stt_label(),
+        },
     )
 
 
