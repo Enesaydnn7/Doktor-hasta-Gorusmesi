@@ -1,10 +1,10 @@
 # Klinot COMED Köprüsü kurulumu
 
-Kurulacak dosya: `klinot-comed-bridge-v2.21.0.zip`
+Kurulacak dosya: `klinot-comed-bridge-v2.22.0.zip`
 
-Android uygulaması: `Klinot-v2.21.0.apk`
+Android uygulaması: `Klinot-v2.22.0.apk`
 
-> Bu klasörde yalnızca güncel sürüm tutulur (`main` = `mvp` = v2.21.0).
+> Bu klasörde yalnızca güncel sürüm tutulur (`main` = `mvp` = v2.22.0).
 > Eski paketler depo boyutunu şişirdiği için kaldırıldı; gerekirse ilgili
 > commit'ten geri alınabilir.
 

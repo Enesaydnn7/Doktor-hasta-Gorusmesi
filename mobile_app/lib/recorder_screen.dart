@@ -52,6 +52,12 @@ class _RecorderScreenState extends State<RecorderScreen> {
   ComedPatient? _selectedPatient;
   var _loadingWorklist = true;
   String? _worklistError;
+  // Randevu heniz baglanmadiysa kendiliginden tekrar dener. Hastanin T.C.
+  // kimlik ozeti COMED'de ancak doktor hasta kartini actiginda olusuyor;
+  // o ana kadar randevu gorunmuyordu ve hasta elle yenilemek zorunda
+  // kaliyordu.
+  Timer? _worklistRetry;
+  var _worklistTries = 0;
 
   bool get _isRecording =>
       _state == RecordingState.recording || _state == RecordingState.paused;
@@ -81,7 +87,11 @@ class _RecorderScreenState extends State<RecorderScreen> {
     });
   }
 
-  Future<void> _loadWorklist() async {
+  Future<void> _loadWorklist({bool elle = true}) async {
+    if (elle) {
+      _worklistRetry?.cancel();
+      _worklistTries = 0;
+    }
     if (mounted) {
       setState(() {
         _loadingWorklist = true;
@@ -110,11 +120,32 @@ class _RecorderScreenState extends State<RecorderScreen> {
         _worklistError = error.toString();
       });
     }
+    _randevuyuBeklemeyeAl();
   }
+
+  /// Randevu henüz görünmüyorsa arka planda sessizce tekrar dener.
+  ///
+  /// Hastanın randevusu COMED'de ancak doktor hasta kartını açtığında
+  /// eşleşebiliyor (T.C. kimlik numarası yalnızca o panelde yazıyor).
+  /// Önceden hasta bunu bilmeden elle yenilemek zorunda kalıyordu.
+  void _randevuyuBeklemeyeAl() {
+    _worklistRetry?.cancel();
+    if (!_patientMode || _selectedPatient != null || _isRecording) return;
+    if (_worklistTries >= _maxWorklistTries) return;
+    _worklistTries += 1;
+    _worklistRetry = Timer(const Duration(seconds: 6), () {
+      if (!mounted) return;
+      unawaited(_loadWorklist(elle: false));
+    });
+  }
+
+  // 6 sn x 25 = ~2,5 dakika sessiz deneme; sonra hasta elle yenileyebilir.
+  static const _maxWorklistTries = 25;
 
   @override
   void dispose() {
     _timer?.cancel();
+    _worklistRetry?.cancel();
     _processingTimer?.cancel();
     _processingStopwatch.stop();
     unawaited(_levelSubscription?.cancel());
@@ -394,9 +425,8 @@ class _RecorderScreenState extends State<RecorderScreen> {
               const SizedBox(height: 22),
               // Hastada randevu secimi HIC yok: kimlik dogrulamasindan gecen
               // hastanin randevusu zaten belli, otomatik baglanir. Secici
-              // yalnizca doktor tarafinda ve yalnizca yukleme/hata halinde
-              // gosterilir.
-              if (!_patientMode || _loadingWorklist || _worklistError != null) ...[
+              // yalnizca doktor tarafinda gosterilir.
+              if (!_patientMode) ...[
                 _ComedPatientSelector(
                   patientMode: _patientMode,
                   patients: _worklist,
@@ -479,12 +509,18 @@ class _RecorderScreenState extends State<RecorderScreen> {
               // Hastanin randevu bilgisi kayit kartinin ALTINDA durur; boylece
               // uygulama acildiginda ilk gorulen sey kayit ekrani olur.
               // Secim degil, yalnizca "bu randevuya islenecek" bilgisi.
-              if (_patientMode && !_loadingWorklist
-                  && _worklistError == null && _selectedPatient != null) ...[
+              if (_patientMode && _selectedPatient == null) ...[
+                const SizedBox(height: 14),
+                _PatientAppointmentWaiting(
+                  searching: _worklistTries < _maxWorklistTries,
+                  error: _worklistError,
+                  onRefresh: _loadingWorklist ? null : () => _loadWorklist(),
+                ),
+              ] else if (_patientMode && _selectedPatient != null) ...[
                 const SizedBox(height: 14),
                 _PatientAppointmentStrip(
                   patient: _selectedPatient!,
-                  onRefresh: _loadingWorklist ? null : _loadWorklist,
+                  onRefresh: _loadingWorklist ? null : () => _loadWorklist(),
                 ),
               ],
               const SizedBox(height: 18),
@@ -748,6 +784,97 @@ class _PatientAppointmentStrip extends StatelessWidget {
             tooltip: 'Randevuyu yenile',
             icon: const Icon(Icons.refresh_rounded, size: 20),
             color: klinotTeal,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Randevu henüz eşleşmediğinde gösterilir.
+///
+/// Hastanın randevusu COMED'de ancak doktor hasta kartını açtığında
+/// eşleşebiliyor. Önceden ekranda hiçbir açıklama olmadığı için hasta ne
+/// olduğunu anlamıyor, elle yenilemeye çalışıyordu. Artık arka planda
+/// kendiliğinden deneniyor ve durum burada yazıyor.
+class _PatientAppointmentWaiting extends StatelessWidget {
+  const _PatientAppointmentWaiting({
+    required this.searching,
+    this.error,
+    this.onRefresh,
+  });
+
+  final bool searching;
+  final String? error;
+  final VoidCallback? onRefresh;
+
+  @override
+  Widget build(BuildContext context) {
+    final baslik = error != null
+        ? 'Randevu bilgisi alınamadı'
+        : searching
+        ? 'Randevunuz aranıyor…'
+        : 'Randevunuz henüz görünmüyor';
+    final aciklama = error != null
+        ? 'Bağlantınızı kontrol edip tekrar deneyin.'
+        : searching
+        ? 'Doktorunuz sizi sistemde açtığında randevunuz buraya otomatik gelecek. '
+              'Bir şey yapmanıza gerek yok.'
+        : 'Doktorunuz sizi sistemde açtıktan sonra yenile düğmesine basın.';
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF7E8),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFF0DFBE)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox.square(
+            dimension: 20,
+            child: searching && error == null
+                ? const CircularProgressIndicator(
+                    strokeWidth: 2.2,
+                    color: Color(0xFFB7791F),
+                  )
+                : const Icon(
+                    Icons.schedule_rounded,
+                    size: 20,
+                    color: Color(0xFFB7791F),
+                  ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  baslik,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                    color: Color(0xFF8A5A08),
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  aciklama,
+                  style: const TextStyle(
+                    color: Color(0xFF8A6A3A),
+                    fontSize: 12,
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            onPressed: onRefresh,
+            tooltip: 'Şimdi yenile',
+            icon: const Icon(Icons.refresh_rounded, size: 20),
+            color: const Color(0xFFB7791F),
           ),
         ],
       ),

@@ -1,3 +1,39 @@
+## v2.22.0 — 14 Ekim 2026
+
+### COMED aktarımı artık takılı kalmıyor
+
+- **Kök sebep:** aktarım `queued` durumunda asılı kalırsa "COMED'e aktar"
+  düğmesi sonsuza kadar pasif kalıyordu; iptal ya da yeniden deneme yolu hiç
+  yoktu. Eklenti kapalıysa veya köprü yanıt vermediyse doktor o görüşmeyi bir
+  daha hiç aktaramıyordu.
+- Sunucu artık ilerlemeyen aktarımı `stale` işaretliyor (kendi saatiyle, 75 sn).
+  Takılan aktarımda düğme **"Yeniden aktar"** olarak açılıyor ve ne olduğunu
+  anlatan bir uyarı çıkıyor.
+- Yeni uç: `POST /doctor/api/comed/transfers/{id}/cancel`. Süren aktarımın
+  yanında **"Vazgeç"** düğmesi var. COMED'e işlenmiş aktarım bırakılamıyor (409).
+- Köprü yanıt vermezse aktarım kendiliğinden bırakılıyor; düğme hemen yeniden
+  kullanılabilir oluyor.
+
+### Boş sekme sorunu
+
+- Köprü zaman aşımı 1,8 sn → **7 sn**. Chrome MV3 arka plan betiği uykuya
+  daldığı için ilk mesajda uyanması birkaç saniye sürebiliyor; eski sınır sık
+  sık doluyordu.
+- Yanıt gelmediğinde `window.open` ile yedek sekme **açılmıyor** artık — o sekme
+  çoğu zaman boş kalıyordu.
+- Eklenti yeni sekmeyi doğrudan hedef adresle açıyor; önce `about:blank` açıp
+  sonra yönlendirmiyor.
+
+### Hasta randevusunun geç bağlanması
+
+- Hastanın randevusu COMED'de ancak doktor hasta kartını açtığında eşleşebiliyor
+  (T.C. kimlik numarası yalnızca o panelde yazıyor — COMED kısıtı). Hasta bunu
+  bilmeden elle yenilemek zorunda kalıyordu.
+- Uygulama artık **kendiliğinden tekrar deniyor** (6 saniyede bir, ~2,5 dakika)
+  ve ekranda "Randevunuz aranıyor… Doktorunuz sizi sistemde açtığında randevunuz
+  buraya otomatik gelecek" yazıyor.
+- Eklenti iş listesi satırından doğum tarihini de topluyor.
+
 ## v2.21.0 — 14 Ekim 2026
 
 - Doktor panelindeki kayıt listesi COMED iş listesine benzetildi: satırlar bir

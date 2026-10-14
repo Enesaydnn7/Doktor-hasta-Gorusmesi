@@ -277,7 +277,7 @@ void main() {
     );
 
     expect(find.text('Klinot'), findsOneWidget);
-    expect(find.textContaining('v2.21.0'), findsOneWidget);
+    expect(find.textContaining('v2.22.0'), findsOneWidget);
     await tester.enterText(find.byKey(const Key('usernameField')), 'admin');
     await tester.enterText(find.byKey(const Key('passwordField')), 'secret');
     await tester.tap(find.byKey(const Key('loginButton')));
@@ -664,4 +664,37 @@ void main() {
       expect(find.text('Dahiliye muayenesi'), findsNothing);
     },
   );
+
+  testWidgets('patient waiting for an appointment sees what is happening', (
+    tester,
+  ) async {
+    // Hastanin randevusu COMED'de ancak doktor hasta kartini actiginda
+    // eslesebiliyor. O ana kadar ekran bos kalmamali: ne oldugu yazmali
+    // ve uygulama kendisi tekrar denemeli.
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildKlinotTheme(),
+        home: RecorderScreen(
+          api: EmptyWorklistApi(),
+          session: UserSession(
+            token: 'patient-token',
+            username: '1300013',
+            role: 'patient',
+            displayName: 'Enes Aydin',
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.text('Randevunuz aranıyor…'), findsOneWidget);
+    expect(find.textContaining('Doktorunuz sizi sistemde açtığında'), findsOneWidget);
+    // Secim arayuzu yine olmamali.
+    expect(find.byType(DropdownButtonFormField<ComedPatient>), findsNothing);
+
+    // Zamanlayici acikken test bitmesin diye bekleyen isi temizle.
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(seconds: 1));
+  });
 }

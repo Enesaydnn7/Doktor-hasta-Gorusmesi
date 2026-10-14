@@ -66,13 +66,15 @@ async function openComedTarget(rawUrl, sender) {
     await chrome.windows.update(tab.windowId, {focused: true}).catch(() => {});
     if (sameComedTarget(tab.url, target.href)) await sessionRemove(PENDING_COMED_KEY);
   } else {
-    selected = await chrome.tabs.create({url: "about:blank", active: true});
+    // Dogrudan hedef adresle ac. Onceden "about:blank" acilip ardindan
+    // yonlendiriliyordu; ikinci adim basarisiz olursa doktorun onunde BOS
+    // bir sekme kaliyordu.
+    selected = await chrome.tabs.create({url: target.href, active: true});
     await sessionSet(PENDING_COMED_KEY, {
       tabId: selected.id,
       url: target.href,
       createdAt: Date.now(),
     });
-    selected = await chrome.tabs.update(selected.id, {url: target.href, active: true});
   }
   return {
     reused: Boolean(tab),

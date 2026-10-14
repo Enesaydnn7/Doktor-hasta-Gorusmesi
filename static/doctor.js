@@ -207,8 +207,28 @@ document.addEventListener("click", (e) => {
   const pdf = e.target.closest("[data-pdf]");
   if (pdf) { indirPdf(pdf); return; }
   const send = e.target.closest("[data-comed-send]");
-  if (send) comedAktar(send.dataset.comedSend, send);
+  if (send) { comedAktar(send.dataset.comedSend, send); return; }
+  const cancel = e.target.closest("[data-comed-cancel]");
+  if (cancel) comedVazgec(cancel.dataset.comedCancel, cancel.dataset.rid, cancel);
 });
+
+/* Takilmis aktarimi birak ki doktor yeniden deneyebilsin. */
+async function comedVazgec(transferId, recordId, btn) {
+  btn.disabled = true;
+  btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Bırakılıyor…';
+  try {
+    const fresh = await json(`/doctor/api/comed/transfers/${transferId}/cancel`, {method: "POST"});
+    clearInterval(transferTimer);
+    if (cache[recordId]) cache[recordId].comed_transfer = fresh;
+    activeTransfer = null;
+    drawDetail(recordId, "comed");
+    toast("Aktarım bırakıldı. Şimdi yeniden deneyebilirsiniz.");
+  } catch (error) {
+    toast(error.message, true);
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-x-circle"></i> Vazgeç';
+  }
+}
 
 async function toggleDetail(id) {
   const det = $("det-" + id);
@@ -302,17 +322,34 @@ function drawDetail(id, sekme) {
   const patient = linkedPatient(k) || {};
   const transfer = k.comed_transfer || {};
   const comedUrl = transfer.clinical_card_url || patient.clinical_card_url || "";
-  const locked = ["queued", "filling", "ready_for_review", "completed"].includes(transfer.status);
+  /* Dugme YALNIZCA gercekten calisan bir aktarim varken kilitlenir.
+     Eklenti kapaliysa ya da kopru yanit vermediyse aktarim "queued"da asili
+     kalip dugmeyi sonsuza kadar pasif biraktiriyordu. Sunucu, belirli sure
+     ilerlemeyen aktarimi stale=true isaretler; o zaman kilit acilir. */
+  const calisiyor = ["queued", "filling"].includes(transfer.status) && !transfer.stale;
+  const bitti = ["ready_for_review", "completed"].includes(transfer.status);
+  const takildi = Boolean(transfer.stale);
+  const locked = calisiyor || bitti;
+  const gonderEtiket = bitti
+    ? '<i class="bi bi-check-circle"></i> COMED\'e aktarıldı'
+    : takildi
+      ? '<i class="bi bi-arrow-clockwise"></i> Yeniden aktar'
+      : '<i class="bi bi-send"></i> COMED\'e aktar ve kartı aç';
 
   det.innerHTML = `
     ${meta}${audio}
     <div class="comed-action-bar">
       <div class="comed-action-copy"><i class="bi bi-hospital"></i><span><b>COMED</b>${comedStatusHTML(transfer.status)}</span></div>
       <div class="comed-action-buttons">
-        <button class="mini-btn comed-send" data-comed-send="${id}" ${!patient.visit_id || locked ? "disabled" : ""}><i class="bi bi-send"></i> COMED'e aktar ve kartı aç</button>
+        <button class="mini-btn comed-send" data-comed-send="${id}" ${!patient.visit_id || locked ? "disabled" : ""}>${gonderEtiket}</button>
+        ${calisiyor ? `<button class="mini-btn comed-cancel" data-comed-cancel="${transfer.id}" data-rid="${id}" title="Aktarım ilerlemiyorsa bırakıp yeniden deneyin"><i class="bi bi-x-circle"></i> Vazgeç</button>` : ""}
         ${comedUrl ? `<a class="mini-btn comed-open" href="${esc(comedUrl)}" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right"></i> COMED'de aç</a>` : ""}
       </div>
     </div>
+    ${takildi ? `<div class="comed-warning stuck"><i class="bi bi-exclamation-triangle"></i><div>
+       <b>Aktarım ilerlemiyor</b>
+       <p>${transfer.age_seconds ? `${Math.round(transfer.age_seconds / 60) || 1} dakikadır` : "Bir süredir"} yanıt gelmedi.
+       COMED sekmesinin açık ve eklentinin bağlı olduğundan emin olup <b>Yeniden aktar</b> deyin.</p></div></div>` : ""}
     ${!patient.visit_id ? '<div class="comed-warning"><i class="bi bi-info-circle"></i><div><b>Hasta seçilmedi</b><p>Aktarım için yukarıdaki COMED iş listesinden bu görüşmenin hastasını seçin.</p></div></div>' : ""}
     <div class="det-tabs">
       ${tabs.map(([key, lbl, ic]) => `<button class="det-tab ${key === sekme ? "active" : ""}" data-tab="${key}" data-rid="${id}"><i class="bi bi-${ic}"></i> ${lbl}</button>`).join("")}
@@ -357,6 +394,11 @@ function statusText(status) {
   }[status] || "Hazır";
 }
 
+/* Eklentinin arka plan betigi (MV3 service worker) uykuya dalar; ilk mesajda
+   uyanmasi birkac saniye surebilir. Eski 1,8 sn'lik sinir bu yuzden sik sik
+   dolup "eklenti yanit vermedi" diyordu. */
+const BRIDGE_OPEN_TIMEOUT_MS = 7000;
+
 function openComedWithBridge(url, transferId) {
   return new Promise((resolve) => {
     const requestId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -374,7 +416,10 @@ function openComedWithBridge(url, transferId) {
         || event.data?.request_id !== requestId) return;
       finish(event.data);
     };
-    const timer = setTimeout(() => finish({ok: false, error: "Klinot COMED eklentisi yanıt vermedi"}), 1800);
+    const timer = setTimeout(
+      () => finish({ok: false, error: "Klinot COMED eklentisi yanıt vermedi"}),
+      BRIDGE_OPEN_TIMEOUT_MS,
+    );
     window.addEventListener("message", onMessage);
     window.postMessage({source: "klinot-doctor-comed-open-v1", request_id: requestId, url, transfer_id: transferId}, location.origin);
   });
@@ -395,10 +440,25 @@ async function comedAktar(id, btn) {
     cache[id].comed_transfer = activeTransfer;
     drawDetail(id, "comed");
     const opened = await openComedWithBridge(patient.clinical_card_url, activeTransfer.id);
-    toast(opened.ok
-      ? (opened.reused ? "Açık COMED sekmesi kullanıldı; giriş gerekirse aktarım girişten sonra devam eder." : "COMED kartı açıldı; giriş gerekirse aktarım otomatik devam eder.")
-      : (window.open(patient.clinical_card_url, "_blank") ? "Eklenti yanıt vermedi; COMED kartı yeni sekmede açıldı." : "COMED eklentisi yanıt vermedi; kartı elle açın."),
-      !opened.ok);
+    if (opened.ok) {
+      toast(opened.reused
+        ? "Açık COMED sekmesi kullanıldı; giriş gerekirse aktarım girişten sonra devam eder."
+        : "COMED kartı açıldı; giriş gerekirse aktarım otomatik devam eder.");
+    } else {
+      /* window.open ile YEDEK sekme ACMIYORUZ: acilan sekme cogu zaman bos
+         kaliyor (pop-up engeli / yarim yuklenme) ve doktor "sekme acildi ama
+         girmedi" diye kaliyordu. Bunun yerine aktarimi birakip net yol
+         gosteriyoruz; yanindaki "COMED'de ac" baglantisi zaten duruyor. */
+      await json(`/doctor/api/comed/transfers/${activeTransfer.id}/cancel`, {method: "POST"})
+        .catch(() => {});
+      cache[id].comed_transfer = await json(`/doctor/api/comed/transfers/${activeTransfer.id}`)
+        .catch(() => ({...activeTransfer, status: "failed", stale: true}));
+      activeTransfer = null;
+      drawDetail(id, "comed");
+      toast("Klinot eklentisi yanıt vermedi. COMED sekmesinin açık ve eklentinin bağlı "
+        + "olduğundan emin olup yeniden deneyin.", true);
+      return;
+    }
     await pollTransfer(id, activeTransfer.id);
   } catch (error) {
     toast(error.message, true);

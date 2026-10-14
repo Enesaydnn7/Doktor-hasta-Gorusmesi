@@ -1019,6 +1019,28 @@ async def doctor_transfer_status(transfer_id: int, request: Request):
     return transfer
 
 
+@app.post("/doctor/api/comed/transfers/{transfer_id}/cancel")
+async def doctor_transfer_cancel(transfer_id: int, request: Request):
+    """Takılmış bir aktarımı bırak ki doktor yeniden deneyebilsin.
+
+    Eklenti kapalıysa, COMED sekmesi açılmadıysa ya da köprü yanıt vermediyse
+    aktarım "queued" durumunda asılı kalıyor ve "COMED'e aktar" düğmesi
+    sonsuza kadar pasif kalıyordu.
+    """
+    session = doctor_auth(request)
+    transfer = db.comed_transfer_get(transfer_id)
+    if not transfer or transfer.get("requested_by") != session["user"]:
+        raise HTTPException(status_code=404, detail="COMED aktarımı bulunamadı")
+    if transfer.get("status") in {"completed", "ready_for_review"}:
+        raise HTTPException(
+            status_code=409,
+            detail="Bu aktarım COMED'e zaten işlendi; kartı açıp kontrol edin.",
+        )
+    return db.comed_transfer_update(
+        transfer_id, "failed", "Doktor aktarımı bıraktı"
+    )
+
+
 def _audio_response(request: Request, data: bytes, mime: str, name: str) -> Response:
     """Ses yanıtını HTTP Range destekli döndür.
 

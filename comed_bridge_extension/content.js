@@ -469,6 +469,12 @@
     const taskText = textOf(cells[6]) || raw;
     const doctorLines = (cells[9]?.innerText || "")
       .split(/\r?\n/).map((value) => value.trim()).filter(Boolean);
+    // COMED is listesi satiri dogum tarihini gosteriyor ("28yıl 22.10.1997").
+    // TCKN burada YOK -- o yalnizca hasta kartindaki "Hasta Bilgileri"
+    // panelinde. Yine de dogum tarihini simdiden gonderiyoruz; hasta
+    // eslesmesi icin gereken ikinci parca kart acilinca tamamlanir.
+    const birthDate = (patientCell?.innerText || "")
+      .match(/\b(\d{2})[.\/-](\d{2})[.\/-](\d{4})\b/);
     return {
       visit_id: visitId,
       clinical_card_id: String(card.cardId || ""),
@@ -481,6 +487,7 @@
       task: taskText,
       status: /Bekliyor/i.test(raw) ? "Bekliyor" : "",
       clinical_card_url: card.url || "",
+      ...(birthDate ? {birth_date: `${birthDate[1]}.${birthDate[2]}.${birthDate[3]}`} : {}),
     };
   }
 

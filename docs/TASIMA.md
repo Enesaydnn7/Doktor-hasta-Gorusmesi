@@ -4,7 +4,7 @@ Bu belge, Klinot'u Render'dan kendi Ubuntu sunucumuza ve veritabanını
 SQLite'tan Supabase'e (Postgres) taşımak için gereken her şeyi içerir.
 Taşıma gününde tek başına yeterli olacak şekilde yazıldı.
 
-**Son güncelleme:** v2.21.0 · 13 Ekim 2026
+**Son güncelleme:** v2.22.0 · 13 Ekim 2026
 
 ---
 
@@ -49,7 +49,7 @@ Aşağıdaki liste koddan doğrulandı. Taşırken bunların hepsini gözden ge�
 
 | Değişken | Varsayılan | Açıklama |
 |---|---|---|
-| `APP_VERSION` | `v2.21.0` | Arayüzde gösterilen sürüm |
+| `APP_VERSION` | `v2.22.0` | Arayüzde gösterilen sürüm |
 | `GEMINI_MODEL` | `gemini-2.5-flash` | |
 | `TEMPERATURE` | `0` | Gemini çıktı kararlılığı |
 | `OPENAI_STT_MODEL` | `gpt-4o-transcribe-diarize` | |

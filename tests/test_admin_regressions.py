@@ -176,6 +176,63 @@ class BrowserStateRegressionTests(unittest.TestCase):
         # Degisiklik doktora bildirilir.
         self.assertIn("Doldurma hızı ${etiket}", content)
 
+    def test_stuck_comed_transfer_can_be_retried(self):
+        """Takilan aktarim dugmeyi sonsuza kadar pasif birakmamali.
+
+        Eklenti kapaliysa ya da kopru yanit vermediyse aktarim "queued"da
+        asili kaliyor ve doktor bir daha hic deneyemiyordu.
+        """
+        db_py = (ROOT / "db.py").read_text(encoding="utf-8")
+        main_py = (ROOT / "main.py").read_text(encoding="utf-8")
+        js = (ROOT / "static" / "doctor.js").read_text(encoding="utf-8")
+
+        # Takilma SUNUCU saatiyle hesaplanir (tarayici saat dilimi yaniltmasin)
+        self.assertIn("COMED_TRANSFER_STUCK_SECONDS", db_py)
+        self.assertIn('data["stale"]', db_py)
+        self.assertIn('data["age_seconds"]', db_py)
+        # Birakma ucu
+        self.assertIn("/doctor/api/comed/transfers/{transfer_id}/cancel", main_py)
+        self.assertIn("Doktor aktarımı bıraktı", main_py)
+        # Tamamlanmis aktarim yanlislikla birakilamaz
+        self.assertIn('{"completed", "ready_for_review"}', main_py)
+        # Panel: takildiysa kilit acilir, "Yeniden aktar" cikar
+        self.assertIn("!transfer.stale", js)
+        self.assertIn("Yeniden aktar", js)
+        self.assertIn("data-comed-cancel", js)
+        self.assertIn("comedVazgec", js)
+
+    def test_bridge_open_does_not_leave_a_blank_tab(self):
+        """Kopru yanit vermezse bos sekme acilmamali."""
+        js = (ROOT / "static" / "doctor.js").read_text(encoding="utf-8")
+        background = (ROOT / "comed_bridge_extension" / "background.js").read_text(
+            encoding="utf-8"
+        )
+        # MV3 service worker uyanmasi icin sure uzatildi
+        self.assertIn("BRIDGE_OPEN_TIMEOUT_MS = 7000", js)
+        # window.open yedegi kaldirildi; bos sekme biraktiriyordu
+        self.assertNotIn("window.open(", js)
+        # Eklenti dogrudan hedef adresle sekme acar
+        self.assertIn("chrome.tabs.create({url: target.href", background)
+        self.assertNotIn('url: "about:blank"', background)
+
+    def test_patient_waits_for_appointment_without_manual_refresh(self):
+        """Hasta randevusu baglanana kadar uygulama kendisi denemeli."""
+        dart = (ROOT / "mobile_app" / "lib" / "recorder_screen.dart").read_text(
+            encoding="utf-8"
+        )
+        content = (ROOT / "comed_bridge_extension" / "content.js").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("_randevuyuBeklemeyeAl", dart)
+        self.assertIn("_worklistRetry", dart)
+        self.assertIn("_maxWorklistTries", dart)
+        self.assertIn("_worklistRetry?.cancel();", dart)  # dispose'da temizlenir
+        # Beklerken ne oldugu yaziyor
+        self.assertIn("_PatientAppointmentWaiting", dart)
+        self.assertIn("Randevunuz aranıyor", dart)
+        # Is listesi satirindan dogum tarihi de toplanir
+        self.assertIn("birth_date:", content)
+
     def test_doctor_record_rows_identify_the_patient(self):
         """Kayit listesi COMED gibi: zebra satirlar ve hasta adi sutunu."""
         js = (ROOT / "static" / "doctor.js").read_text(encoding="utf-8")

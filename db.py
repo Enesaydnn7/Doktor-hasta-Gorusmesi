@@ -677,6 +677,12 @@ def comed_transfer_create(record_id: int, patient: dict, bundle: dict,
     return comed_transfer_get(transfer_id)
 
 
+# Eklenti bir aktarımı bu süre içinde almazsa "takılmış" sayılır ve doktor
+# yeniden deneyebilir. Eklenti kapalıysa, COMED sekmesi açılmadıysa ya da
+# köprü yanıt vermediyse aktarım "queued" durumunda sonsuza kadar kalıyordu.
+COMED_TRANSFER_STUCK_SECONDS = 75
+
+
 def _transfer_dict(row) -> dict | None:
     if not row:
         return None
@@ -689,6 +695,18 @@ def _transfer_dict(row) -> dict | None:
         data["debug"] = json.loads(data.get("debug") or "{}")
     except Exception:
         data["debug"] = {}
+    # Takılma hesabı SUNUCU saatiyle yapılır; tarayıcı saat dilimi farkı
+    # (Render UTC, doktor +03) yanlış sonuç vermesin.
+    stamp = data.get("updated_at") or data.get("created_at") or ""
+    try:
+        age = (datetime.now() - datetime.fromisoformat(stamp)).total_seconds()
+    except (TypeError, ValueError):
+        age = 0.0
+    data["age_seconds"] = max(0, int(age))
+    data["stale"] = (
+        data.get("status") in {"queued", "filling"}
+        and age > COMED_TRANSFER_STUCK_SECONDS
+    )
     return data
 
 
