@@ -1,3 +1,20 @@
+## v2.21.0 — 14 Ekim 2026
+
+- Doktor panelindeki kayıt listesi COMED iş listesine benzetildi: satırlar bir
+  beyaz bir grimsi (zebra) oldu ve **hasta bilgileri sütunu** eklendi — ad
+  soyad, baş harf rozeti, protokol ve hasta numarası. Önceden iki kayıt
+  birbirinden ayırt edilemiyordu. Arama artık hasta adıyla da çalışıyor.
+- **Hız ayarı doldurma sürerken değiştirilebiliyor.** Beklemeler tek parça
+  `setTimeout` yerine dilim dilim yapılıyor ve her dilimde hız yeniden
+  okunuyor; `waitForDomQuiet` de sabit zamanlayıcı yerine periyodik kontrol
+  kullanıyor. Önceden o an süren 3,5 saniyelik bekleme eski hızla bittiği
+  için ayar tutmuyor gibi görünüyordu. Ölçüldü: 4 sn'lik işin 1. saniyesinde
+  2.5× yapılınca toplam 4000 ms yerine 2202 ms.
+- Dilimlemenin getirdiği ~%25 zamanlayıcı sapması, planlanan değil gerçekte
+  geçen süre düşülerek giderildi (sapma %0,6).
+- Hız değiştiğinde COMED sayfasındaki Klinot balonu "Doldurma hızı 2.5×"
+  bildirimi gösteriyor; ayarın ulaştığı görülüyor.
+
 ## v2.20.0 — 14 Ekim 2026
 
 - **Eklenti hız ayarı artık gerçekten çalışıyor.** Önceki sürümde yalnızca

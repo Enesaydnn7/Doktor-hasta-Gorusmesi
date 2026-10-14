@@ -144,7 +144,15 @@
   chrome.storage.local.get(["fillSpeed"], (value) => applyFillSpeed(value.fillSpeed));
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== "local" || !changes.fillSpeed) return;
+    const onceki = fillSpeed;
     applyFillSpeed(changes.fillSpeed.newValue);
+    if (fillSpeed === onceki) return;
+    // Doktor kaydiraci oynattiginda degisikligin ULASTIGINI gorsun; aksi
+    // halde "ayar tutuyor mu?" belirsizligi kaliyor.
+    const etiket = FILL_SPEEDS.find((item) => item.value === fillSpeed)?.label || `${fillSpeed}×`;
+    if (document.getElementById("klinot-comed-bridge")) {
+      bridgeStatus(`Doldurma hızı ${etiket}`, "ok");
+    }
   });
 
   function bridgeLogs() {
@@ -844,9 +852,25 @@
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
-  /* Adimlar arasi bekleme. */
-  function sleep(ms) {
-    return rawSleep(scaled(ms, 15));
+  /* Adimlar arasi bekleme.
+
+     Hiz ORTADA degistirilebilsin diye bekleme tek parca degil dilim dilim
+     yapilir: her dilimde fillSpeed yeniden okunur. Tek parca olsaydi, doktor
+     doldurma surerken kaydiraci oynattiginda o an suren bekleme eski hizla
+     bitecek ve "ayar tutmuyor" hissi verecekti. */
+  async function sleep(ms) {
+    let kalan = ms;                       // olceklenmemis "is" miktari
+    while (kalan > 0) {
+      const hiz = fillSpeed || 1;
+      // Gercek zamanda ~60 ms'lik dilim; hiz arttikca daha cok is tuketir.
+      const dilim = Math.min(kalan, 60 * hiz);
+      const basla = performance.now();
+      await rawSleep(Math.max(5, Math.round(dilim / hiz)));
+      // setTimeout her zaman istenenden GEC uyanir. Planlanani degil gercekte
+      // gecen sureyi dusersek bu gecikme birikmez; aksi halde dilimleme
+      // toplam sureyi ~%25 uzatiyordu.
+      kalan -= (performance.now() - basla) * hiz;
+    }
   }
 
   async function waitFor(getter, timeoutMs = 4500) {
@@ -913,28 +937,29 @@
 
   /* Doldurma suresinin BUYUK bolumu burada geciyor (olculen: 1.5-12.7 sn,
      sleep'lerin toplami yalnizca ~2.7 sn). Hiz ayarinin hissedilmesi icin
-     hem sessizlik esigi hem ust sinir olceklenir. */
+     hem sessizlik esigi hem ust sinir olceklenir.
+
+     Esikler sabit setTimeout yerine 30 ms'lik periyodik kontrolle olculur;
+     boylece bekleme SURERKEN hiz degisirse yeni deger hemen gecerli olur.
+     Sabit timer'da 3,5 saniyelik bir bekleme eski hizla biteceginden doktor
+     kaydiraci oynattiginda hicbir sey degismemis gibi gorunuyordu. */
   function waitForDomQuiet(root = document.body, quietMs = 220, timeoutMs = 2200) {
     if (!root) return Promise.resolve();
-    quietMs = scaled(quietMs, 40);
-    timeoutMs = Math.max(scaled(timeoutMs, 400), quietMs + 100);
     return new Promise((resolve) => {
-      let quietTimer = null;
-      let timeoutTimer = null;
-      const finish = () => {
-        clearTimeout(quietTimer);
-        clearTimeout(timeoutTimer);
-        observer.disconnect();
-        resolve();
-      };
-      const arm = () => {
-        clearTimeout(quietTimer);
-        quietTimer = setTimeout(finish, quietMs);
-      };
-      const observer = new MutationObserver(arm);
+      const basladi = Date.now();
+      let sonDegisiklik = basladi;
+      const observer = new MutationObserver(() => { sonDegisiklik = Date.now(); });
       observer.observe(root, {subtree: true, childList: true, attributes: true, characterData: true});
-      timeoutTimer = setTimeout(finish, timeoutMs);
-      arm();
+      const timer = setInterval(() => {
+        const sessizlik = scaled(quietMs, 40);
+        const ustSinir = Math.max(scaled(timeoutMs, 400), sessizlik + 100);
+        const simdi = Date.now();
+        if (simdi - sonDegisiklik >= sessizlik || simdi - basladi >= ustSinir) {
+          clearInterval(timer);
+          observer.disconnect();
+          resolve();
+        }
+      }, 30);
     });
   }
 

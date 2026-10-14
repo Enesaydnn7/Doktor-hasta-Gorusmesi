@@ -55,6 +55,15 @@ function renderStats() {
    COMED'in kendi is listesi gibi satir satir tablo. Kart duzeni kaldirildi:
    doktor COMED'de neyi nasil goruyorsa burada da ayni sutunlari gorur. */
 
+/* "Enes Aydın" → "EA". Kayit satirindaki kucuk hasta rozetinde kullanilir. */
+function initials(name) {
+  const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "H";
+  const first = parts[0][0] || "";
+  const last = parts.length > 1 ? parts[parts.length - 1][0] : "";
+  return (first + last).toLocaleUpperCase("tr-TR");
+}
+
 /* Bu hastaya bagli kayitlar: satirdaki durum sutununu besler. */
 function patientRecords(p) {
   const key = patientKey(p);
@@ -145,7 +154,7 @@ function renderRecords() {
     if (clear) clear.onclick = () => { selectedPatient = null; renderWorklist(); renderRecords(); };
     return;
   }
-  list.innerHTML = banner + shown.map(k => {
+  list.innerHTML = banner + shown.map((k, sira) => {
     const comed = k.comed_status === "completed"
       ? '<span class="badge-comed done" title="COMED"><i class="bi bi-check-circle"></i> COMED</span>'
       : k.comed_status === "ready_for_review"
@@ -153,9 +162,24 @@ function renderRecords() {
         : k.comed_status
           ? '<span class="badge-comed pending" title="COMED aktarımı sürüyor"><i class="bi bi-arrow-repeat"></i> COMED</span>'
           : "";
-    return `<div class="rec-item" data-id="${k.id}" data-search="${esc(((k.ozet || "") + " " + k.id).toLowerCase())}">
+    // COMED'deki gibi hasta bilgisi sutunu: ad soyad + protokol/hasta no.
+    const linked = (k.metadata || {}).comed_patient || {};
+    const adSoyad = String(linked.patient_name || "").trim();
+    const altBilgi = [linked.protocol_no || (linked.visit_id ? `V-${linked.visit_id}` : ""),
+                      linked.patient_no && `No ${linked.patient_no}`]
+      .filter(Boolean).join(" · ");
+    const hasta = adSoyad
+      ? `<span class="rp-avatar">${esc(initials(adSoyad))}</span>
+         <span class="rp-copy"><b>${esc(adSoyad)}</b>${altBilgi ? `<small>${esc(altBilgi)}</small>` : ""}</span>`
+      : '<span class="rp-avatar none">—</span><span class="rp-copy"><b class="rp-empty">Hasta bağlanmadı</b></span>';
+    // Arama hasta adini da bulsun.
+    const search = `${k.ozet || ""} ${k.id} ${adSoyad} ${altBilgi}`.toLowerCase();
+    // Zebra'yi CSS nth-child yerine sira numarasiyla veriyoruz: suzgec seridi
+    // de listenin cocugu oldugu icin nth-child sayimi kayiyordu.
+    return `<div class="rec-item" data-id="${k.id}" data-zebra="${sira % 2}" data-search="${esc(search)}">
       <div class="rec-row">
         <span class="rec-no">#${k.id}</span>
+        <span class="rec-patient">${hasta}</span>
         <span class="rec-date">${esc((k.olusturma || "").replace("T", " "))}</span>
         <span class="rec-ozet" title="${esc(k.ozet)}">${esc(k.ozet) || "—"}</span>
         <span class="rec-audio">${k.ses_var

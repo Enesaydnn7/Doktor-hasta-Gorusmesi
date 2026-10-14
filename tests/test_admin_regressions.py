@@ -150,13 +150,48 @@ class BrowserStateRegressionTests(unittest.TestCase):
             encoding="utf-8"
         )
         self.assertIn("function scaled(ms, floor)", content)
-        self.assertIn("return rawSleep(scaled(ms, 15));", content)
         # Asil kazanc: DOM sakinlesme beklemeleri de olceklenir.
-        self.assertIn("quietMs = scaled(quietMs, 40);", content)
-        self.assertIn("timeoutMs = Math.max(scaled(timeoutMs, 400)", content)
+        self.assertIn("const sessizlik = scaled(quietMs, 40);", content)
+        self.assertIn("scaled(timeoutMs, 400)", content)
         # waitFor'un yoklama sikligi olceklenir ama ZAMAN ASIMI olceklenmez.
         self.assertIn("const poll = scaled(120, 40);", content)
-        self.assertNotIn("scaled(timeoutMs)", content.replace("scaled(timeoutMs, 400)", ""))
+
+    def test_speed_change_applies_mid_transfer(self):
+        """Hiz, doldurma SURERKEN degistirilince hemen gecerli olmali.
+
+        Beklemeler tek parca setTimeout olsaydi o an suren 3,5 saniyelik
+        bekleme eski hizla biter, doktor "ayar tutmuyor" sanirdi.
+        """
+        content = (ROOT / "comed_bridge_extension" / "content.js").read_text(
+            encoding="utf-8"
+        )
+        # sleep dilim dilim bekler, her dilimde fillSpeed yeniden okunur.
+        self.assertIn("async function sleep(ms)", content)
+        self.assertIn("while (kalan > 0)", content)
+        self.assertIn("const hiz = fillSpeed || 1;", content)
+        # waitForDomQuiet periyodik kontrol yapar, sabit timer kurmaz.
+        self.assertIn("}, 30);", content)
+        self.assertIn("const sessizlik = scaled(quietMs, 40);", content)
+        self.assertNotIn("quietTimer = setTimeout(finish, quietMs)", content)
+        # Degisiklik doktora bildirilir.
+        self.assertIn("Doldurma hızı ${etiket}", content)
+
+    def test_doctor_record_rows_identify_the_patient(self):
+        """Kayit listesi COMED gibi: zebra satirlar ve hasta adi sutunu."""
+        js = (ROOT / "static" / "doctor.js").read_text(encoding="utf-8")
+        css = (ROOT / "static" / "doctor.css").read_text(encoding="utf-8")
+        html = (ROOT / "templates" / "doctor.html").read_text(encoding="utf-8")
+        self.assertIn("<span>Hasta bilgileri</span>", html)
+        self.assertIn('class="rec-patient"', js)
+        self.assertIn("rp-avatar", js)
+        self.assertIn("function initials(", js)
+        # Bir beyaz bir grimsi. Sira JS'ten gelir: suzgec seridi de listenin
+        # cocugu oldugu icin nth-child sayimi kayiyordu.
+        self.assertIn('data-zebra="${sira % 2}"', js)
+        self.assertIn('#rec-list .rec-item[data-zebra="1"] .rec-row{background:', css)
+        self.assertNotIn("nth-child(even)", css)
+        # Hasta adiyla da aranabilmeli
+        self.assertIn("${adSoyad}", js)
 
     def test_fill_speed_is_a_slider_in_the_popup_only(self):
         """Hiz ayari yalnizca eklenti penceresinde ve kaydiracli olmali."""

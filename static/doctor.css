@@ -44,9 +44,43 @@
   .wl-doctor::before{content:"Doktor: "}
 }
 
+/* ---- kayit listesi: COMED is listesi gorunumu ----
+   Satirlar tek tek kart yerine bitisik bir tablo gibi dizilir ve bir beyaz
+   bir grimsi olur; boylece iki kayit birbirine karismaz. Hasta adi da
+   COMED'deki gibi ilk sutunlarda durur. */
+.rec-head-doctor,#rec-list .rec-row{grid-template-columns:62px minmax(170px,1.5fr) 150px minmax(160px,2fr) 72px 260px !important}
+.rec-head-doctor{padding-left:16px;padding-right:16px}
+
+#rec-list .rec-item{margin-bottom:0;border-radius:0;border-bottom:0;border-color:#dde8e8}
+#rec-list .rec-item:first-of-type{border-top-left-radius:12px;border-top-right-radius:12px}
+#rec-list .rec-item:last-of-type{border-bottom:1px solid #dde8e8;border-bottom-left-radius:12px;border-bottom-right-radius:12px}
+/* Zebra: bir beyaz bir grimsi (COMED'deki gibi). Sira JS'ten gelir, cunku
+   suzgec seridi de listenin cocugu ve nth-child sayimini kaydiriyor. */
+#rec-list .rec-item[data-zebra="1"] .rec-row{background:#eff5f5}
+#rec-list .rec-item:hover{border-color:#a9d6d2}
+#rec-list .rec-item:hover .rec-row{background:var(--mint)}
+/* Detay acikken satir belirgin dursun */
+#rec-list .rec-item:has(.rec-detail:not(.hidden)){box-shadow:inset 3px 0 0 var(--teal);border-color:#bcdedb}
+
+.rec-patient{display:flex;align-items:center;gap:9px;min-width:0}
+.rp-avatar{flex:0 0 32px;width:32px;height:32px;border-radius:10px;background:var(--mint);color:var(--teal);display:grid;place-items:center;font-size:11.5px;font-weight:800;letter-spacing:.3px}
+.rp-avatar.none{background:#f0f4f5;color:#9fb0b5}
+.rp-copy{min-width:0;display:flex;flex-direction:column;line-height:1.25}
+.rp-copy b{font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rp-copy small{color:var(--muted);font-size:11px;font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rp-empty{color:#9fb0b5;font-weight:600;font-style:italic}
+
 /* kayit listesi suzgec seridi */
 .rec-filter{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px;padding:10px 14px;background:var(--mint);border:1px solid #bfe3de;border-radius:12px;font-size:13px;color:#0b5d57}
 .rec-filter span{display:flex;align-items:center;gap:7px}
+
+@media(max-width:1060px){
+  .rec-head-doctor{display:none}
+  #rec-list .rec-row{grid-template-columns:1fr auto !important;gap:6px 12px}
+  .rec-patient{grid-column:1;order:1}
+  .rec-act{grid-column:2;grid-row:1;order:2}
+  .rec-no,.rec-date,.rec-ozet,.rec-audio{grid-column:1/-1;order:3}
+}
 
 /* ---- bildirim ---- */
 #toast{position:fixed;right:24px;bottom:24px;max-width:420px;padding:13px 18px;background:var(--navy);color:#fff;border-radius:12px;box-shadow:0 10px 30px #0003;transform:translateY(160%);transition:.2s;z-index:50}
