@@ -439,7 +439,13 @@ async function comedAktar(id, btn) {
     });
     cache[id].comed_transfer = activeTransfer;
     drawDetail(id, "comed");
-    const opened = await openComedWithBridge(patient.clinical_card_url, activeTransfer.id);
+    // Kart adresi aktarimdan da gelebilir (sunucu bos olani uretiyor).
+    const kartAdresi = String(
+      activeTransfer.clinical_card_url || patient.clinical_card_url || "",
+    ).trim();
+    const opened = kartAdresi
+      ? await openComedWithBridge(kartAdresi, activeTransfer.id)
+      : {ok: false, error: "Kart adresi yok"};
     /* Doktoru hicbir sekilde ugrastirmiyoruz:
        1. Once kopru denenir  -> ACIK COMED sekmesi kullanilir (en iyisi).
        2. Kopru yanit vermezse kart yine de yeni sekmede acilir.
@@ -450,11 +456,15 @@ async function comedAktar(id, btn) {
       toast(opened.reused
         ? "Açık COMED sekmesi kullanıldı; giriş gerekirse aktarım girişten sonra devam eder."
         : "COMED kartı açıldı; giriş gerekirse aktarım otomatik devam eder.");
-    } else {
-      toast(window.open(patient.clinical_card_url, "_blank")
+    } else if (kartAdresi) {
+      toast(window.open(kartAdresi, "_blank")
         ? "COMED kartı yeni sekmede açıldı; doldurma orada başlayacak."
         : "COMED kartını açamadık. Yandaki \"COMED'de aç\" bağlantısını kullanın; "
           + "aktarım sırada bekliyor.");
+    } else {
+      // Bos adresle window.open cagrilirsa BOS bir sekme acilir; yapma.
+      toast("COMED kart adresi bulunamadı. COMED iş listesi sayfasını bir kez "
+        + "yenileyin; aktarım sırada bekliyor.", true);
     }
     await pollTransfer(id, activeTransfer.id);
   } catch (error) {

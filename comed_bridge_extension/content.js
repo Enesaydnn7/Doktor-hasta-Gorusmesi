@@ -452,6 +452,13 @@
     return name.length >= 3 ? name.slice(0, 80) : "";
   }
 
+  /** Ziyaret kimliginden COMED hasta kartinin adresini uret. */
+  function cardUrlForVisit(visitId) {
+    const id = String(visitId || "").trim();
+    if (!/^\d+$/.test(id)) return "";
+    return `${location.origin}/tr-tr/medical/hasta-tibbi-karti/${id}/patient-clinical-card/`;
+  }
+
   function parseRow(row, card = {}) {
     if (!row) return null;
     const cells = [...row.querySelectorAll(":scope > td, :scope > [role=cell]")];
@@ -486,7 +493,13 @@
       doctor_name: doctorLines.at(-1) || "",
       task: taskText,
       status: /Bekliyor/i.test(raw) ? "Bekliyor" : "",
-      clinical_card_url: card.url || "",
+      // Is listesi satirinda kartin adresi YOK. Eskiden bos biraktigimiz icin
+      // doktor "COMED'e aktar" dediginde panel bos adres gonderiyor, kart
+      // acilamiyor ve bos bir sekme kaliyordu. Adres yalnizca doktor o karti
+      // bir kez actiginda (syncCurrentCard) doluyordu. Oysa COMED kart
+      // adresi visit_id'den uretilebiliyor: klinik kart kimligi henuz
+      // atanmamis kartlar da /patient-clinical-card/ ile acilabiliyor.
+      clinical_card_url: card.url || cardUrlForVisit(visitId),
       ...(birthDate ? {birth_date: `${birthDate[1]}.${birthDate[2]}.${birthDate[3]}`} : {}),
     };
   }

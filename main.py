@@ -709,14 +709,40 @@ async def mobile_patient_report_pdf(
 @app.get("/api/v1/mobile/comed/worklist")
 async def mobile_comed_worklist(user: dict = Depends(mobile_clinical_user)):
     """Doktorun iş listesini veya hastanın kendi eşleşen randevularını getir."""
+    items = (
+        db.comed_patient_appointments(user.get("patient_no", user["user"]))
+        if user["role"] == "patient"
+        else db.comed_worklist(synced_by=user["user"])
+    )
     return {
-        "items": (
-            db.comed_patient_appointments(user.get("patient_no", user["user"]))
-            if user["role"] == "patient"
-            else db.comed_worklist(synced_by=user["user"])
-        ),
+        "items": [_with_card_url(item) for item in items],
         "web_base_url": config.COMED_WEB_BASE_URL,
     }
+
+
+def _with_card_url(item: dict) -> dict:
+    """Kart adresi boş olan eski kayıtlar da açılabilsin."""
+    if str(item.get("clinical_card_url") or "").strip():
+        return item
+    url = comed_clinical_card_url(item.get("visit_id"))
+    return {**item, "clinical_card_url": url} if url else item
+
+
+def comed_clinical_card_url(visit_id) -> str:
+    """Ziyaret kimliğinden COMED hasta kartı adresini üret.
+
+    COMED iş listesi satırında kartın adresi yazmıyor; eskiden bu alan boş
+    bırakılıyor ve ancak doktor o kartı bir kez açtığında doluyordu. Boş
+    kaldığı sürece "COMED'e aktar" kartı açamıyor, boş bir sekme kalıyordu.
+    Klinik kart kimliği henüz atanmamış kartlar da bu adresle açılabiliyor.
+    """
+    digits = str(visit_id or "").strip()
+    if not digits.isdigit():
+        return ""
+    return (
+        f"{config.COMED_WEB_BASE_URL}/hasta-tibbi-karti/{digits}"
+        "/patient-clinical-card/"
+    )
 
 
 @app.post("/api/v1/mobile/comed/worklist/sync")
@@ -735,6 +761,10 @@ async def mobile_comed_worklist_sync(
             except ValueError:
                 logger.warning("COMED hasta kimliği doğum tarihi geçersiz; visit=%s", item.get("visit_id"))
         item.pop("phone", None)
+        # Kart adresi boşsa ziyaret kimliğinden üret. Boş kaldığında doktor
+        # panelinden aktarım hiç başlamıyor, boş bir sekme açılıyordu.
+        if not str(item.get("clinical_card_url") or "").strip():
+            item["clinical_card_url"] = comed_clinical_card_url(item.get("visit_id"))
         sanitized_items.append(item)
     count = db.comed_worklist_sync(
         sanitized_items, synced_by=user["user"], replace=body.replace
@@ -991,7 +1021,11 @@ async def doctor_overview(request: Request):
         "user": session,
         "records": records,
         "stats": db.istatistik_for_doctor(username),
-        "worklist": db.comed_worklist(limit=200, synced_by=username),
+        # Kart adresi boşsa üretilir; boş adres aktarımı hiç başlatmıyordu.
+        "worklist": [
+            _with_card_url(item)
+            for item in db.comed_worklist(limit=200, synced_by=username)
+        ],
     }
 
 

@@ -209,8 +209,10 @@ class BrowserStateRegressionTests(unittest.TestCase):
         )
         # MV3 service worker uyanmasi icin sure uzatildi
         self.assertIn("BRIDGE_OPEN_TIMEOUT_MS = 7000", js)
-        # Kopru yanit vermezse kart YINE DE acilir (eski calisan davranis)
-        self.assertIn('window.open(patient.clinical_card_url, "_blank")', js)
+        # Kopru yanit vermezse kart YINE DE acilir (eski calisan davranis),
+        # ama adres bos ise acilmaz: bos adresle window.open bos sekme acar.
+        self.assertIn('window.open(kartAdresi, "_blank")', js)
+        self.assertIn("} else if (kartAdresi) {", js)
         # Eklenti dogrudan hedef adresle sekme acar (about:blank bos kaliyordu)
         self.assertIn("chrome.tabs.create({url: target.href", background)
         self.assertNotIn('url: "about:blank"', background)

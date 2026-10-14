@@ -129,7 +129,16 @@ class MobileApiTests(unittest.TestCase):
             )
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()["items"], appointments)
+        items = response.json()["items"]
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0]["visit_id"], "22207357")
+        self.assertEqual(items[0]["patient_no"], "476644")
+        # Kart adresi bos geldiyse ziyaret kimliginden uretilir: bos adres
+        # aktarimin hic baslamamasina ve bos sekme acilmasina yol aciyordu.
+        self.assertIn(
+            "/hasta-tibbi-karti/22207357/patient-clinical-card/",
+            items[0]["clinical_card_url"],
+        )
         patient_appointments.assert_called_once_with("476644")
 
     def test_worklist_sync_hashes_identity_and_drops_raw_patient_data(self):
