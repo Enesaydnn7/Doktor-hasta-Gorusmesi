@@ -1,3 +1,20 @@
+## v2.28.0 — 15 Ekim 2026
+
+### "Siteden çıkılsın mı?" kutusu kalktı
+
+"COMED'e aktar" doktorun açık sekmesini hasta kartına yönlendiriyor. COMED'de
+yarım kalmış bir form varsa tarayıcı bu uyarıyı çıkarıyor ve doktor her
+aktarımda kutuyla uğraşıyordu.
+
+Projede bu uyarıyı bastıran bir mekanizma zaten vardı (taslak temizlemede
+kullanılıyordu) ama aktarım sırasında devreye girmiyordu. Artık köprü,
+sekmeyi yönlendirmeden önce bayrağı kuruyor; `page_trace.js` document_start'ta
+kurduğu dinleyiciyle o tek çıkışı sessizce geçiriyor.
+
+Bayrak artık zaman damgası taşıyor: geçiş bir şekilde olmazsa asılı kalan
+eski bir bayrak, doktorun **gerçek** çıkışını sessizce yutmasın diye 15
+saniye sonra geçersiz sayılıyor. Gerçek COMED sayfasında doğrulandı.
+
 ## v2.27.0 — 15 Ekim 2026
 
 ### Kimlik artık görünmez çerçevede okunuyor

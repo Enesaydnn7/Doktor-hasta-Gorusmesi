@@ -241,6 +241,29 @@ class BrowserStateRegressionTests(unittest.TestCase):
         # Balondaki kisa metin de olcumu gostersin
         self.assertIn("`Aktarım bitti${olcum}`", content)
 
+    def test_transfer_does_not_raise_the_leave_site_prompt(self):
+        """Aktarımda "Siteden çıkılsın mı?" kutusu çıkmamalı.
+
+        COMED'de yarım kalmış bir form varken sekmeyi hasta kartına
+        yönlendirmek tarayıcının beforeunload uyarısını tetikliyordu; doktor
+        her aktarımda o kutuyla uğraşıyordu.
+        """
+        root = ROOT / "comed_bridge_extension"
+        background = (root / "background.js").read_text(encoding="utf-8")
+        content = (root / "content.js").read_text(encoding="utf-8")
+        trace = (root / "page_trace.js").read_text(encoding="utf-8")
+
+        # Yonlendirmeden ONCE bayrak kurulur
+        self.assertIn('{type: "klinot-suppress-unload-prompt"}', background)
+        self.assertIn("const yonlendirilecek = !sameComedTarget", background)
+        # content.js bayragi zaman damgasiyla yazar
+        self.assertIn('message?.type === "klinot-suppress-unload-prompt"', content)
+        self.assertIn("String(Date.now())", content)
+        # page_trace document_start'ta dinler ve eskimis bayragi yutmaz
+        self.assertIn("beforeunload", trace)
+        self.assertIn("SUPPRESS_TTL_MS", trace)
+        self.assertIn("event.stopImmediatePropagation();", trace)
+
     def test_doctor_can_transfer_again_after_it_finished(self):
         """Doktor COMED'de kaydı silip yeniden aktarabilmeli."""
         js = (ROOT / "static" / "doctor.js").read_text(encoding="utf-8")

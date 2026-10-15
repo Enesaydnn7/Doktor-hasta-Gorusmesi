@@ -84,9 +84,19 @@ async function openComedTarget(rawUrl, sender) {
       url: target.href,
       createdAt: Date.now(),
     });
+    const yonlendirilecek = !sameComedTarget(tab.url, target.href);
+    if (yonlendirilecek) {
+      /* COMED'de yarim kalmis bir form varsa tarayici "Siteden cikilsin mi?"
+         kutusunu aciyor ve doktor her aktarimda onunla ugrasiyordu. Sekmeyi
+         yonlendirmeden ONCE content.js'e haber verip bu tek cikisi
+         sessizlestiriyoruz (page_trace.js'teki dinleyici halleder). */
+      await chrome.tabs
+        .sendMessage(tab.id, {type: "klinot-suppress-unload-prompt"})
+        .catch(() => {});
+    }
     selected = await chrome.tabs.update(tab.id, {
       active: true,
-      ...(sameComedTarget(tab.url, target.href) ? {} : {url: target.href}),
+      ...(yonlendirilecek ? {url: target.href} : {}),
     });
     await chrome.windows.update(tab.windowId, {focused: true}).catch(() => {});
     if (sameComedTarget(tab.url, target.href)) await sessionRemove(PENDING_COMED_KEY);

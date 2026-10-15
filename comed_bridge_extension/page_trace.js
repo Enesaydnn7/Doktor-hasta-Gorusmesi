@@ -15,13 +15,23 @@
   const sessionHeaders = new Map();
   const traceEvents = [];
 
-  // Klinot'un güvenli geri alma işlemi bittikten sonra yaptığı tek yenilemede
-  // COMED'in "kaydedilmemiş değişiklik" uyarısını bastır. Bu dinleyici
-  // document_start'ta, uygulama dinleyicilerinden önce kurulur ve yalnızca
-  // sessionStorage bayrağının bulunduğu bir sonraki yenilemede devreye girer.
+  // Klinot'un KENDİ başlattığı tek sayfa geçişinde COMED'in "kaydedilmemiş
+  // değişiklik" uyarısını bastır. İki yerde kullanılır: taslak temizlemeden
+  // sonraki yenileme ve "COMED'e aktar" sırasında hasta kartının açılması.
+  // Dinleyici document_start'ta, uygulama dinleyicilerinden önce kurulur ve
+  // yalnızca sessionStorage bayrağının bulunduğu bir sonraki çıkışta çalışır.
+  const SUPPRESS_TTL_MS = 15000;
   window.addEventListener("beforeunload", (event) => {
-    if (sessionStorage.getItem(SUPPRESS_RELOAD_PROMPT_KEY) !== "1") return;
+    const flag = sessionStorage.getItem(SUPPRESS_RELOAD_PROMPT_KEY);
+    if (!flag) return;
     sessionStorage.removeItem(SUPPRESS_RELOAD_PROMPT_KEY);
+    // Bayrak zaman damgası taşır ("1" eski sürümlerle uyum için kabul edilir).
+    // Geçiş bir şekilde olmadıysa bayrak asılı kalır; eskimiş bir bayrak
+    // doktorun GERÇEK çıkışını sessizce yutmamalı.
+    const stamp = Number(flag);
+    if (Number.isFinite(stamp) && stamp > 1 && Date.now() - stamp > SUPPRESS_TTL_MS) {
+      return;
+    }
     event.stopImmediatePropagation();
   }, {capture: true});
 

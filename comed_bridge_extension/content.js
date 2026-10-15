@@ -2135,6 +2135,21 @@
   }, true);
 
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+    /* "COMED'e aktar" doktorun acik sekmesini hasta kartina yonlendiriyor.
+       COMED'de yarim kalmis bir form varsa tarayici "Siteden cikilsin mi?"
+       diye soruyor ve doktor her aktarimda bu kutuyla ugrasiyordu. Bayragi
+       kuruyoruz; page_trace.js document_start'ta kurdugu dinleyiciyle bir
+       sonraki cikisi sessizce geciriyor. Yonlendirme Klinot'un kendi
+       istegidir, doktor veri kaybetmez: kart zaten ayni hastaya acilir. */
+    if (message?.type === "klinot-suppress-unload-prompt") {
+      try {
+        sessionStorage.setItem(SUPPRESS_RELOAD_PROMPT_KEY, String(Date.now()));
+        sendResponse({ok: true});
+      } catch (_) {
+        sendResponse({ok: false});
+      }
+      return false;
+    }
     if (message?.type !== "klinot-clear-last-transfer") return false;
     clearLastKlinotDraft()
       .then(() => sendResponse({ok: true}))
