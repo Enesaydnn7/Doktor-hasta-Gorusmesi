@@ -107,16 +107,50 @@ class ServiceRequestBridgeTests(unittest.TestCase):
         self.assertIn('co-button-Ekle', self.content)
 
     def test_uses_real_mouse_events(self):
-        """COMED'in bazı düğmeleri salt .click() ile tepki vermiyor."""
+        """COMED'in bazı düğmeleri eksik olay dizisini sessizce yutuyor."""
         self.assertIn("function pressNode(", self.content)
-        self.assertIn("pointerdown", self.content)
-        self.assertIn("mouseup", self.content)
-        self.assertIn('pressNode(document.querySelector(\'[data-test="co-button-Ekle"]\'))',
-                      self.content)
+        for event in ("pointerover", "mousemove", "pointerdown", "mouseup", "click"):
+            with self.subTest(olay=event):
+                self.assertIn(event, self.content)
 
-    def test_gives_up_cleanly_when_the_doctor_cannot_be_set(self):
-        """Uygulayan seçilemezse istem yarım bırakılmamalı."""
-        self.assertIn('co-button-Vazgeç', self.content)
+    def test_opens_dropdowns_through_their_icon(self):
+        """Açılır alanlarda dinleyici alanın kendisinde değil, ok ikonunda.
+
+        Canlı ortamda ölçüldü: alana, çocuklarına ve atalarına gönderilen
+        tıklama paneli açmıyor; yalnızca ikon açıyor.
+        """
+        self.assertIn("function pressField(", self.content)
+        self.assertIn('root.querySelector(\'svg,i,[class*="icon"],[class*="arrow"]\')',
+                      self.content)
+        self.assertIn("pressField(opener)", self.content)
+
+    def test_picks_the_dialog_button_not_the_first_match(self):
+        """Aynı data-test'li düğme sayfada birden çok yerde olabiliyor.
+
+        Tanı kartındaki "Ekle" ile istem penceresindeki "Ekle" aynı isimde.
+        querySelector ilkini (tanı kartındakini) alıyor, o hep pasif olduğu
+        için istem hiç eklenemiyordu.
+        """
+        self.assertIn("function dialogButton(", self.content)
+        self.assertIn('dialogButton("co-button-Ekle")', self.content)
+        self.assertIn('dialogButton("co-button-Vazgeç")', self.content)
+        # Tek basina querySelector ile Ekle aranmamali
+        self.assertNotIn('document.querySelector(\'[data-test="co-button-Ekle"]\')',
+                         self.content)
+
+    def test_gives_up_cleanly_when_the_form_needs_more(self):
+        """Doldurulamayan istem yarım bırakılmaz; doktora devredilir."""
+        self.assertIn("addButton.disabled", self.content)
+        self.assertIn("doktor tarafından tamamlanmalı", self.content)
+
+    def test_clears_the_search_box_between_services(self):
+        """Önceki aramanın süzgeci kalırsa sonraki hizmet bulunamıyordu."""
+        self.assertIn("arama kutusunu temizle", self.content)
+
+    def test_falls_back_to_the_general_catalog(self):
+        """Liste "Favoriler"de açılıyor; orada olmayan hizmet aranamıyordu."""
+        self.assertIn('textOf(item) === "Genel"', self.content)
+        self.assertIn("Favoriler", self.content)
 
     def test_reports_progress_to_the_doctor(self):
         self.assertIn("Hizmet istemi hazırlanıyor", self.content)

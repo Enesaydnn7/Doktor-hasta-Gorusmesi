@@ -719,18 +719,48 @@
       bubbles: true, cancelable: true, view: window,
       clientX: rect.left + rect.width / 2,
       clientY: rect.top + rect.height / 2,
+      button: 0, buttons: 1,
     };
     try {
-      node.dispatchEvent(new PointerEvent("pointerdown", init));
-      node.dispatchEvent(new MouseEvent("mousedown", init));
-      node.dispatchEvent(new PointerEvent("pointerup", init));
-      node.dispatchEvent(new MouseEvent("mouseup", init));
-      node.dispatchEvent(new MouseEvent("click", init));
+      // Bazi COMED bilesenleri once hover olaylarini bekliyor; eksik dizi
+      // gonderildiginde tiklama sessizce yutuluyordu.
+      for (const type of ["pointerover", "mouseover", "pointermove", "mousemove",
+        "pointerdown", "mousedown", "pointerup", "mouseup", "click"]) {
+        const Ctor = type.startsWith("pointer") ? PointerEvent : MouseEvent;
+        node.dispatchEvent(new Ctor(type, init));
+      }
       return true;
     } catch (_) {
       node.click();
       return true;
     }
+  }
+
+  /* COMED'in acilir alanlarinda tiklama dinleyicisi alanin KENDISINDE degil,
+     icindeki ok ikonunda. Canli ortamda olculdu: alanin kendisine, cocuklarina
+     ve atalarina gonderilen tiklama panel acmiyor, yalnizca ikon aciyor. */
+  function pressField(root) {
+    if (!root) return false;
+    const icon = root.querySelector('svg,i,[class*="icon"],[class*="arrow"]');
+    return pressNode(icon || root);
+  }
+
+  /* Sayfada ayni data-test'li birden cok dugme olabiliyor: tani kartindaki
+     "Ekle" ile hizmet istem penceresindeki "Ekle" ayni isimde. Pencereninki
+     "Vazgeç" ile ayni hizada durur; en yakin olani seciyoruz. Eskiden
+     querySelector ilk bulduğunu (tani kartindakini) aliyor ve o hep pasif
+     oldugu icin istem hic eklenemiyordu. */
+  function dialogButton(testName) {
+    const cancel = [...document.querySelectorAll('[data-test="co-button-Vazgeç"]')]
+      .find((item) => item.offsetParent !== null);
+    const candidates = [...document.querySelectorAll(`[data-test="${testName}"]`)]
+      .filter((item) => item.offsetParent !== null);
+    if (!candidates.length) return null;
+    if (!cancel) return candidates[candidates.length - 1];
+    const cancelTop = cancel.getBoundingClientRect().top;
+    return candidates.sort((a, b) =>
+      Math.abs(a.getBoundingClientRect().top - cancelTop)
+      - Math.abs(b.getBoundingClientRect().top - cancelTop))[0];
   }
 
   function setTypingValue(element, value) {
@@ -1778,7 +1808,7 @@
     const opener = document.querySelector('[data-test="personnel-department-Uygulayan"]');
     if (!opener) return true;                       // bu pencerede alan yok
     if (textOf(opener) && !/^Uygulayan$/i.test(textOf(opener))) return true;  // zaten dolu
-    pressNode(opener);
+    pressField(opener);                             // dinleyici ok ikonunda
     const rows = await waitFor(() => {
       const found = [...document.querySelectorAll(".department-select-button")]
         .filter((row) => row.offsetParent !== null);
@@ -1815,33 +1845,63 @@
       if (!name) continue;
       bridgeStatus(`Hizmet istemi hazırlanıyor · ${name}`);
       try {
+        // Her hizmetten once arama kutusunu temizle; onceki aramanin suzgeci
+        // kalirsa sonraki hizmet "listede yok" sanilip atlaniyordu.
+        const search = [...document.querySelectorAll("input")]
+          .find((input) => input.offsetParent !== null
+            && /ara/i.test(input.placeholder || ""));
+        if (search && search.value) {
+          setTypingValue(search, " ");
+          search.value = "";
+          search.dispatchEvent(new Event("input", {bubbles: true}));
+          await waitForDomQuiet(document.body, 260, 2500);
+        }
         let row = matchServiceRow(name);
-        if (!row) {
+        const query = name.replace(/\(.*?\)/g, "").trim();
+        if (!row && search) {
           // Favorilerde yoksa arama kutusundan ara.
-          const search = [...document.querySelectorAll("input")]
-            .find((input) => input.offsetParent !== null
-              && /ara/i.test(input.placeholder || ""));
-          if (search) {
-            setTypingValue(search, name.replace(/\(.*?\)/g, "").trim());
+          setTypingValue(search, query);
+          await waitForDomQuiet(document.body, 300, 3500);
+          row = matchServiceRow(name);
+        }
+        if (!row) {
+          /* Liste varsayilan olarak "Favoriler" sekmesinde aciliyor; orada
+             olmayan hizmet (ornegin Ekokardiyografi) bulunamiyordu. Tum
+             katalog icin "Genel" sekmesine gecip bir daha araniyor. */
+          const general = [...document.querySelectorAll("button,div,span")]
+            .find((item) => item.offsetParent !== null && textOf(item) === "Genel");
+          if (general) {
+            pressNode(general);
             await waitForDomQuiet(document.body, 300, 3500);
+            if (search) {
+              setTypingValue(search, query);
+              await waitForDomQuiet(document.body, 300, 3500);
+            }
             row = matchServiceRow(name);
           }
         }
         if (!row) continue;
         pressNode(row);
-        const addButton = await waitFor(
-          () => document.querySelector('[data-test="co-button-Ekle"]'), 6000);
-        if (!addButton) continue;
+        // Pencerenin acilmasini "Vazgeç" ile anla: "Ekle" adi sayfada birden
+        // cok yerde geciyor.
+        const opened = await waitFor(
+          () => [...document.querySelectorAll('[data-test="co-button-Vazgeç"]')]
+            .some((item) => item.offsetParent !== null), 6000);
+        if (!opened) continue;
         const doctorOk = await pickPerformingDoctor(requester);
         const reason = String(service?.reason || "").trim();
         if (reason) setValue(byPlaceholder("Açıklama"), reason);
-        if (!doctorOk) {
-          // Uygulayan secilemezse istemi yarim birakma: pencereyi kapat.
-          pressNode(document.querySelector('[data-test="co-button-Vazgeç"]'));
-          await sleep(500);
+        const addButton = doctorOk ? dialogButton("co-button-Ekle") : null;
+        if (!addButton || addButton.disabled) {
+          /* Uygulayan secilemedi ya da bu hizmet turu ek zorunlu alan
+             istiyor (radyolojide cekim yontemi, vucut bolgesi gibi).
+             Istemi yarim birakmiyoruz: pencereyi kapatip doktora birakiyoruz. */
+          pressNode(dialogButton("co-button-Vazgeç"));
+          await waitForDomQuiet(document.body, 260, 2500);
+          bridgeStatus(`${name} doktor tarafından tamamlanmalı`, "bad");
           continue;
         }
-        pressNode(document.querySelector('[data-test="co-button-Ekle"]'));
+        pressNode(addButton);
         await waitForDomQuiet(document.body, 320, 4000);
         added += 1;
         bridgeFieldStatus("requested_services", true);

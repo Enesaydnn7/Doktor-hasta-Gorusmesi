@@ -1,3 +1,30 @@
+## v2.31.0 — 15 Ekim 2026
+
+### Hizmet istemleri artık gerçekten ekleniyor
+
+v2.30.0'da köprü EKG penceresini açıyor ama ekleyemeden takılıyordu. Canlı
+COMED'de üç ayrı sebep bulundu:
+
+1. **Açılır alanların dinleyicisi ok ikonunda.** "Uygulayan" alanının
+   kendisine, çocuklarına ve atalarına gönderilen tıklama paneli açmıyor;
+   yalnızca içindeki ok ikonu açıyor. Ölçülerek bulundu.
+2. **Aynı isimli iki düğme.** Tanı kartındaki "Ekle" ile istem
+   penceresindeki "Ekle" aynı `data-test` değerini taşıyor. `querySelector`
+   ilkini (tanı kartındakini) alıyordu; o hep pasif olduğu için istem hiç
+   eklenemiyordu. Artık "Vazgeç" ile aynı hizadaki düğme seçiliyor.
+3. **Arama kutusu kirli kalıyordu.** Önceki hizmetin araması süzgeç olarak
+   duruyor, sonraki hizmet "listede yok" sanılıp atlanıyordu.
+
+Ayrıca liste varsayılan olarak "Favoriler" sekmesinde açılıyor; orada olmayan
+hizmet (örneğin Ekokardiyografi) bulunamıyordu. Artık bulunamazsa "Genel"
+sekmesine geçip tüm katalogda aranıyor.
+
+Eksik olay dizisi de tamamlandı: bazı COMED bileşenleri tıklamadan önce hover
+olaylarını bekliyor, eksik dizi sessizce yutuluyordu.
+
+Doldurulamayan istem yarım bırakılmıyor: pencere kapatılıp "doktor tarafından
+tamamlanmalı" olarak işaretleniyor.
+
 ## v2.30.0 — 15 Ekim 2026
 
 ### Hizmet istemleri (EKG, EKO) otomatik giriliyor
