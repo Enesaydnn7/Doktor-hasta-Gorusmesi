@@ -1,3 +1,24 @@
+## v2.27.0 — 15 Ekim 2026
+
+### Kimlik artık görünmez çerçevede okunuyor
+
+v2.26.0'da kart **arka planda sekme** açılarak okunuyordu. Yanlıştı: sekme
+görünüyordu ve COMED o sekmede yeniden giriş isteyebiliyordu.
+
+Doğrusu, iş listesi sayfasının **içinde** ekrandan tamamen gizli bir
+`<iframe>`: oturum aynı sekmede olduğu için giriş istemiyor, doktorun
+ekranında hiçbir şey değişmiyor, iş bitince çerçeve siliniyor.
+
+Canlı COMED'de doğrulandı: iki hastanın kimliği görünmez çerçevede okundu.
+
+**Kritik ayrıntı:** "Hasta Bilgileri" paneli yalnızca **hasta adına
+tıklayınca** açılıyor. On iki ikon düğmesi denendi, hiçbiri açmıyor.
+
+### Yedek eşleşme: hasta numarası
+
+Kimlik hiç okunamazsa hasta, hasta numarası + doğum tarihiyle de giriş
+yapabilir. Doğum tarihi ham saklanmaz, HMAC özetiyle eşleşilir.
+
 ## v2.26.0 — 14 Ekim 2026
 
 ### Hasta randevusu artık doktoru beklemiyor

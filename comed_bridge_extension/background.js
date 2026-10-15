@@ -157,90 +157,9 @@ async function klinotFetch(path, options = {}) {
   return payload;
 }
 
-/* ---- arka planda hasta kimligi toplama ----
-   COMED is listesi satirinda T.C. kimlik numarasi yok; kimlik yalnizca hasta
-   kartindaki "Hasta Bilgileri" panelinde yaziyor. Hastanin randevusu bu
-   yuzden ancak doktor karti actiginda baglanabiliyordu.
-
-   Burada karti ARKA PLANDA (active:false) aciyoruz: content.js kimligi okuyup
-   sunucuya yolluyor, ardindan sekme kendini kapattiriyor. Doktorun ekraninda
-   hicbir sey degismiyor, acik sekmesi de bozulmuyor. */
-const BACKGROUND_CARD_KEY = "klinotBackgroundCards";
-const BACKGROUND_CARD_TTL = 60000;
-
-async function backgroundCards() {
-  const kayit = (await sessionGet(BACKGROUND_CARD_KEY)) || {};
-  const simdi = Date.now();
-  // Bir sekme kapanmadiysa (hata/yonlendirme) kaydi sonsuza kadar tutma.
-  for (const [id, item] of Object.entries(kayit)) {
-    if (simdi - (item?.createdAt || 0) > BACKGROUND_CARD_TTL) delete kayit[id];
-  }
-  return kayit;
-}
-
-async function openCardInBackground(rawUrl) {
-  const target = parsedUrl(rawUrl);
-  if (!target || target.hostname !== COMED_HOST) {
-    throw new Error("Geçersiz COMED hasta kartı adresi");
-  }
-  const kayit = await backgroundCards();
-  if (Object.keys(kayit).length >= 1) {
-    // Ayni anda tek kart: COMED'i de doktorun makinesini de yormayalim.
-    return {skipped: true};
-  }
-  const tab = await chrome.tabs.create({url: target.href, active: false});
-  kayit[tab.id] = {url: target.href, createdAt: Date.now()};
-  await sessionSet(BACKGROUND_CARD_KEY, kayit);
-  // Guvenlik agi: content.js kapatmayi beceremezse sekme asili kalmasin.
-  setTimeout(async () => {
-    const guncel = await backgroundCards();
-    if (guncel[tab.id]) {
-      delete guncel[tab.id];
-      await sessionSet(BACKGROUND_CARD_KEY, guncel);
-      chrome.tabs.remove(tab.id).catch(() => {});
-    }
-  }, BACKGROUND_CARD_TTL);
-  return {opened: true, tabId: tab.id};
-}
-
-async function closeBackgroundCard(tabId) {
-  const kayit = await backgroundCards();
-  if (!kayit[tabId]) return {closed: false};
-  delete kayit[tabId];
-  await sessionSet(BACKGROUND_CARD_KEY, kayit);
-  await chrome.tabs.remove(tabId).catch(() => {});
-  return {closed: true};
-}
-
-chrome.tabs.onRemoved.addListener(async (tabId) => {
-  const kayit = await backgroundCards();
-  if (!kayit[tabId]) return;
-  delete kayit[tabId];
-  await sessionSet(BACKGROUND_CARD_KEY, kayit);
-});
-
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message?.type === "klinot-open-comed") {
     openComedTarget(message.url, _sender)
-      .then((data) => sendResponse({ok: true, ...data}))
-      .catch((error) => sendResponse({ok: false, error: error.message}));
-    return true;
-  }
-  if (message?.type === "klinot-collect-identity") {
-    openCardInBackground(message.url)
-      .then((data) => sendResponse({ok: true, ...data}))
-      .catch((error) => sendResponse({ok: false, error: error.message}));
-    return true;
-  }
-  if (message?.type === "klinot-background-card-role") {
-    // content.js soruyor: "ben arka plan kartı mıyım?"
-    backgroundCards()
-      .then((kayit) => sendResponse({ok: true, background: Boolean(kayit[_sender?.tab?.id])}))
-      .catch(() => sendResponse({ok: true, background: false}));
-    return true;
-  }
-  if (message?.type === "klinot-background-card-done") {
-    closeBackgroundCard(_sender?.tab?.id)
       .then((data) => sendResponse({ok: true, ...data}))
       .catch((error) => sendResponse({ok: false, error: error.message}));
     return true;

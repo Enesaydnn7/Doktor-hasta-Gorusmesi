@@ -157,30 +157,55 @@ class PatientNumberFallbackTests(unittest.TestCase):
                 self.assertEqual(response.status_code, 422)
 
 
-class BridgeBackgroundCollectionTests(unittest.TestCase):
-    """Köprü kartı arka planda açıp kapatmalı; doktor hiç görmemeli."""
+class HiddenFrameCollectionTests(unittest.TestCase):
+    """Kimlik GÖRÜNMEZ ÇERÇEVEDE okunmalı; yeni sekme açılmamalı.
 
-    def test_background_card_opens_inactive_and_closes_itself(self):
+    Önce arka planda sekme açılıyordu: sekme görünüyordu ve COMED oturumu
+    o sekmede yeniden giriş isteyebiliyordu. Doğrusu, iş listesi sayfasının
+    içinde ekrandan gizli bir iframe kullanmak — oturum aynı, doktor hiçbir
+    şey görmüyor.
+    """
+
+    @classmethod
+    def setUpClass(cls):
         from pathlib import Path
 
         root = Path(__file__).resolve().parents[1] / "comed_bridge_extension"
-        background = (root / "background.js").read_text(encoding="utf-8")
-        content = (root / "content.js").read_text(encoding="utf-8")
+        cls.content = (root / "content.js").read_text(encoding="utf-8")
+        cls.background = (root / "background.js").read_text(encoding="utf-8")
 
-        # Sekme arka planda acilir (doktorun ekrani degismez)
-        self.assertIn("chrome.tabs.create({url: target.href, active: false})", background)
-        # Ayni anda tek kart
-        self.assertIn("Object.keys(kayit).length >= 1", background)
-        # Guvenlik agi: asili sekme kalmasin
-        self.assertIn("chrome.tabs.remove(tab.id)", background)
-        self.assertIn("chrome.tabs.onRemoved.addListener", background)
-        # content.js arka plan rolunu sorar ve isi bitince kapanir
-        self.assertIn("klinot-background-card-role", content)
-        self.assertIn("klinot-background-card-done", content)
-        self.assertIn("runBackgroundIdentityCard", content)
-        # Arka plan kartinda normal aktarim akisi CALISMAMALI
-        self.assertIn("await runBackgroundIdentityCard();", content)
-        self.assertIn("collectMissingIdentities", content)
+    def test_uses_a_hidden_iframe_not_a_tab(self):
+        self.assertIn("collectIdentityInFrame", self.content)
+        self.assertIn('document.createElement("iframe")', self.content)
+        # Ekrandan tamamen gizli
+        for kural in ("position:fixed", "left:-20000px", "opacity:0",
+                      "pointer-events:none", "visibility:hidden"):
+            with self.subTest(kural=kural):
+                self.assertIn(kural, self.content)
+        self.assertIn('frame.setAttribute("aria-hidden", "true")', self.content)
+        # İş bitince iz kalmasın
+        self.assertIn("frame.remove();", self.content)
+
+    def test_no_background_tab_machinery_remains(self):
+        """Yanlış olan sekme yöntemi tamamen kalkmalı."""
+        for kalinti in ("klinot-collect-identity", "klinot-background-card-role",
+                        "klinot-background-card-done", "runBackgroundIdentityCard"):
+            with self.subTest(kalinti=kalinti):
+                self.assertNotIn(kalinti, self.content)
+                self.assertNotIn(kalinti, self.background)
+        self.assertNotIn("active: false", self.background)
+
+    def test_clicks_the_patient_name_to_reveal_the_identity(self):
+        """Kimlik paneli yalnızca hasta adına tıklayınca açılıyor."""
+        self.assertIn("adOgesi.click();", self.content)
+        self.assertIn("readIdentityFromDocument", self.content)
+        # Okunan kimlik sunucuya gönderilir
+        self.assertIn('"/api/v1/mobile/comed/worklist/sync"', self.content)
+        self.assertIn("tckn: identity.tckn", self.content)
+
+    def test_only_one_frame_at_a_time_and_no_retry_storm(self):
+        self.assertIn("identityFrameBusy", self.content)
+        self.assertIn("identityTried", self.content)
 
 
 if __name__ == "__main__":

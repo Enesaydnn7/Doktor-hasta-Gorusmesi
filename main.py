@@ -777,6 +777,8 @@ async def mobile_comed_missing_identity(user: dict = Depends(mobile_doctor)):
     items = [
         {
             "visit_id": item.get("visit_id"),
+            "patient_name": item.get("patient_name") or "",
+            "patient_no": item.get("patient_no") or "",
             "clinical_card_url": item.get("clinical_card_url")
             or comed_clinical_card_url(item.get("visit_id")),
         }

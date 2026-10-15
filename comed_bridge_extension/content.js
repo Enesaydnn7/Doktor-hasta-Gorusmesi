@@ -1956,76 +1956,120 @@
     }
   }
 
-  /* ---- arka planda kimlik toplama ----
+  /* ---- gorunmez cerceveyle kimlik toplama ----
      COMED is listesinde T.C. kimlik numarasi yok; kimlik yalnizca hasta
-     kartindaki "Hasta Bilgileri" panelinde yaziyor. Hastanin randevusu bu
-     yuzden doktor karti acana kadar baglanamiyordu.
+     kartinda, HASTA ADINA tiklayinca acilan "Hasta Bilgileri" panelinde
+     yaziyor. Hastanin randevusu bu yuzden doktor karti acana kadar
+     baglanamiyordu.
 
-     Cozum: is listesindeyken, kimligi henuz alinmamis hastalarin kartini
-     ARKA PLANDA acip kimligi okuyup kapatiyoruz. Doktorun ekraninda hicbir
-     sey degismiyor. */
-  let backgroundRole = null;          // bu sekme arka plan karti mi?
-  const identityAsked = new Set();    // ayni hastayi tekrar tekrar deneme
+     Cozum: is listesi sayfasinin icinde, ekrandan tamamen gizli bir
+     <iframe> ile karti yukluyoruz; hasta adina tiklayip kimligi okuyor ve
+     cerceveyi siliyoruz. Yeni sekme ACILMAZ, doktor hicbir sey gormez,
+     oturum ayni sekmede oldugu icin yeniden giris de gerekmez. */
+  const identityTried = new Set();     // ayni hastayi tur tur denemeyelim
+  let identityFrameBusy = false;
 
-  function askBackground(type) {
+  function frameWaitFor(getter, timeoutMs) {
     return new Promise((resolve) => {
-      try {
-        chrome.runtime.sendMessage({type}, (response) => {
-          void chrome.runtime.lastError;
-          resolve(response || {});
-        });
-      } catch (_) {
-        resolve({});
-      }
+      const deadline = Date.now() + timeoutMs;
+      const tick = () => {
+        let value = null;
+        try { value = getter(); } catch (_) { value = null; }
+        if (value) return resolve(value);
+        if (Date.now() >= deadline) return resolve(null);
+        setTimeout(tick, 300);
+      };
+      tick();
     });
   }
 
-  async function isBackgroundCard() {
-    if (backgroundRole === null) {
-      const response = await askBackground("klinot-background-card-role");
-      backgroundRole = Boolean(response.background);
-    }
-    return backgroundRole;
+  /** Kart belgesinden T.C. kimlik ve dogum tarihini oku. */
+  function readIdentityFromDocument(doc) {
+    const raw = (doc?.body?.textContent || "").replace(/ /g, " ").replace(/\s+/g, " ");
+    const tckn = raw.match(/\b(\d{11})\b/)?.[1] || "";
+    const birth = raw.match(/\b(\d{2})[.\/-](\d{2})[.\/-](\d{4})\b/);
+    return {
+      tckn,
+      birth_date: birth ? `${birth[1]}.${birth[2]}.${birth[3]}` : "",
+    };
   }
 
-  /** Arka plan kartinda: kimligi oku, gonder, sekmeyi kapat. */
-  async function runBackgroundIdentityCard() {
+  /** Bir hastanin kimligini gorunmez cercevede okuyup sunucuya yolla. */
+  async function collectIdentityInFrame(item) {
+    const url = item.clinical_card_url || cardUrlForVisit(item.visit_id);
+    if (!url) return false;
+    const frame = document.createElement("iframe");
+    frame.setAttribute("aria-hidden", "true");
+    frame.setAttribute("tabindex", "-1");
+    // Ekran disinda ve tiklanamaz: doktorun gorsel akisina hic girmez.
+    frame.style.cssText = "position:fixed;left:-20000px;top:0;width:1500px;"
+      + "height:1000px;opacity:0;border:0;pointer-events:none;visibility:hidden";
+    document.body.appendChild(frame);
     try {
-      await waitFor(() => CARD_RE.test(location.pathname) && document.body, 15000);
-      const identity = await ensurePatientIdentityPanel();
-      if (identity?.tckn && identity?.birth_date) await syncCurrentCard();
+      frame.src = url;
+      // 1) Kart yuklensin: hasta adi govdede gorunene kadar bekle.
+      const ad = String(item.patient_name || "").trim().split(/\s+/)[0] || "";
+      const adOgesi = await frameWaitFor(() => {
+        const doc = frame.contentDocument;
+        if (!doc?.body) return null;
+        const adaylar = [...doc.body.querySelectorAll("*")].filter(
+          (el) => el.children.length === 0 && el.textContent
+            && (ad ? el.textContent.includes(ad) : false),
+        );
+        return adaylar[0] || null;
+      }, 30000);
+      if (!adOgesi) return false;
+      // 2) HASTA ADINA TIKLA -> "Hasta Bilgileri" paneli acilir.
+      adOgesi.click();
+      // 3) Kimlik gorunene kadar bekle.
+      const identity = await frameWaitFor(() => {
+        const value = readIdentityFromDocument(frame.contentDocument);
+        return value.tckn && value.birth_date ? value : null;
+      }, 15000);
+      if (!identity) return false;
+      await request("/api/v1/mobile/comed/worklist/sync", {
+        method: "POST",
+        body: JSON.stringify({
+          items: [{
+            visit_id: item.visit_id,
+            clinical_card_id: "",
+            patient_name: item.patient_name || "COMED hastası",
+            patient_no: item.patient_no || "",
+            clinical_card_url: url,
+            tckn: identity.tckn,
+            birth_date: identity.birth_date,
+          }],
+          replace: false,
+        }),
+      });
+      return true;
     } catch (_) {
-      // Kimlik alinamadiysa sessiz gec; bir sonraki turda yeniden denenir.
+      return false;
     } finally {
-      await askBackground("klinot-background-card-done");
+      frame.remove();                 // izi kalmasin
     }
   }
 
-  /** Is listesinde: kimligi eksik ilk hasta icin arka planda kart ac. */
+  /** Is listesindeyken kimligi eksik hastalari sessizce tamamla. */
   async function collectMissingIdentities() {
+    if (identityFrameBusy) return;
     let bekleyen;
     try {
       bekleyen = await request("/api/v1/mobile/comed/worklist/missing-identity");
     } catch (_) {
-      return;                      // sunucu eski surumse sessiz gec
+      return;                         // sunucu eski surumse sessiz gec
     }
     const hedef = (bekleyen?.items || []).find(
-      (item) => item.visit_id && !identityAsked.has(String(item.visit_id)),
+      (item) => item.visit_id && !identityTried.has(String(item.visit_id)),
     );
     if (!hedef) return;
-    const url = hedef.clinical_card_url || cardUrlForVisit(hedef.visit_id);
-    if (!url) return;
-    identityAsked.add(String(hedef.visit_id));
-    await new Promise((resolve) => {
-      try {
-        chrome.runtime.sendMessage(
-          {type: "klinot-collect-identity", url},
-          () => { void chrome.runtime.lastError; resolve(); },
-        );
-      } catch (_) {
-        resolve();
-      }
-    });
+    identityTried.add(String(hedef.visit_id));
+    identityFrameBusy = true;         // ayni anda tek cerceve
+    try {
+      await collectIdentityInFrame(hedef);
+    } finally {
+      identityFrameBusy = false;
+    }
   }
 
   async function monitorRoute() {
@@ -2033,11 +2077,6 @@
     routeBusy = true;
     try {
       const path = location.pathname;
-      // Arka plan kartiysa normal akisa hic girme: sadece kimligi al ve kapan.
-      if (CARD_RE.test(path) && await isBackgroundCard()) {
-        await runBackgroundIdentityCard();
-        return;
-      }
       const routeChanged = path !== lastPath;
       if (routeChanged) {
         lastPath = path;
