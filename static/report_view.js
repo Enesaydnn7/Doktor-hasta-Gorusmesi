@@ -61,6 +61,8 @@ function comedHTML(k) {
       <div class="comed-field-grid">${line("Şikâyet", d.patient_complaint)}${line("Öykü", d.patient_story)}${line("Muayene notu", d.exam_simple_textarea)}${line("Tedavi notu", d.treatment_note_v2)}</div></div>
     <div class="sec"><div class="sec-title"><i class="bi bi-activity"></i> Tanı önerileri</div>
       <div class="comed-diagnoses">${diagnoses.map(x => `<span><b>${esc(x.code)}</b>${esc(x.description)}</span>`).join("") || '<div class="empty-mut">Tanı önerisi yok.</div>'}</div></div>
+    <div class="sec"><div class="sec-title"><i class="bi bi-clipboard2-pulse"></i> Hizmet istemleri</div>
+      <div class="comed-services">${(d.requested_services || []).map(x => `<span><b>${esc(x.name)}</b>${x.reason ? esc(x.reason) : ""}</span>`).join("") || '<div class="empty-mut">Görüşmede tetkik/hizmet istenmedi.</div>'}</div></div>
     <div class="comed-review-note"><i class="bi bi-shield-check"></i><span>Otomatik imza kapalıdır. Alanlar COMED'e taşındıktan sonra doktor kontrol edip kaydeder.</span></div>
   </div>`;
 }

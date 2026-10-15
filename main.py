@@ -1010,6 +1010,7 @@ async def doctor_login(
     request: Request,
     user: str = Form(""),
     password: str = Form(""),
+    remember: str = Form(""),
 ):
     role = auth.api_giris_rolu(user.strip(), password)
     if role != "doctor":
@@ -1023,11 +1024,14 @@ async def doctor_login(
             status_code=401,
         )
     username = user.strip()
+    # "Beni hatırla" işaretliyse oturum 12 saat yerine 30 gün yaşar; doktor
+    # her gün yeniden giriş yapmak zorunda kalmaz.
+    hatirla = str(remember).strip().lower() in {"1", "true", "on", "yes"}
     response = RedirectResponse("/doctor", status_code=303)
     response.set_cookie(
         auth.COOKIE,
-        auth.token_uret(username, "doctor"),
-        max_age=auth.MAX_AGE,
+        auth.token_uret(username, "doctor", remember=hatirla),
+        max_age=auth.REMEMBER_MAX_AGE if hatirla else auth.MAX_AGE,
         httponly=True,
         samesite="lax",
     )

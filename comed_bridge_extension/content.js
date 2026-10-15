@@ -192,6 +192,7 @@
       complaint_start_date: "Başlangıç tarihi", review_of_system_simple: "Sistem sorgusu özeti",
       exam_simple_textarea: "Muayene notu", treatment_note_v2: "İzlem ve tedavi planı",
       profile_and_family_history: "Özgeçmiş ve soygeçmiş", family_history: "Soygeçmiş",
+      requested_services: "Hizmet istemleri (EKG, EKO…)",
       psychological_status: "Psikolojik durum",
       fall_risk: "Düşme riski", pain: "Ağrı değerlendirmesi", diagnoses: "Tanılar (ICD-10)",
       treatment_plan_label: "Tedavi türü", is_surgery_will_planned: "Ameliyat planı",
@@ -706,6 +707,30 @@
     element.dispatchEvent(new Event("change", {bubbles: true}));
     element.dispatchEvent(new Event("blur", {bubbles: true}));
     return true;
+  }
+
+  /* COMED'in bazi dugmeleri salt .click() ile tepki vermiyor; gercek fare
+     dizisi bekliyorlar (ornegin hizmet istem ekranindaki "Ekle" ve
+     "Uygulayan" alani). Canli ortamda olculdu. */
+  function pressNode(node) {
+    if (!node) return false;
+    const rect = node.getBoundingClientRect();
+    const init = {
+      bubbles: true, cancelable: true, view: window,
+      clientX: rect.left + rect.width / 2,
+      clientY: rect.top + rect.height / 2,
+    };
+    try {
+      node.dispatchEvent(new PointerEvent("pointerdown", init));
+      node.dispatchEvent(new MouseEvent("mousedown", init));
+      node.dispatchEvent(new PointerEvent("pointerup", init));
+      node.dispatchEvent(new MouseEvent("mouseup", init));
+      node.dispatchEvent(new MouseEvent("click", init));
+      return true;
+    } catch (_) {
+      node.click();
+      return true;
+    }
   }
 
   function setTypingValue(element, value) {
@@ -1691,6 +1716,136 @@
     return String(input.value || "").trim() === label;
   }
 
+  /* ---- Hizmet istemleri (EKG, EKO, grafi...) ----
+     COMED'de bunlar muayene formunda DEGIL, ayri bir ekranda girilir:
+       <kart adresi>?app-action=action-order-procedure
+     Canli ortamda dogrulanan akis:
+       1. Ekrani ac, "Hizmet İstem" sekmesine gec
+       2. Listede hizmeti bul (favorilerde yoksa arama kutusuyla ara)
+       3. Satira tikla -> detay penceresi acilir
+       4. "Uygulayan" alanina doktoru sec (isteyen doktorun aynisi)
+       5. Secim panelini kapat, "Ekle" -> "Kayıt başarılı"
+     Doktor sonra ekrani kapatip kontrol eder ve imzalar. */
+  const SERVICE_SCREEN_PARAM = "app-action=action-order-procedure";
+
+  function serviceRows() {
+    return [...document.querySelectorAll("tbody tr, [role=row]")]
+      .filter((row) => row.offsetParent !== null && textOf(row).length > 10);
+  }
+
+  /** Hizmet adini satirla esle: once tam ad, sonra parcali. */
+  function matchServiceRow(name) {
+    const wanted = name.toLocaleLowerCase("tr-TR").trim();
+    const rows = serviceRows();
+    const exact = rows.find((row) => {
+      const cells = [...row.querySelectorAll("td,[role=cell]")].map(
+        (cell) => textOf(cell).toLocaleLowerCase("tr-TR"));
+      return cells.some((cell) => cell === wanted);
+    });
+    if (exact) return exact;
+    // "Elektrokardiogram (EKG)" aranirken "EKG" de kabul edilsin.
+    const core = wanted.replace(/\(.*?\)/g, "").trim();
+    return rows.find((row) => {
+      const text = textOf(row).toLocaleLowerCase("tr-TR");
+      return text.includes(wanted) || (core.length > 3 && text.includes(core));
+    }) || null;
+  }
+
+  /** Istem ekranini ac ve "Hizmet İstem" sekmesine gec. */
+  async function openServiceScreen() {
+    if (!location.search.includes(SERVICE_SCREEN_PARAM)) {
+      const url = `${location.pathname}?${SERVICE_SCREEN_PARAM}`;
+      history.pushState({}, "", url);
+      window.dispatchEvent(new PopStateEvent("popstate"));
+      await waitFor(() => location.search.includes(SERVICE_SCREEN_PARAM), 4000);
+    }
+    const tab = await waitFor(
+      () => document.querySelector('[data-test="co-button-Hizmet İstem"]'), 12000);
+    if (!tab) return false;
+    pressNode(tab);
+    await waitForDomQuiet(document.body, 260, 3000);
+    return true;
+  }
+
+  /** Detay penceresinde uygulayan doktoru sec. */
+  async function pickPerformingDoctor(doctorName) {
+    const opener = document.querySelector('[data-test="personnel-department-Uygulayan"]');
+    if (!opener) return false;
+    if (textOf(opener) && !/^Uygulayan$/i.test(textOf(opener))) return true;  // zaten dolu
+    pressNode(opener);
+    const rows = await waitFor(() => {
+      const found = [...document.querySelectorAll(".department-select-button")]
+        .filter((row) => row.offsetParent !== null);
+      return found.length ? found : null;
+    }, 6000);
+    if (!rows) return false;
+    // Isteyen doktorun adiyla esles; bulunamazsa ilk siradakini birakma.
+    const parts = String(doctorName || "").split(/[-|]/).map((p) => p.trim()).filter(Boolean);
+    const target = rows.find((row) => {
+      const text = textOf(row).toLocaleLowerCase("tr-TR");
+      return parts.every((part) => text.includes(part.toLocaleLowerCase("tr-TR")));
+    });
+    if (!target) {
+      document.dispatchEvent(new KeyboardEvent("keydown", {key: "Escape", bubbles: true}));
+      return false;
+    }
+    pressNode(target);
+    await sleep(600);
+    // Secim paneli disariya tiklayinca kapanir.
+    pressNode(document.body);
+    await sleep(400);
+    return true;
+  }
+
+  async function fillServiceRequests(services = []) {
+    if (!services.length) return 0;
+    if (!await openServiceScreen()) return 0;
+    // Isteyen doktor zaten dolu gelir; uygulayan icin ayni adi kullanacagiz.
+    const requester = textOf(
+      document.querySelector('[data-test^="personnel-department"]')) || "";
+    let added = 0;
+    for (const service of services.slice(0, 8)) {
+      const name = String(service?.name || "").trim();
+      if (!name) continue;
+      bridgeStatus(`Hizmet istemi hazırlanıyor · ${name}`);
+      try {
+        let row = matchServiceRow(name);
+        if (!row) {
+          // Favorilerde yoksa arama kutusundan ara.
+          const search = [...document.querySelectorAll("input")]
+            .find((input) => input.offsetParent !== null
+              && /ara/i.test(input.placeholder || ""));
+          if (search) {
+            setTypingValue(search, name.replace(/\(.*?\)/g, "").trim());
+            await waitForDomQuiet(document.body, 300, 3500);
+            row = matchServiceRow(name);
+          }
+        }
+        if (!row) continue;
+        pressNode(row);
+        const addButton = await waitFor(
+          () => document.querySelector('[data-test="co-button-Ekle"]'), 6000);
+        if (!addButton) continue;
+        const doctorOk = await pickPerformingDoctor(requester);
+        const reason = String(service?.reason || "").trim();
+        if (reason) setValue(byPlaceholder("Açıklama"), reason);
+        if (!doctorOk) {
+          // Uygulayan secilemezse istemi yarim birakma: pencereyi kapat.
+          pressNode(document.querySelector('[data-test="co-button-Vazgeç"]'));
+          await sleep(500);
+          continue;
+        }
+        pressNode(document.querySelector('[data-test="co-button-Ekle"]'));
+        await waitForDomQuiet(document.body, 320, 4000);
+        added += 1;
+        bridgeFieldStatus("requested_services", true);
+      } catch (_) {
+        // Tek bir istem tutmazsa digerlerini engelleme.
+      }
+    }
+    return added;
+  }
+
   async function fillDiagnoses(diagnoses = []) {
     const card = cardByTitle("Tanılar (ICD - 10)");
     if (!card) return 0;
@@ -1814,6 +1969,11 @@
     if (!skipDiagnoses) {
       const diagnosisCount = await fillDiagnoses(fields.diagnoses || []);
       record("diagnoses", diagnosisCount > 0, `${diagnosisCount} tanı`);
+    }
+    if ((fields.requested_services || []).length) {
+      const serviceCount = await fillServiceRequests(fields.requested_services);
+      record("requested_services", serviceCount > 0,
+        `${serviceCount}/${fields.requested_services.length} istem`);
     }
     record("treatment_plan_label", Boolean(fields.treatment_plan_label)
       && clickCardOption("İzlem ve Plan", fields.treatment_plan_label));

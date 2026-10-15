@@ -238,6 +238,8 @@ class ComedIntegrationTests(unittest.TestCase):
                 "forms/document/saveDocumentProcesses",
                 "medical/examination/saveProfile*",
                 "medical/treatment/savevisitdiagnoses",
+                # Hizmet istemleri COMED'de ayri ekranda girilir.
+                "medical/order/serviceRequest",
             ],
         )
 

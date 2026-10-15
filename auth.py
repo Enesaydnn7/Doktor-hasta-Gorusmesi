@@ -18,6 +18,8 @@ from datetime import datetime
 COOKIE = "klinik_session"
 MAX_AGE = int(os.getenv("SESSION_HOURS", "12")) * 3600
 MOBILE_API_MAX_AGE = int(os.getenv("MOBILE_SESSION_DAYS", "30")) * 86400
+# "Beni hatirla" isaretlenirse doktor her gun yeniden giris yapmasin.
+REMEMBER_MAX_AGE = int(os.getenv("REMEMBER_SESSION_DAYS", "30")) * 86400
 
 ADMIN_USER = os.getenv("ADMIN_USER", "admin")
 ADMIN_PASS = os.getenv("ADMIN_PASS", "admin")
@@ -268,10 +270,17 @@ def _b64_decode(value: str) -> str:
     return base64.urlsafe_b64decode(value + "=" * (-len(value) % 4)).decode()
 
 
-def token_uret(user: str, role: str = "admin") -> str:
+def token_uret(user: str, role: str = "admin", remember: bool = False) -> str:
+    """Web oturum jetonu uret.
+
+    remember=True ise jeton REMEMBER_MAX_AGE kadar yasar. Doktor her gun
+    yeniden giris yapmak zorunda kalmasin diye giris ekranindaki "Beni
+    hatirla" secenegi bunu kullanir.
+    """
     if role not in {"doctor", "admin"}:
-        raise ValueError("Geçersiz kullanıcı rolü")
-    msg = f"web2|{_b64_encode(user)}|{role}|{int(time.time())}"
+        raise ValueError("Gecersiz kullanici rolu")
+    marker = "web3" if remember else "web2"
+    msg = f"{marker}|{_b64_encode(user)}|{role}|{int(time.time())}"
     return f"{base64.urlsafe_b64encode(msg.encode()).decode().rstrip('=')}.{_sign(msg)}"
 
 
@@ -287,16 +296,17 @@ def token_bilgisi(token: str) -> dict | None:
     if not hmac.compare_digest(_sign(msg), sig):
         return None
     try:
-        if msg.startswith("web2|"):
+        remember = msg.startswith("web3|")
+        if msg.startswith("web2|") or remember:
             marker, encoded_user, role, ts = msg.split("|", 3)
-            if marker != "web2" or role not in {"doctor", "admin"}:
+            if marker not in {"web2", "web3"} or role not in {"doctor", "admin"}:
                 return None
             user = _b64_decode(encoded_user)
         else:
             # v2.8.x yönetici çerezleri için geriye uyumluluk.
             user, ts = msg.rsplit("|", 1)
             role = "admin"
-        if (time.time() - int(ts)) >= MAX_AGE:
+        if (time.time() - int(ts)) >= (REMEMBER_MAX_AGE if remember else MAX_AGE):
             return None
         return {"user": user, "role": role, "display_name": kullanici_adi(user, role)}
     except Exception:

@@ -447,6 +447,7 @@ def normalize_draft(draft: dict[str, Any] | None) -> dict[str, Any]:
     if not isinstance(data.get("psychological_status"), dict):
         data["psychological_status"] = {}
     data.setdefault("diagnoses", [])
+    data.setdefault("requested_services", [])
 
     def fallback(path: str, value: Any) -> None:
         current: Any = data
@@ -581,6 +582,28 @@ def normalize_draft(draft: dict[str, Any] | None) -> dict[str, Any]:
         })
     data["diagnoses"] = diagnoses[:3]
 
+    # Doktorun görüşmede açıkça istediği tetkik/hizmetler (EKG, EKO, grafi...).
+    # COMED'de bunlar ayrı bir "Hizmet İstem" ekranında girilir; köprü bu
+    # listeyi oraya taşır. Adı boş olanlar ve tekrarlar elenir.
+    services: list[dict] = []
+    seen_services: set[str] = set()
+    for item in data.get("requested_services") or []:
+        name = ""
+        reason = ""
+        if isinstance(item, dict):
+            name = str(item.get("name") or item.get("service") or "").strip()
+            reason = str(item.get("reason") or item.get("description") or "").strip()
+        elif isinstance(item, str):
+            name = item.strip()
+        if not name:
+            continue
+        key = name.casefold()
+        if key in seen_services:
+            continue
+        seen_services.add(key)
+        services.append({"name": name[:120], "reason": reason[:200] or None})
+    data["requested_services"] = services[:8]
+
     pain = data["pain"]
     try:
         if pain.get("score") is not None and not isinstance(pain.get("score"), bool):
@@ -670,12 +693,22 @@ def build_transfer_bundle(record: dict[str, Any], patient: dict[str, Any],
                 "section": "diagnoses",
                 "records": normalized["fields"].get("diagnoses") or [],
             },
+            {
+                # COMED'de hizmet istemleri ayrı bir ekranda girilir
+                # (?app-action=action-order-procedure). Köprü bu listeyi
+                # oraya taşır; isteyen ve uygulayan doktor aynı kişidir.
+                "method": "FORM",
+                "endpoint": "medical/order/serviceRequest",
+                "section": "service_requests",
+                "records": normalized["fields"].get("requested_services") or [],
+            },
         ],
         "missing_required": normalized["missing_required"],
         "fallback_fields": normalized["fallback_fields"],
         "manual_review_notes": [
             "ICD kodu COMED arama sonucuyla eşleştirilmeden imzalanmamalıdır.",
             "Ağrı skoru kurum şemasına göre ayrı Ağrı Değerlendirme dokümanında olabilir.",
+            "Hizmet istemleri doktor onayına açık bırakılır; imzalamadan önce kontrol edilmelidir.",
             "Eksik zorunlu alanlar doktor tarafından tamamlanmalıdır.",
         ],
     }

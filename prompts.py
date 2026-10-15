@@ -178,6 +178,12 @@ KURALLAR (ÇOK ÖNEMLİ):
 - marital_status yalnız Belirtilmedi, Bekar veya Evli olabilir.
 - education yalnız Eğitim, Yok, Önlisans, İlköğretim, Lise, Lisans veya Lisans Üstü olabilir.
 - Tanı tarafı yalnız none|left|right; türü differential|definitive|preliminary olabilir.
+- requested_services: doktorun görüşmede AÇIKÇA istediği tetkik/hizmetler. Yalnız
+  söylenenleri yaz; "faydalı olurdu" gibi öneri cümlelerinden istem üretme.
+  Adı COMED hizmet kataloğundaki gibi yaz: Elektrokardiogram (EKG),
+  Ekokardiyografi, Akciğer Grafisi (İki Yön), Tam Kan Sayımı gibi. Kısaltma
+  geçiyorsa açık adını kullan (EKG → Elektrokardiogram (EKG)). Hiçbiri yoksa
+  listeyi boş bırak. reason alanına istemi gerektiren kısa klinik gerekçeyi yaz.
 - auto_sign her zaman false olmalıdır. Doktorun imzasını otomatikleştirme.
 - COMED alan adlarını aşağıdaki JSON şemasındaki gibi aynen kullan.
 
@@ -243,6 +249,9 @@ YANITINI SADECE şu JSON olarak ver:
     }
   ],
   "treatment_note_v2": "tedavi/öneri notu veya null",
+  "requested_services": [
+    {"name": "Elektrokardiogram (EKG)", "reason": "eforla gelen göğüs ağrısı"}
+  ],
   "treatment_plan_label": "görüşmede açıkça seçilebiliyorsa plan veya null",
   "is_surgery_will_planned": null,
   "is_control_suggested": null,

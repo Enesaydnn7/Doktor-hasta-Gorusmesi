@@ -15,6 +15,10 @@
     <form method="post" action="/doctor/login">
       <label>Kullanıcı adı<input name="user" autocomplete="username" required autofocus></label>
       <label>Şifre<input name="password" type="password" autocomplete="current-password" required></label>
+      <label class="remember-row">
+        <input type="checkbox" name="remember" value="1" checked>
+        <span>Beni hatırla<small>Bu bilgisayarda 30 gün açık kalır.</small></span>
+      </label>
       <button type="submit">Doktor paneline gir</button>
     </form>
     <a class="admin-link" href="/admin/login">Yönetici girişi</a>
