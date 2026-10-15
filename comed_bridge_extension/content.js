@@ -1767,10 +1767,16 @@
     return true;
   }
 
-  /** Detay penceresinde uygulayan doktoru sec. */
+  /** Detay penceresinde uygulayan doktoru sec.
+
+     Her hizmet turunun penceresi ayni degil: "Hizmet" tipinde (EKG gibi)
+     Uygulayan alani zorunlu, "Radyoloji" tipinde (grafi gibi) bu alan hic
+     yok -- onun yerine cekim yontemi/vucut bolgesi gibi alanlar cikiyor.
+     Alan yoksa bu adim atlanir; eksikse "Ekle" zaten pasif kalir ve istem
+     doktora birakilir. */
   async function pickPerformingDoctor(doctorName) {
     const opener = document.querySelector('[data-test="personnel-department-Uygulayan"]');
-    if (!opener) return false;
+    if (!opener) return true;                       // bu pencerede alan yok
     if (textOf(opener) && !/^Uygulayan$/i.test(textOf(opener))) return true;  // zaten dolu
     pressNode(opener);
     const rows = await waitFor(() => {

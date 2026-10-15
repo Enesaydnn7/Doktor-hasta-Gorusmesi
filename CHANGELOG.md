@@ -1,3 +1,38 @@
+## v2.30.0 — 15 Ekim 2026
+
+### Hizmet istemleri (EKG, EKO) otomatik giriliyor
+
+Doktor görüşmede "EKG çekelim, EKO isteyelim" dediğinde bunlar eskiden yalnız
+izlem-plan metnine yazılıyordu; doktor sonra COMED'de tek tek elle giriyordu.
+Artık köprü bu istemleri de dolduruyor.
+
+COMED'de hizmet istemleri muayene formunda **değil**, ayrı bir ekranda
+giriliyor: `<kart adresi>?app-action=action-order-procedure`. Akış canlı
+COMED'de adım adım doğrulandı ve gerçek bir EKG istemi oluşturuldu:
+
+1. Ekranı aç, "Hizmet İstem" sekmesine geç
+2. Hizmeti listede bul (favorilerde yoksa arama kutusuyla)
+3. Satıra tıkla, detay penceresi açılır
+4. "Uygulayan" doktoru seç (isteyen doktorun aynısı)
+5. "Ekle" → kayıt listeye düşer
+
+Doktor sonra ekranı kapatıp kontrol eder ve imzalar. İmza her zaman doktorda.
+
+**Hizmet türüne göre pencere değişiyor:** "Hizmet" tipinde (EKG) Uygulayan
+alanı zorunlu, "Radyoloji" tipinde (grafi) bu alan hiç yok; onun yerine çekim
+yöntemi, vücut bölgesi gibi alanlar çıkıyor ve açıklama zorunlu oluyor.
+Köprü dolduramadığı istemi yarım bırakmaz: pencereyi kapatıp doktora bırakır.
+
+LLM artık yalnız doktorun **açıkça istediği** tetkikleri çıkarıyor; "faydalı
+olurdu" gibi öneri cümlelerinden istem üretmiyor. Doktor paneline "Hizmet
+istemleri" bölümü eklendi — aktarımdan önce ne girileceği görülüyor.
+
+### Doktor girişinde "Beni hatırla"
+
+Oturum 12 saatte düştüğü için doktor her gün yeniden giriş yapıyordu.
+İşaretlenirse 30 gün açık kalıyor. İşaretlenmezse eski davranış aynen sürüyor.
+Uzun ömürlü çerez de `httponly` ve `samesite=lax` kalıyor.
+
 ## v2.28.0 — 15 Ekim 2026
 
 ### "Siteden çıkılsın mı?" kutusu kalktı
