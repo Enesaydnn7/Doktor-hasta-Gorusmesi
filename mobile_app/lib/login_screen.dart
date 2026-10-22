@@ -299,7 +299,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           label: Text(_busy ? 'Bağlanıyor…' : patient && _challenge == null ? 'SMS kodu gönder' : 'Giriş yap'),
                         ),
                         const SizedBox(height: 18),
-                        const Text('Klinot · v2.33.1', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: Color(0xFF84969A))),
+                        const Text('Klinot · v2.34.0', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: Color(0xFF84969A))),
                       ],
                     ),
                   ),

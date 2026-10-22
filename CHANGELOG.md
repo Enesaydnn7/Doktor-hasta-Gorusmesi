@@ -1,3 +1,66 @@
+## v2.34.0 — 22 Ekim 2026
+
+### Tetkik İstem ekranı eklendi (üçüncü istem ekranı)
+
+COMED'de istemler **üç ayrı ekrana** dağılmış. İkisini yapmıştık, üçüncüsü
+hiç yoktu:
+
+| Ekran | Adres | Durum |
+| --- | --- | --- |
+| Hizmet İstem | `action-order-procedure` | vardı |
+| İlaç İstem | `action-order-drug` | vardı |
+| **Tetkik İstem** | **`action-order-study`** | **yeni** |
+
+Bu, v2.33.0'daki "Tam Kan Sayımı katalogda hiç yok" sonucunun gerçek
+sebebiydi: laboratuvar tetkikleri Hizmet İstem'de değil, bu ekranda. Yanlış
+yerde aranıyordu.
+
+### Hangi ekranda olduğunu katalog söylüyor, model değil
+
+Analiz çıktısı tek alanda (`requested_services`) kalıyor. Köprü önce Tetkik
+İstem'i deniyor, bulamadıklarını Hizmet İstem'e devrediyor (EKG gibi işlemler
+orada). Modele "bu lab mı işlem mi" diye sordurmak hataya açıktı.
+
+### Ad eşleştirme: model bilimsel ad yazıyor, COMED kısaltma kullanıyor
+
+Canlı doğrulanan eşleşmeler:
+
+| Gemini çıktısı | COMED kataloğu |
+| --- | --- |
+| Alanin Aminotransferaz (ALT) | ALT (SGPT) |
+| C-Reaktif Protein (CRP) | CRP (Kantitatif) |
+| Total Demir Bağlama Kapasitesi (TDBK) | Total Demir Bağlama Kapasitesi (TIBC) |
+| HDL Kolesterol | HDL-Kolesterol |
+| Kreatinin | Kreatinin (Serum) |
+| Demir | Demir (Fe) |
+
+Düz "includes" eşleşmesi bunların çoğunu kaçırırdı. Artık aday olarak tam ad,
+parantezsiz çekirdek **ve parantez içindeki kısaltma** deneniyor; tire/boşluk
+sadeleştiriliyor. 3D/Fetal/Stres vetosu burada da geçerli.
+
+### Ölçülen davranışlar
+
+- **Hemogram (796) onay kutusu pasif** geliyor — işaretlenemiyor, atlanıyor ve
+  raporda sebebi yazıyor.
+- **"Dokümanları Doldurunuz"** uyarısı çıkan tetkik **hiç gönderilmiyor**;
+  yarım bırakılmış istem doktoru yanıltır.
+- Radyolojide "Acil" yanındaki açıklama zorunlu olabiliyor → doktor aciliyet
+  belirtmediyse **"Aciliyeti yok"** yazılıyor.
+- Birden çok tetkik aynı anda işaretlenip **tek "Ekle"** ile ekleniyor.
+- Favori paketleri ve içerikleri ölçülüp belgelendi (21/19/8/2/4/2/1; üç paket
+  boş). Soldaki "Ara" kutusu global değil, seçili paketin içinde arıyor.
+
+### İstem sınırı 8 → 25
+
+Tek görüşmede 16 tetkik istenebildiği ölçüldü (kardiyoloji paneli + grafi +
+doppler + EKG). 8'lik sınır istemleri sessizce kesiyordu.
+
+### Test
+
+Kendi oluşturduğum diyalog canlı backend'e gönderildi, çıkan 16 tetkik canlı
+COMED kataloğunda eşleştirildi. `docs/COMED_FORM_MAP.md`'de ölçüm tabloları
+var. 254 → 269 test.
+
 ## v2.33.1 — 22 Ekim 2026 (ACİL DÜZELTME)
 
 ### v2.33.0 dökümü tamamen bozdu

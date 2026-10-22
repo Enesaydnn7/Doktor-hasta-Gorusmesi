@@ -123,7 +123,7 @@ Doktor: `Kullanici.kayadr;Kullanici.aydin1|tracer` / `1`
 
 | Dal | Commit | Sürüm |
 |---|---|---|
-| `main` | v2.33.1 | **v2.33.1** ← güncel |
+| `main` | v2.34.0 | **v2.34.0** ← güncel |
 | `mvp` | `2d6b671` | **v2.32.0** ← "bizim MVP sürümümüz" |
 | `mvp-v2.10.3` (etiket) | `7660ef4` | eski demo |
 
@@ -165,6 +165,24 @@ cd mobile_app; flutter test          # 12
 
 **Son iş: v2.33.0 — hizmet istemlerinde yanlış tetkik seçimi, STT Türkçe
 bağlamı, analiz promptu güçlendirmesi. Kullanıcı HENÜZ DENEMEDİ.**
+
+### COMED''de ÜÇ İSTEM EKRANI VAR (v2.34.0)
+
+| Ekran | Adres |
+| --- | --- |
+| Hizmet İstem | `?app-action=action-order-procedure` (EKG gibi işlemler) |
+| İlaç İstem | `?app-action=action-order-drug` |
+| Tetkik İstem | `?app-action=action-order-study` (laboratuvar + radyoloji) |
+
+"Tam Kan Sayımı katalogda yok" sonucunun sebebi üçüncüsünü bilmememizdi.
+Bir istem bulunamıyorsa **önce doğru ekranda mı arıyoruz** diye bak.
+
+Köprü önce Tetkik İstem''i, sonra Hizmet İstem''i dener. Hangi ekranda
+olduğunu **katalog** söyler, modele sordurma.
+
+Ad eşleştirmede model bilimsel adı yazar, COMED kısaltmayı kullanır
+(ALT (SGPT), CRP (Kantitatif), HDL-Kolesterol). Parantez içindeki kısaltma
+da aday olarak denenmeli. Ölçüm tabloları `docs/COMED_FORM_MAP.md`''de.
 
 ### ⚠️ DIŞ API PARAMETRESİ EKLERKEN (v2.33.0 dersi)
 

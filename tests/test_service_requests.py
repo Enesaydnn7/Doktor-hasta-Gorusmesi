@@ -47,8 +47,11 @@ class ServiceRequestNormalizationTests(unittest.TestCase):
         self.assertEqual([item["name"] for item in result], ["EKG"])
 
     def test_caps_the_list(self):
-        result = self._normalize([{"name": f"Hizmet {i}"} for i in range(20)])
-        self.assertLessEqual(len(result), 8)
+        # Sinir 8'den 25'e cikarildi: tek gorusmede 16 tetkik istenebildigi
+        # canli olculdu (kardiyoloji paneli + grafi + doppler + EKG).
+        result = self._normalize([{"name": f"Hizmet {i}"} for i in range(40)])
+        self.assertLessEqual(len(result), 25)
+        self.assertEqual(len(result), 25)
 
     def test_missing_field_is_not_required(self):
         """Tetkik istenmemiş olması zorunlu alan eksikliği sayılmamalı."""

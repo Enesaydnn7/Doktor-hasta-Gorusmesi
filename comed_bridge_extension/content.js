@@ -1759,6 +1759,225 @@
      Doktor sonra ekrani kapatip kontrol eder ve imzalar. */
   const SERVICE_SCREEN_PARAM = "app-action=action-order-procedure";
   const DRUG_SCREEN_PARAM = "app-action=action-order-drug";
+  const STUDY_SCREEN_PARAM = "app-action=action-order-study";
+
+  /* ---------- TETKİK İSTEM ----------
+
+     COMED'de UC AYRI istem ekrani var; tetkikler (laboratuvar + radyoloji)
+     ucuncusunde. "Tam Kan Sayimi"nin Hizmet Istem'de bulunamamasinin sebebi
+     buydu: yanlis ekranda araniyordu.
+
+     CANLI OLCUM (22 Ekim 2026, hasta 22207363):
+       Sol agac: Favoriler (paketler) / Laboratuvar / Radyoloji / Patoloji /
+                 Kardiyoloji
+       Favori paketleri ve icerikleri:
+         adnan kaya kardiyoloji paketi 21 · ANJİYO RUTİN 19 · kısa biyo 8 ·
+         Enzim 2 · alt ekstremite doppler 4 · akciğer grafisi 2 · karotis 1
+         (Bt koroner / ekooo / karotis mrlar BOS)
+       Akis: satirdaki onay kutusunu isaretle -> altta "Laboratuvar İstekleri"
+             / "Radyoloji İstekleri" paneli acilir -> sag altta "Ekle".
+             Birden cok tetkik ayni anda isaretlenip tek "Ekle" ile eklenir.
+       Hemogram (796) onay kutusu PASIF geliyor; isaretlenemez, atlanir.
+       Soldaki "Ara" kutusu GLOBAL DEGIL, yalniz secili paketin icinde arar. */
+  const STUDY_PACKAGES = [
+    "adnan kaya kardiyoloji paketi", "Enzim", "ANJİYO RUTİN", "kısa biyo",
+    "akciğer grafisi", "Bt koroner", "alt ekstremite doppler", "ekooo",
+    "karotis", "karotis mrlar",
+  ];
+  /* Radyoloji istemlerinde "Acil" yanindaki aciklama kutusu zorunlu olabiliyor
+     (kirmizi nokta). Doktor aciliyet belirtmediyse bu varsayilan yazilir --
+     bos birakip istemi kaybetmektense notu doktor duzeltsin. */
+  const STUDY_URGENCY_DEFAULT = "Aciliyeti yok";
+
+  async function openStudyScreen() {
+    if (!location.search.includes(STUDY_SCREEN_PARAM)) {
+      history.pushState({}, "", `${location.pathname}?${STUDY_SCREEN_PARAM}`);
+      window.dispatchEvent(new PopStateEvent("popstate"));
+      await waitFor(() => location.search.includes(STUDY_SCREEN_PARAM), 4000);
+    }
+    await waitForDomQuiet(document.body, 300, 4000);
+    return Boolean(await waitFor(() => studyRows().length ? true : null, 15000));
+  }
+
+  /** Tetkik listesi satirlari: onay kutusu tasiyan gorunur satirlar. */
+  function studyRows() {
+    return [...document.querySelectorAll("tbody tr, [role=row]")].filter(
+      (row) => row.offsetParent !== null
+        && textOf(row).length > 8
+        && row.querySelector('input[type="checkbox"]'),
+    );
+  }
+
+  /** Satirdaki tetkik adi: "Açlık Kan Şekeri (AKŞ) - ++44 Biyokimya ..." */
+  function studyRowName(row) {
+    const cells = [...row.querySelectorAll("td,[role=cell]")]
+      .map((cell) => textOf(cell)).filter(Boolean);
+    const named = cells.find((cell) => /[A-Za-zÇĞİÖŞÜçğıöşü]{3}/.test(cell));
+    return String(named || textOf(row)).split(" - ")[0].trim();
+  }
+
+  /** Sol menuden favori paketini sec. */
+  async function selectStudyPackage(name) {
+    const item = [...document.querySelectorAll("a,li,div,span")].find(
+      (node) => node.offsetParent !== null && node.children.length === 0
+        && textOf(node) === name,
+    );
+    if (!item) return false;
+    pressNode(item);
+    await waitForDomQuiet(document.body, 300, 3500);
+    return true;
+  }
+
+  /* Tetkik adini satirla esle.
+
+     CANLI OLCUM: model bilimsel tam adi yaziyor, COMED kisaltma kullaniyor:
+       "Alanin Aminotransferaz (ALT)"        -> COMED: "ALT (SGPT)"
+       "C-Reaktif Protein (CRP)"             -> COMED: "CRP (Kantitatif)"
+       "Total Demir Bağlama Kapasitesi (TDBK)" -> COMED: "Demir Bağlama Kapasitesi (UIBC)"
+       "HDL Kolesterol"                      -> COMED: "HDL-Kolesterol"
+     Bu yuzden hem tam ad, hem parantezsiz cekirdek, hem de PARANTEZ ICINDEKI
+     KISALTMA aday olarak denenir. Noktalama (tire/bosluk) sadelestirilir.
+     Hizmet istemindeki niteleyici vetosu burada da gecerli. */
+  function studyCandidates(name) {
+    const lower = name.toLocaleLowerCase("tr-TR").trim();
+    const core = lower.replace(/\(.*?\)/g, "").trim();
+    const abbreviations = [...lower.matchAll(/\(([^)]+)\)/g)]
+      .map((match) => match[1].trim())
+      .filter((value) => value && value.length <= 12);
+    return [...new Set([lower, core, ...abbreviations].filter(Boolean))];
+  }
+
+  /** "HDL-Kolesterol" ile "HDL Kolesterol" ayni sayilsin. */
+  function simplifyStudy(value) {
+    return value.toLocaleLowerCase("tr-TR").replace(/[\s\-_.]+/g, " ").trim();
+  }
+
+  function matchStudyRow(name) {
+    const wanted = name.toLocaleLowerCase("tr-TR").trim();
+    const candidates = studyCandidates(name);
+    const rows = studyRows();
+    const score = (row) => {
+      const label = studyRowName(row).toLocaleLowerCase("tr-TR");
+      const labelCore = label.replace(/\(.*?\)/g, "").trim();
+      const labelAbbr = [...label.matchAll(/\(([^)]+)\)/g)].map((m) => m[1].trim());
+      for (const qualifier of SERVICE_QUALIFIERS) {
+        if (label.includes(qualifier)
+          && !candidates.some((c) => c.includes(qualifier))) return -1000;
+      }
+      let best = 0;
+      for (const candidate of candidates) {
+        const c = simplifyStudy(candidate);
+        if (!c) continue;
+        if (simplifyStudy(label) === c) best = Math.max(best, 200);
+        else if (simplifyStudy(labelCore) === c) best = Math.max(best, 180);
+        else if (labelAbbr.some((a) => simplifyStudy(a) === c)) best = Math.max(best, 160);
+        else if (simplifyStudy(labelCore).startsWith(`${c} `)) best = Math.max(best, 120);
+        else if (simplifyStudy(label).includes(c) && c.length > 4) best = Math.max(best, 60);
+      }
+      return best;
+    };
+    const best = rows.map((row) => ({row, value: score(row)}))
+      .sort((a, b) => b.value - a.value)[0];
+    return best && best.value >= 120 ? best.row : null;
+  }
+
+  /** Alt paneldeki bos zorunlu aciklama kutularini varsayilanla doldur. */
+  function fillStudyRequiredNotes() {
+    let filled = 0;
+    for (const field of document.querySelectorAll("textarea, input[type='text']")) {
+      if (field.offsetParent === null || field.value) continue;
+      const holder = field.closest("div");
+      if (!holder) continue;
+      const marked = /required|error|invalid/.test(String(holder.className || ""))
+        || getComputedStyle(holder, "::before").content !== "none";
+      if (!marked) continue;
+      if (setValue(field, STUDY_URGENCY_DEFAULT)) filled += 1;
+    }
+    return filled;
+  }
+
+  /** Doküman isteyen istem satiri var mi? (ornek: Gliko Hemoglobin HbA1C) */
+  function studyDocumentWarnings() {
+    return [...document.querySelectorAll("*")]
+      .filter((node) => node.offsetParent !== null
+        && node.children.length === 0
+        && /Dokümanları Doldurunuz/i.test(textOf(node)))
+      .length;
+  }
+
+  /** @returns {{added:number, picked:string[], skipped:string[], remaining:object[]}}
+     remaining: tetkik ekraninda bulunamayanlar. Bunlar hata degildir --
+     EKG gibi islemler Hizmet Istem ekraninda duruyor, oraya devredilir. */
+  async function fillStudyRequests(studies = []) {
+    const result = {added: 0, picked: [], skipped: [], remaining: []};
+    if (!studies.length) return result;
+    if (!await openStudyScreen()) {
+      // Ekran acilmadiysa hepsini hizmet ekranina devret, kaybetme.
+      result.remaining = studies.slice();
+      return result;
+    }
+    const kalan = new Map();
+    for (const study of studies) {
+      const name = String(study?.name || "").trim();
+      if (name) kalan.set(name, study);
+    }
+    // Paketleri tek tek gez; her pakette bulunanlari isaretle. COMED birden
+    // cok tetkigi tek "Ekle" ile kabul ediyor, bu yuzden paket basina topluyoruz.
+    for (const paket of STUDY_PACKAGES) {
+      if (!kalan.size) break;
+      if (!await selectStudyPackage(paket)) continue;
+      const isaretli = [];
+      for (const [name] of [...kalan]) {
+        const row = matchStudyRow(name);
+        if (!row) continue;
+        const box = row.querySelector('input[type="checkbox"]');
+        if (!box) continue;
+        if (box.disabled) {
+          // Hemogram gibi pasif tetkikler isaretlenemiyor.
+          result.skipped.push(`${name}: COMED'de pasif, işaretlenemiyor`);
+          kalan.delete(name);
+          continue;
+        }
+        if (!box.checked) {
+          pressNode(box.closest("label") || box);
+          await sleep(140);
+        }
+        isaretli.push({name, label: studyRowName(row)});
+        kalan.delete(name);
+      }
+      if (!isaretli.length) continue;
+      bridgeStatus(`Tetkik istemi hazırlanıyor · ${paket}`);
+      await waitForDomQuiet(document.body, 320, 4000);
+      /* Doküman isteyen tetkik varsa istemi hic gondermiyoruz: yarim
+         birakilmis bir istem doktoru yaniltir. Hangisi oldugu rapora yazilir. */
+      if (studyDocumentWarnings()) {
+        isaretli.forEach((item) => result.skipped.push(
+          `${item.name}: doküman doldurulması gerekiyor, doktor tamamlamalı`));
+        const vazgec = dialogButton("co-button-Vazgeç");
+        if (vazgec) pressNode(vazgec);
+        await waitForDomQuiet(document.body, 300, 3000);
+        continue;
+      }
+      fillStudyRequiredNotes();
+      const ekle = await waitFor(() => {
+        const button = dialogButton("co-button-Ekle");
+        return button && !button.disabled ? button : null;
+      }, 10000);
+      if (!ekle) {
+        isaretli.forEach((item) => result.skipped.push(
+          `${item.name}: "Ekle" etkinleşmedi, doktor tamamlamalı`));
+        continue;
+      }
+      pressNode(ekle);
+      await waitForDomQuiet(document.body, 350, 5000);
+      result.added += isaretli.length;
+      isaretli.forEach((item) => result.picked.push(item.label.slice(0, 80)));
+      bridgeFieldStatus("requested_services", true);
+    }
+    // Kalanlar tetkik degil, islem olabilir (EKG gibi) -> Hizmet Istem denesin.
+    result.remaining = [...kalan.values()];
+    return result;
+  }
 
   function serviceRows() {
     return [...document.querySelectorAll("tbody tr, [role=row]")]
@@ -2360,14 +2579,26 @@
       record("diagnoses", diagnosisCount > 0, `${diagnosisCount} tanı`);
     }
     if ((fields.requested_services || []).length) {
-      const serviceResult = await fillServiceRequests(fields.requested_services);
+      /* COMED'de istemler UC ayri ekrana dagilmis durumda. Hangi tetkigin
+         hangi ekranda oldugunu modele sordurmak hataya acik; katalog dogruyu
+         soyluyor. Once Tetkik Istem (laboratuvar + radyoloji) denenir,
+         bulunamayanlar Hizmet Istem'e devredilir (EKG gibi islemler orada). */
       const toplamHizmet = fields.requested_services.length;
+      const studyResult = await fillStudyRequests(fields.requested_services);
+      const serviceResult = studyResult.remaining.length
+        ? await fillServiceRequests(studyResult.remaining)
+        : {added: 0, picked: [], skipped: []};
+      const eklenen = studyResult.added + serviceResult.added;
+      const secilen = [...studyResult.picked, ...serviceResult.picked];
+      const atlanan = [...studyResult.skipped, ...serviceResult.skipped];
       const hizmetDetay = [
-        `${serviceResult.added}/${toplamHizmet} istem`,
-        serviceResult.picked.length ? `seçilen: ${serviceResult.picked.join(" | ")}` : "",
-        serviceResult.skipped.length ? `atlanan: ${serviceResult.skipped.join(" | ")}` : "",
+        `${eklenen}/${toplamHizmet} istem`,
+        studyResult.added ? `tetkik: ${studyResult.added}` : "",
+        serviceResult.added ? `hizmet: ${serviceResult.added}` : "",
+        secilen.length ? `seçilen: ${secilen.join(" | ")}` : "",
+        atlanan.length ? `atlanan: ${atlanan.join(" | ")}` : "",
       ].filter(Boolean).join(" — ");
-      record("requested_services", serviceResult.added > 0, hizmetDetay);
+      record("requested_services", eklenen > 0, hizmetDetay);
     }
     // İlaç istemleri hizmet istemlerinden hemen sonra: ikisi de ayrı istem
     // ekranında açılıyor, aradaki kart alanlarına dönmeye gerek kalmıyor.

@@ -1,0 +1,161 @@
+"""Tetkikler COMED'in "Tetkik İstem" ekranına taşınır.
+
+COMED'de istemler ÜÇ ayrı ekrana dağılmış:
+
+    action-order-procedure -> Hizmet İstem  (EKG gibi işlemler)
+    action-order-drug      -> İlaç İstem
+    action-order-study     -> Tetkik İstem  (laboratuvar + radyoloji)
+
+v2.33.0'a kadar üçüncüsü hiç yoktu. "Tam Kan Sayımı katalogda yok" sonucunun
+gerçek sebebi buydu: yanlış ekranda aranıyordu.
+
+CANLI ÖLÇÜM (22 Ekim 2026, hasta 22207363) — favori paketleri:
+
+    adnan kaya kardiyoloji paketi 21 · ANJİYO RUTİN 19 · kısa biyo 8 ·
+    Enzim 2 · alt ekstremite doppler 4 · akciğer grafisi 2 · karotis 1
+    (Bt koroner / ekooo / karotis mrlar boş)
+
+    Hemogram (796) onay kutusu PASİF geliyor, işaretlenemiyor.
+"""
+
+import unittest
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+class StudyScreenBridgeTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.content = (
+            ROOT / "comed_bridge_extension" / "content.js"
+        ).read_text(encoding="utf-8")
+
+    def test_opens_the_third_order_screen(self):
+        self.assertIn("app-action=action-order-study", self.content)
+        self.assertIn("async function openStudyScreen(", self.content)
+
+    def test_all_three_order_screens_exist(self):
+        for param in (
+            "app-action=action-order-procedure",
+            "app-action=action-order-drug",
+            "app-action=action-order-study",
+        ):
+            with self.subTest(ekran=param):
+                self.assertIn(param, self.content)
+
+    def test_study_is_tried_before_the_service_screen(self):
+        """Hangi istemin hangi ekranda olduğunu katalog söyler, model değil.
+
+        Önce Tetkik İstem denenir; bulunamayanlar Hizmet İstem'e devredilir
+        (EKG gibi işlemler orada).
+        """
+        self.assertIn("fillStudyRequests(fields.requested_services)", self.content)
+        self.assertIn("studyResult.remaining", self.content)
+        self.assertIn("fillServiceRequests(studyResult.remaining)", self.content)
+
+    def test_measured_favourite_packages_are_listed(self):
+        self.assertIn("STUDY_PACKAGES", self.content)
+        for paket in (
+            "adnan kaya kardiyoloji paketi", "Enzim", "ANJİYO RUTİN",
+            "kısa biyo", "akciğer grafisi", "alt ekstremite doppler", "karotis",
+        ):
+            with self.subTest(paket=paket):
+                self.assertIn(paket, self.content)
+
+    def test_disabled_rows_are_skipped_and_reported(self):
+        """ÖLÇÜLDÜ: Hemogram'ın onay kutusu pasif; sessizce atlanmamalı."""
+        self.assertIn("box.disabled", self.content)
+        self.assertIn("COMED'de pasif, işaretlenemiyor", self.content)
+
+    def test_document_requiring_studies_are_left_to_the_doctor(self):
+        """Yarım bırakılmış istem doktoru yanıltır; hiç gönderilmez."""
+        self.assertIn("function studyDocumentWarnings(", self.content)
+        self.assertIn("Dokümanları Doldurunuz", self.content)
+        self.assertIn("doküman doldurulması gerekiyor", self.content)
+
+    def test_required_note_gets_a_safe_default(self):
+        """Radyolojide Acil açıklaması zorunlu olabiliyor."""
+        self.assertIn("STUDY_URGENCY_DEFAULT", self.content)
+        self.assertIn("Aciliyeti yok", self.content)
+        self.assertIn("function fillStudyRequiredNotes(", self.content)
+
+    def test_waits_for_the_add_button_instead_of_a_fixed_sleep(self):
+        self.assertIn('dialogButton("co-button-Ekle")', self.content)
+        self.assertIn("Ekle\" etkinleşmedi", self.content)
+
+    def test_reports_what_was_added_and_skipped(self):
+        self.assertIn("result.picked", self.content)
+        self.assertIn("result.skipped", self.content)
+        self.assertIn("Tetkik istemi hazırlanıyor", self.content)
+
+
+class StudyNameMatchingTests(unittest.TestCase):
+    """Model bilimsel tam adı yazıyor, COMED kısaltma kullanıyor.
+
+    CANLI DOĞRULANDI — gerçek Gemini çıktısı gerçek COMED kataloğuna karşı
+    çalıştırıldı ve şu eşleşmeler ölçüldü:
+
+        "Açlık Kan Şekeri"                     -> Açlık Kan Şekeri (AKŞ)
+        "Alanin Aminotransferaz (ALT)"         -> ALT (SGPT)
+        "Aspartat Aminotransferaz (AST)"       -> AST (SGOT)
+        "C-Reaktif Protein (CRP)"              -> CRP (Kantitatif)
+        "Demir"                                -> Demir (Fe)
+        "Total Demir Bağlama Kapasitesi (TDBK)"-> Total Demir Bağlama Kap. (TIBC)
+        "HDL Kolesterol"                       -> HDL-Kolesterol
+        "Kreatinin"                            -> Kreatinin (Serum)
+        "Troponin I", "Kreatin Kinaz-MB (CK-MB)" -> Enzim paketi
+        "Klor", "Kalsiyum"                     -> ANJİYO RUTİN paketi
+
+    Düz "includes" eşleşmesi bunların çoğunu kaçırırdı.
+    """
+
+    #: Ölçülen eşleşmeler; kural değişirse buraya bakılsın.
+    MEASURED = {
+        "Alanin Aminotransferaz (ALT)": "ALT (SGPT)",
+        "C-Reaktif Protein (CRP)": "CRP (Kantitatif)",
+        "HDL Kolesterol": "HDL-Kolesterol",
+        "Kreatinin": "Kreatinin (Serum)",
+        "Demir": "Demir (Fe)",
+    }
+
+    @classmethod
+    def setUpClass(cls):
+        cls.content = (
+            ROOT / "comed_bridge_extension" / "content.js"
+        ).read_text(encoding="utf-8")
+
+    def test_abbreviation_inside_parentheses_is_a_candidate(self):
+        """"Alanin Aminotransferaz (ALT)" -> COMED "ALT (SGPT)"."""
+        self.assertIn("function studyCandidates(", self.content)
+        self.assertIn(r"/\(([^)]+)\)/g", self.content)
+
+    def test_punctuation_is_normalised(self):
+        """"HDL Kolesterol" ile "HDL-Kolesterol" aynı sayılmalı."""
+        self.assertIn("function simplifyStudy(", self.content)
+        self.assertIn(r"/[\s\-_.]+/g", self.content)
+
+    def test_qualifier_veto_applies_here_too(self):
+        """Doktorun söylemediği 3D/Fetal/Stres türevi seçilmemeli."""
+        self.assertIn("SERVICE_QUALIFIERS", self.content)
+        self.assertIn("return -1000", self.content)
+
+    def test_there_is_a_confidence_threshold(self):
+        self.assertIn("best.value >= 120", self.content)
+
+    def test_measured_pairs_differ_by_more_than_case(self):
+        """Ölçüm tablosu gerçekten zor vakalar içermeli."""
+        for istenen, comed in self.MEASURED.items():
+            with self.subTest(istenen=istenen):
+                self.assertNotEqual(istenen.casefold(), comed.casefold())
+
+
+class StudyPanelTests(unittest.TestCase):
+    def test_form_map_documents_the_study_screen(self):
+        doc = (ROOT / "docs" / "COMED_FORM_MAP.md").read_text(encoding="utf-8")
+        self.assertIn("action-order-study", doc)
+        self.assertIn("Hemogram", doc)
+
+
+if __name__ == "__main__":
+    unittest.main()

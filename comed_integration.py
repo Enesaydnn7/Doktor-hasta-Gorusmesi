@@ -603,7 +603,9 @@ def normalize_draft(draft: dict[str, Any] | None) -> dict[str, Any]:
             continue
         seen_services.add(key)
         services.append({"name": name[:120], "reason": reason[:200] or None})
-    data["requested_services"] = services[:8]
+    # Sinir 8'di; tek görüşmede 16 tetkik istenebildiği ölçüldü (kardiyoloji
+    # paneli + grafi + doppler + EKG). Sessizce kesmek istemi kaybediyordu.
+    data["requested_services"] = services[:25]
 
     # Doktorun görüşmede yazdığı ilaçlar. COMED'de ayrı bir "İlaç İstem"
     # ekranında girilir (?app-action=action-order-drug). Hizmet isteminden

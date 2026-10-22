@@ -55,6 +55,62 @@ ekranlardadır. Köprü ikisini de dolduruyor; son kontrol ve imza doktordadır.
 | Hizmet İstem | `?app-action=action-order-procedure` | Hizmet adı, Uygulayan, Açıklama | Favoriler'de yoksa Genel sekmesinden arar; Uygulayan isteyen doktorla aynı seçilir. Radyolojide ek zorunlu alan çıkarsa istem doktora bırakılır |
 | İlaç İstem | `?app-action=action-order-drug` | Ana İlaç, Günlük sıklık, İstem Notu | Arama kutusundan seçer; doz/veriliş yolu/uygulama COMED varsayılanında kalır. Sıklık yalnız söylendiyse ve 1-12 arasındaysa işaretlenir |
 
+### Tetkik İstem ekranı — canlı ölçüm (22 Ekim 2026)
+
+COMED'de istemler ÜÇ ayrı ekrana dağılmış:
+
+| Ekran | Adres | Ne var |
+| --- | --- | --- |
+| Hizmet İstem | `?app-action=action-order-procedure` | EKG gibi işlemler |
+| İlaç İstem | `?app-action=action-order-drug` | ilaçlar |
+| **Tetkik İstem** | `?app-action=action-order-study` | **laboratuvar + radyoloji** |
+
+"Tam Kan Sayımı katalogda yok" sonucunun sebebi buydu: yanlış ekranda aranıyordu.
+
+Sol ağaç: Favoriler (paketler) · Laboratuvar · Radyoloji · Patoloji · Kardiyoloji.
+Soldaki "Ara" kutusu GLOBAL DEĞİL, yalnız seçili paketin içinde arar.
+
+Favori paketleri ve içerikleri:
+
+| Paket | Tetkik | Tip |
+| --- | --- | --- |
+| adnan kaya kardiyoloji paketi | 21 | Laboratuvar |
+| ANJİYO RUTİN | 19 | Laboratuvar |
+| kısa biyo | 8 | Laboratuvar |
+| Enzim | 2 | Laboratuvar |
+| alt ekstremite doppler | 4 | Radyoloji |
+| akciğer grafisi | 2 | Radyoloji |
+| karotis | 1 | Radyoloji |
+| Bt koroner / ekooo / karotis mrlar | 0 (boş) | — |
+
+Akış: satırdaki onay kutusu işaretlenir → altta "Laboratuvar İstekleri" /
+"Radyoloji İstekleri" paneli açılır → sağ altta "Ekle". Birden çok tetkik
+aynı anda işaretlenip tek "Ekle" ile eklenebiliyor.
+
+**Hemogram (796)** onay kutusu PASİF geliyor; işaretlenemez, atlanır.
+
+Radyoloji istemlerinde "Acil" yanındaki açıklama kutusu zorunlu olabiliyor
+(kırmızı nokta); doktor aciliyet belirtmediyse "Aciliyeti yok" yazılır.
+"Dokümanları Doldurunuz" uyarısı çıkan tetkik hiç gönderilmez, doktora bırakılır.
+
+#### Ad eşleştirme: model bilimsel ad yazar, COMED kısaltma kullanır
+
+Canlı doğrulanan eşleşmeler:
+
+| Gemini çıktısı | COMED kataloğu |
+| --- | --- |
+| Açlık Kan Şekeri | Açlık Kan Şekeri (AKŞ) |
+| Alanin Aminotransferaz (ALT) | ALT (SGPT) |
+| Aspartat Aminotransferaz (AST) | AST (SGOT) |
+| C-Reaktif Protein (CRP) | CRP (Kantitatif) |
+| Demir | Demir (Fe) |
+| Total Demir Bağlama Kapasitesi (TDBK) | Total Demir Bağlama Kapasitesi (TIBC) |
+| HDL Kolesterol | HDL-Kolesterol |
+| Kreatinin | Kreatinin (Serum) |
+
+Bu yüzden aday olarak hem tam ad, hem parantezsiz çekirdek, hem de
+parantez içindeki kısaltma denenir; tire/boşluk sadeleştirilir.
+
 ### Hizmet İstem kataloğu — canlı ölçüm (22 Ekim 2026)
 
 Aynı tetkikin nitelikli türevleri var, düz hali olmayabiliyor:
