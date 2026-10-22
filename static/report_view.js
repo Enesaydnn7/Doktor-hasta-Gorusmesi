@@ -63,6 +63,13 @@ function comedHTML(k) {
       <div class="comed-diagnoses">${diagnoses.map(x => `<span><b>${esc(x.code)}</b>${esc(x.description)}</span>`).join("") || '<div class="empty-mut">Tanı önerisi yok.</div>'}</div></div>
     <div class="sec"><div class="sec-title"><i class="bi bi-clipboard2-pulse"></i> Hizmet istemleri</div>
       <div class="comed-services">${(d.requested_services || []).map(x => `<span><b>${esc(x.name)}</b>${x.reason ? esc(x.reason) : ""}</span>`).join("") || '<div class="empty-mut">Görüşmede tetkik/hizmet istenmedi.</div>'}</div></div>
+    <div class="sec"><div class="sec-title"><i class="bi bi-capsule"></i> İlaç istemleri</div>
+      <div class="comed-services comed-drugs">${(d.requested_drugs || []).map(x => {
+        // Doz ve siklik soylenmediyse COMED varsayilani kalir, doktor tamamlar.
+        const detay = [x.dose, x.frequency_per_day ? `günde ${x.frequency_per_day} kez` : "", x.reason]
+          .filter(Boolean).join(" · ");
+        return `<span><b>${esc(x.name)}</b>${detay ? esc(detay) : ""}</span>`;
+      }).join("") || '<div class="empty-mut">Görüşmede ilaç yazılmadı.</div>'}</div></div>
     <div class="comed-review-note"><i class="bi bi-shield-check"></i><span>Otomatik imza kapalıdır. Alanlar COMED'e taşındıktan sonra doktor kontrol edip kaydeder.</span></div>
   </div>`;
 }

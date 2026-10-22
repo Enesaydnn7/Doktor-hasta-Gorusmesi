@@ -184,6 +184,16 @@ KURALLAR (ÇOK ÖNEMLİ):
   Ekokardiyografi, Akciğer Grafisi (İki Yön), Tam Kan Sayımı gibi. Kısaltma
   geçiyorsa açık adını kullan (EKG → Elektrokardiogram (EKG)). Hiçbiri yoksa
   listeyi boş bırak. reason alanına istemi gerektiren kısa klinik gerekçeyi yaz.
+- requested_drugs: doktorun görüşmede AÇIKÇA yazdığı/başladığı ilaçlar. Yalnız
+  söylenenleri yaz; hastanın zaten kullandığı ilaçları (öykü) buraya koyma,
+  "kullanabilirsiniz" gibi olasılık cümlelerinden istem üretme. name alanına
+  ilacın konuşmada geçen adını yaz (Parol, Augmentin gibi); marka adı
+  geçiyorsa onu kullan, COMED arama kutusu zaten eşleştirir. dose alanına
+  söylenen dozu yaz ("500 mg" gibi), söylenmediyse null bırak.
+  frequency_per_day alanına GÜNDE kaç kez alınacağını sayı olarak yaz
+  (günde 3 → 3, 8 saatte bir → 3, 12 saatte bir → 2). Günlük sıklık
+  söylenmediyse null bırak; tahmin etme. Doz veya sıklık boşsa COMED'in
+  varsayılanı kalır, doktor tamamlar. Hiç ilaç yazılmadıysa listeyi boş bırak.
 - auto_sign her zaman false olmalıdır. Doktorun imzasını otomatikleştirme.
 - COMED alan adlarını aşağıdaki JSON şemasındaki gibi aynen kullan.
 
@@ -251,6 +261,9 @@ YANITINI SADECE şu JSON olarak ver:
   "treatment_note_v2": "tedavi/öneri notu veya null",
   "requested_services": [
     {"name": "Elektrokardiogram (EKG)", "reason": "eforla gelen göğüs ağrısı"}
+  ],
+  "requested_drugs": [
+    {"name": "Parol", "dose": "500 mg", "frequency_per_day": 3, "reason": "ateş ve ağrı"}
   ],
   "treatment_plan_label": "görüşmede açıkça seçilebiliyorsa plan veya null",
   "is_surgery_will_planned": null,

@@ -448,6 +448,7 @@ def normalize_draft(draft: dict[str, Any] | None) -> dict[str, Any]:
         data["psychological_status"] = {}
     data.setdefault("diagnoses", [])
     data.setdefault("requested_services", [])
+    data.setdefault("requested_drugs", [])
 
     def fallback(path: str, value: Any) -> None:
         current: Any = data
@@ -604,6 +605,47 @@ def normalize_draft(draft: dict[str, Any] | None) -> dict[str, Any]:
         services.append({"name": name[:120], "reason": reason[:200] or None})
     data["requested_services"] = services[:8]
 
+    # Doktorun görüşmede yazdığı ilaçlar. COMED'de ayrı bir "İlaç İstem"
+    # ekranında girilir (?app-action=action-order-drug). Hizmet isteminden
+    # farkı: zorunlu alan yok, arama kutusundan seçip "Ekle" demek yetiyor;
+    # doz ve sıklık söylenmediyse COMED'in varsayılanı kalır.
+    drugs: list[dict] = []
+    seen_drugs: set[str] = set()
+    for item in data.get("requested_drugs") or []:
+        name = ""
+        dose = ""
+        reason = ""
+        frequency: Any = None
+        if isinstance(item, dict):
+            name = str(item.get("name") or item.get("drug") or "").strip()
+            dose = str(item.get("dose") or item.get("dosage") or "").strip()
+            reason = str(item.get("reason") or item.get("description") or "").strip()
+            frequency = item.get("frequency_per_day", item.get("frequency"))
+        elif isinstance(item, str):
+            name = item.strip()
+        if not name:
+            continue
+        key = name.casefold()
+        if key in seen_drugs:
+            continue
+        seen_drugs.add(key)
+        # Sıklık COMED'de "Günlük N Kez" düğmesine basılarak seçiliyor; oradaki
+        # düğmeler 1-12 arası. Aralık dışındaki değeri yazmak yerine düşürüp
+        # doktora bırakıyoruz, yanlış sıklık yazmaktansa boş kalsın.
+        try:
+            frequency_per_day: int | None = int(str(frequency).strip())
+        except (TypeError, ValueError):
+            frequency_per_day = None
+        if frequency_per_day is not None and not 1 <= frequency_per_day <= 12:
+            frequency_per_day = None
+        drugs.append({
+            "name": name[:120],
+            "dose": dose[:60] or None,
+            "frequency_per_day": frequency_per_day,
+            "reason": reason[:200] or None,
+        })
+    data["requested_drugs"] = drugs[:10]
+
     pain = data["pain"]
     try:
         if pain.get("score") is not None and not isinstance(pain.get("score"), bool):
@@ -702,6 +744,16 @@ def build_transfer_bundle(record: dict[str, Any], patient: dict[str, Any],
                 "section": "service_requests",
                 "records": normalized["fields"].get("requested_services") or [],
             },
+            {
+                # İlaç istemleri de ayrı bir ekranda girilir
+                # (?app-action=action-order-drug). Zorunlu alanı yok: ilaç
+                # arama kutusundan seçilir, doz/sıklık söylendiyse yazılır,
+                # söylenmediyse COMED'in varsayılanı kalır ve "Ekle" denir.
+                "method": "FORM",
+                "endpoint": "medical/order/drugRequest",
+                "section": "drug_requests",
+                "records": normalized["fields"].get("requested_drugs") or [],
+            },
         ],
         "missing_required": normalized["missing_required"],
         "fallback_fields": normalized["fallback_fields"],
@@ -709,6 +761,7 @@ def build_transfer_bundle(record: dict[str, Any], patient: dict[str, Any],
             "ICD kodu COMED arama sonucuyla eşleştirilmeden imzalanmamalıdır.",
             "Ağrı skoru kurum şemasına göre ayrı Ağrı Değerlendirme dokümanında olabilir.",
             "Hizmet istemleri doktor onayına açık bırakılır; imzalamadan önce kontrol edilmelidir.",
+            "İlaç istemlerinde doz, veriliş yolu ve sıklık doktor tarafından doğrulanmalıdır.",
             "Eksik zorunlu alanlar doktor tarafından tamamlanmalıdır.",
         ],
     }

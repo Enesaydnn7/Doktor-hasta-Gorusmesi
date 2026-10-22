@@ -1,3 +1,45 @@
+## v2.32.0 — 22 Ekim 2026
+
+### İlaç istemleri otomatik
+
+Hizmet isteminin (EKG/EKO) ilaç karşılığı. Doktor görüşmede "Parol yazıyorum,
+günde 3 kez" dediğinde köprü bunu COMED'in **İlaç İstem** ekranına da giriyor.
+
+COMED'de ilaç istemi ayrı bir ekranda açılıyor
+(`?app-action=action-order-drug`). Hizmet isteminden farkı **zorunlu alanının
+olmaması**: "Ana İlaç" arama kutusuna ad yazılıp öneri listesinden seçildiğinde
+veriliş yolu, miktar, doz ve uygulama COMED'in varsayılanıyla geliyor; "Ekle"
+demek yetiyor.
+
+- `requested_drugs`: ad, doz, günlük sıklık ve gerekçe. En çok 10 ilaç,
+  tekrarlar eleniyor.
+- Doz veya sıklık görüşmede söylenmediyse **hiçbir alana dokunulmuyor** —
+  COMED'in varsayılanı kalıyor ve doktor tamamlıyor. Model tahmin etmiyor.
+- Günlük sıklık yalnız 1–12 arası kabul ediliyor, çünkü COMED'de sıklık
+  "Günlük N Kez" düğmesine basılarak seçiliyor ve düğmeler bu aralıkta.
+  Aralık dışı bir değer yanlış düğmeye basmaktansa boş bırakılıyor.
+- Hastanın zaten kullandığı ilaçlar (öykü) istem sayılmıyor; yalnız görüşmede
+  açıkça yazılan ilaçlar giriliyor.
+- Narkotik gibi ek zorunlu alan isteyen ilaçlarda istem yarım bırakılmıyor,
+  pencere kapatılıp doktora devrediliyor.
+- Doktor paneli aktarımdan önce ilaç listesini mor rozetlerle gösteriyor.
+
+İmza yine doktorda: `auto_sign` her durumda `false`.
+
+### Doktor paneli COMED'e benzetildi
+
+Doktor gün boyu COMED'de çalışıyor; panelin ona yabancı gelmemesi için sıra
+COMED'in iş listesi ekranıyla aynı yapıldı.
+
+- **Üstte arama kutusu ve tarih aralığı.** Tek arama kutusu hem COMED iş
+  listesini hem görüşme kayıtlarını süzüyor.
+- **Tarih aralığı** COMED'deki gibi: tek taraf doldurulursa yalnız o sınır
+  uygulanıyor.
+- **Sayım/maliyet şeridi sayfanın altına alındı.** Doktorun ilk gördüğü şey
+  artık token sayısı değil, hasta listesi.
+- Arama süzgeci 15 saniyelik arka plan yenilemesinden sonra da korunuyor
+  (önceden siliniyordu).
+
 ## v2.31.0 — 15 Ekim 2026
 
 ### Hizmet istemleri artık gerçekten ekleniyor

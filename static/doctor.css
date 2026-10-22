@@ -82,6 +82,34 @@
   .rec-no,.rec-date,.rec-ozet,.rec-audio{grid-column:1/-1;order:3}
 }
 
+/* ---- COMED tarzi ust serit ----
+   COMED'in is listesi basliginda once arama kutusu, yaninda tarih araligi
+   ve yenileme durur. Panel de ayni sirayi izler; sayim/maliyet seridi
+   (.stat-strip-foot) sayfanin en altina alindi. */
+.comed-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.comed-bar .search-wrap{flex:1 1 280px}
+
+.date-range{display:flex;align-items:center;gap:6px;flex:0 0 auto;
+  background:#fff;border:1px solid var(--line);border-radius:10px;padding:6px 10px}
+.date-range>.bi{color:var(--muted);font-size:14px}
+.date-range input{border:0;background:transparent;font:inherit;font-size:13px;color:var(--ink);
+  font-variant-numeric:tabular-nums;padding:2px;min-width:122px;color-scheme:light}
+.date-range input:focus{outline:none;color:var(--teal-2)}
+.date-range .dash{color:var(--muted);font-weight:700}
+.date-range .date-clear{border:0;background:transparent;color:var(--muted);cursor:pointer;
+  padding:3px 4px;border-radius:6px;line-height:1;font-size:11px}
+.date-range .date-clear:hover{background:var(--mint);color:var(--teal-2)}
+.date-range:focus-within{border-color:var(--teal);box-shadow:0 0 0 3px var(--teal-soft)}
+
+.stat-strip-foot{margin:20px 0 0}
+
+@media (max-width:760px){
+  .comed-bar{gap:8px}
+  .comed-bar .search-wrap{flex:1 1 100%}
+  .date-range{flex:1 1 100%;justify-content:space-between}
+  .date-range input{min-width:0;flex:1}
+}
+
 /* ---- bildirim ---- */
 #toast{position:fixed;right:24px;bottom:24px;max-width:420px;padding:13px 18px;background:var(--navy);color:#fff;border-radius:12px;box-shadow:0 10px 30px #0003;transform:translateY(160%);transition:.2s;z-index:50}
 #toast.show{transform:none}

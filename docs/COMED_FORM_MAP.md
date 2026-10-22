@@ -45,9 +45,19 @@ Klinot yalnız taslağı doldurur; **Kaydet** ve **Kaydet ve İmzala** doktor ko
 | Kontrol Notları | Geçmiş kartı | Salt okunur | Yeni giriş alanı değildir; kontrol notu Tedavi Notuna eklenir |
 | Hasta Özel Notları | Yeni Ekle | Hayır | Muayene taslağı değildir; otomatik yazılmaz |
 
+## Ayrı istem ekranları (doldurulur)
+
+Bunlar ana muayene formunda değil, kartın alt araç çubuğundan açılan ayrı
+ekranlardadır. Köprü ikisini de dolduruyor; son kontrol ve imza doktordadır.
+
+| Ekran | Adres | Alan | Davranış |
+| --- | --- | --- | --- |
+| Hizmet İstem | `?app-action=action-order-procedure` | Hizmet adı, Uygulayan, Açıklama | Favoriler'de yoksa Genel sekmesinden arar; Uygulayan isteyen doktorla aynı seçilir. Radyolojide ek zorunlu alan çıkarsa istem doktora bırakılır |
+| İlaç İstem | `?app-action=action-order-drug` | Ana İlaç, Günlük sıklık, İstem Notu | Arama kutusundan seçer; doz/veriliş yolu/uygulama COMED varsayılanında kalır. Sıklık yalnız söylendiyse ve 1-12 arasındaysa işaretlenir |
+
 ## Doldurulmayan ayrı iş akışları
 
-Tetkik/ilaç/hizmet/konsültasyon/diyet/bakım/kan ürünü/kök hücre istemleri,
+Konsültasyon/diyet/bakım/kan ürünü/kök hücre istemleri,
 reçeteler, yatış-taburculuk, ameliyat raporu, epikriz çıktıları, onamlar,
 E-Rapor, EKG, TAVI, anjiyografi ve diğer kurumsal formlar ana muayene
 formundan ayrı yetki ve iş akışlarıdır. Ses kaydından otomatik tetiklenmezler.

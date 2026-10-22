@@ -42,7 +42,43 @@ function linkedPatient(record) {
   return selectedPatient || null;
 }
 
-/* ---------- ust serit ---------- */
+/* ---------- tarih araligi suzgeci ----------
+   COMED'in is listesi basligindaki tarih kutusunun karsiligi. Deger yoksa
+   suzgec kapalidir; tek taraf doldurulursa yalniz o sinir uygulanir. */
+function dateBounds() {
+  return {from: ($("date-from")?.value || ""), to: ($("date-to")?.value || "")};
+}
+
+function inDateRange(record) {
+  const {from, to} = dateBounds();
+  if (!from && !to) return true;
+  const day = String(record?.olusturma || "").slice(0, 10);   // "2026-10-22"
+  if (!day) return true;
+  if (from && day < from) return false;
+  if (to && day > to) return false;
+  return true;
+}
+
+function dateRangeLabel() {
+  const {from, to} = dateBounds();
+  if (!from && !to) return "";
+  const tr = (value) => value ? value.split("-").reverse().join(".") : "";
+  if (from && to) return `${tr(from)} – ${tr(to)}`;
+  return from ? `${tr(from)} ve sonrası` : `${tr(to)} ve öncesi`;
+}
+
+function clearFilters() {
+  selectedPatient = null;
+  const from = $("date-from");
+  const to = $("date-to");
+  if (from) from.value = "";
+  if (to) to.value = "";
+  renderWorklist();
+  renderRecords();
+  applySearch();
+}
+
+/* ---------- alt serit ---------- */
 function renderStats() {
   const stat = overview.stats || {};
   $("stat-worklist").textContent = overview.worklist.length;
@@ -100,7 +136,11 @@ function renderWorklist() {
         </div>
         ${overview.worklist.map((p, i) => {
           const on = patientKey(p) === patientKey(selectedPatient);
+          // COMED'deki gibi ustteki arama kutusu is listesini de suzsun.
+          const ara = [p.patient_name, p.patient_no, p.protocol_no, p.visit_id,
+                       p.task, p.department, p.doctor_name].filter(Boolean).join(" ").toLowerCase();
           return `<button class="wl-row ${on ? "selected" : ""}" role="row" data-patient="${i}"
+              data-search="${esc(ara)}"
               title="${esc(p.patient_name)} — kayıtlarını süzmek için tıklayın">
             <span class="wl-name" role="cell">
               <i class="bi bi-person-fill"></i>
@@ -137,21 +177,29 @@ function renderRecords() {
   // Hasta kartina tiklamak listeyi suzsun: o hastanin kayitlari + henuz
   // hicbir hastaya baglanmamis kayitlar (aktarilacak adaylar) kalir.
   const key = patientKey(selectedPatient);
-  const shown = key
+  const byPatient = key
     ? overview.records.filter(r => {
         const link = String((r.metadata || {}).comed_patient?.visit_id || "");
         return !link || link === key;
       })
     : overview.records;
-  const banner = key
+  // COMED'deki tarih araligi kutusu: kayit tarihine gore suz.
+  const shown = byPatient.filter(inDateRange);
+  const dateLabel = dateRangeLabel();
+  const parts = [];
+  if (key) {
+    parts.push(`<b>${esc(selectedPatient.patient_name || "Seçili hasta")}</b> için süzüldü`);
+  }
+  if (dateLabel) parts.push(esc(dateLabel));
+  const banner = parts.length
     ? `<div class="rec-filter"><span><i class="bi bi-funnel-fill"></i>
-         <b>${esc(selectedPatient.patient_name || "Seçili hasta")}</b> için süzüldü · ${shown.length} kayıt</span>
+         ${parts.join(" · ")} · ${shown.length} kayıt</span>
        <button class="mini-btn" id="filtre-temizle"><i class="bi bi-x-lg"></i> Tümünü göster</button></div>`
     : "";
   if (!shown.length) {
     list.innerHTML = banner + '<div class="empty-box"><i class="bi bi-inbox"></i><p>Bu hastaya bağlı kayıt yok. Mobil uygulamadan görüşmeyi kaydedip analiz edin.</p></div>';
     const clear = $("filtre-temizle");
-    if (clear) clear.onclick = () => { selectedPatient = null; renderWorklist(); renderRecords(); };
+    if (clear) clear.onclick = clearFilters;
     return;
   }
   list.innerHTML = banner + shown.map((k, sira) => {
@@ -193,10 +241,10 @@ function renderRecords() {
     </div>`;
   }).join("");
   const clear = $("filtre-temizle");
-  if (clear) clear.onclick = () => { selectedPatient = null; renderWorklist(); renderRecords(); };
+  if (clear) clear.onclick = clearFilters;
 }
 
-function render() { renderStats(); renderWorklist(); renderRecords(); }
+function render() { renderStats(); renderWorklist(); renderRecords(); applySearch(); }
 
 /* ---------- detay (yonetici panelindeki ayni govde) ---------- */
 document.addEventListener("click", (e) => {
@@ -501,17 +549,38 @@ async function pollTransfer(recordId, transferId) {
 }
 
 /* ---------- arama ---------- */
-const q = $("q");
-if (q) q.addEventListener("input", () => {
-  const t = q.value.trim().toLowerCase();
+/* Ustteki tek arama kutusu COMED'deki gibi hem is listesini hem gorusme
+   kayitlarini suzer. Liste her yeniden cizildiginde (render) tekrar uygulanir,
+   yoksa 15 saniyelik arka plan yenilemesi suzgeci siliyordu. */
+function applySearch() {
+  const q = $("q");
+  const t = (q?.value || "").trim().toLowerCase();
+
+  let hasta = 0;
+  const rows = document.querySelectorAll(".wl-row");
+  rows.forEach(row => {
+    const ok = !t || (row.dataset.search || "").includes(t);
+    row.classList.toggle("hidden", !ok);
+    if (ok) hasta++;
+  });
+  $("bos-worklist")?.classList.toggle("hidden", !t || hasta !== 0 || !rows.length);
+
   let gorunen = 0;
-  document.querySelectorAll(".rec-item").forEach(it => {
+  const items = document.querySelectorAll(".rec-item");
+  items.forEach(it => {
     const ok = !t || (it.dataset.search || "").includes(t);
     it.classList.toggle("hidden", !ok);
     if (ok) gorunen++;
   });
-  $("bos-arama").classList.toggle("hidden", gorunen !== 0);
-});
+  $("bos-arama").classList.toggle("hidden", gorunen !== 0 || !items.length);
+}
+
+$("q")?.addEventListener("input", applySearch);
+["date-from", "date-to"].forEach(id => $(id)?.addEventListener("change", () => {
+  renderRecords();
+  applySearch();
+}));
+$("date-clear")?.addEventListener("click", clearFilters);
 
 /* ---------- yukleme ---------- */
 function audioPlaying() {

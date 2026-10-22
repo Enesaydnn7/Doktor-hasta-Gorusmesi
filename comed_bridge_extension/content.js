@@ -193,6 +193,7 @@
       exam_simple_textarea: "Muayene notu", treatment_note_v2: "İzlem ve tedavi planı",
       profile_and_family_history: "Özgeçmiş ve soygeçmiş", family_history: "Soygeçmiş",
       requested_services: "Hizmet istemleri (EKG, EKO…)",
+      requested_drugs: "İlaç istemleri",
       psychological_status: "Psikolojik durum",
       fall_risk: "Düşme riski", pain: "Ağrı değerlendirmesi", diagnoses: "Tanılar (ICD-10)",
       treatment_plan_label: "Tedavi türü", is_surgery_will_planned: "Ameliyat planı",
@@ -1757,6 +1758,7 @@
        5. Secim panelini kapat, "Ekle" -> "Kayıt başarılı"
      Doktor sonra ekrani kapatip kontrol eder ve imzalar. */
   const SERVICE_SCREEN_PARAM = "app-action=action-order-procedure";
+  const DRUG_SCREEN_PARAM = "app-action=action-order-drug";
 
   function serviceRows() {
     return [...document.querySelectorAll("tbody tr, [role=row]")]
@@ -1912,6 +1914,129 @@
     return added;
   }
 
+  /* ---------- İLAÇ İSTEM ----------
+
+     COMED'de ilaç istemi hizmet isteminden daha basit: zorunlu alan yok.
+     Canli ortamda olculen akis:
+       1. ?app-action=action-order-drug -> "İlaç İstem" sekmesi
+       2. "Ana İlaç" arama kutusuna ilac adi yazilir
+       3. Acilan oneri listesinden satir secilir (COMED formu kendi doldurur:
+          veris yolu, miktar, doz, uygulama, siklik hep varsayilan gelir)
+       4. Doktor siklik soylediyse "Günlük N Kez" dugmesine basilir
+       5. "Ekle" -> istem listeye duser
+     Doz/siklik soylenmediyse hicbir alana dokunmuyoruz; COMED'in varsayilani
+     kalir ve doktor imzalamadan once kontrol eder. */
+
+  /** "Ana İlaç" arama kutusu. Ekran acilinca gorunur tek autocomplete odur. */
+  function drugSearchInput() {
+    const labelled = fieldGroupByLabel("Ana İlaç")
+      ?.querySelector(".autocomplete__input input, input");
+    if (labelled && labelled.offsetParent !== null) return labelled;
+    return [...document.querySelectorAll(".autocomplete__input input, input")]
+      .find((input) => input.offsetParent !== null
+        && !input.disabled
+        && !/ara|isteyen/i.test(input.placeholder || "")) || null;
+  }
+
+  /** Oneri listesinden ilaci sec. COMED tam adi uzun yaziyor
+     ("PAROL COLD Kapsül 325 mg/12.5 mg 20 kapsüllük ambalaj"), bu yuzden
+     "baslayan" eslesmesi aranir; yoksa listedeki ilk satir alinir. */
+  async function pickDrugOption(name) {
+    const wanted = name.toLocaleLowerCase("tr-TR").trim();
+    const options = await waitFor(() => {
+      const found = [...document.querySelectorAll(".autocomplete__item")]
+        .filter((item) => item.offsetParent !== null && textOf(item).trim());
+      return found.length ? found : null;
+    }, 6500);
+    if (!options) return null;
+    const starts = options.find(
+      (item) => textOf(item).toLocaleLowerCase("tr-TR").trim().startsWith(wanted));
+    const includes = options.find(
+      (item) => textOf(item).toLocaleLowerCase("tr-TR").includes(wanted));
+    return starts || includes || options[0];
+  }
+
+  /** Siklik: "Günlük" satirindaki "N Kez" dugmesi. Yoksa dokunulmaz. */
+  function pressDailyFrequency(times) {
+    if (!Number.isInteger(times) || times < 1 || times > 12) return false;
+    const label = `${times} Kez`;
+    const button = [...document.querySelectorAll("button,.toggle-button__item,div,span")]
+      .find((item) => item.offsetParent !== null && textOf(item) === label);
+    if (!button) return false;
+    return pressNode(button);
+  }
+
+  /** İstem ekranini ac ve "İlaç İstem" sekmesine gec. */
+  async function openDrugScreen() {
+    if (!location.search.includes(DRUG_SCREEN_PARAM)) {
+      const url = `${location.pathname}?${DRUG_SCREEN_PARAM}`;
+      history.pushState({}, "", url);
+      window.dispatchEvent(new PopStateEvent("popstate"));
+      await waitFor(() => location.search.includes(DRUG_SCREEN_PARAM), 4000);
+    }
+    const tab = await waitFor(
+      () => document.querySelector('[data-test="co-button-İlaç İstem"]'), 12000);
+    if (tab) pressNode(tab);
+    // Sekme dugmesi bulunamasa da ekran acilmis olabilir; arama kutusu varsa
+    // devam et. Dugme adi degisirse istem komple durmasin.
+    await waitForDomQuiet(document.body, 260, 3000);
+    return Boolean(await waitFor(() => drugSearchInput(), 6000));
+  }
+
+  async function fillDrugRequests(drugs = []) {
+    if (!drugs.length) return 0;
+    if (!await openDrugScreen()) return 0;
+    let added = 0;
+    for (const drug of drugs.slice(0, 10)) {
+      const name = String(drug?.name || "").trim();
+      if (!name) continue;
+      bridgeStatus(`İlaç istemi hazırlanıyor · ${name}`);
+      try {
+        const search = drugSearchInput();
+        if (!search) continue;
+        // Onceki ilacin aramasi kutuda kalirsa yeni oneri listesi acilmiyor.
+        if (search.value) {
+          setTypingValue(search, " ");
+          search.value = "";
+          search.dispatchEvent(new Event("input", {bubbles: true}));
+          await waitForDomQuiet(document.body, 240, 2000);
+        }
+        // Parantezli ek bilgi arama sonucunu daraltiyor: "Parol (tablet)" →
+        // "Parol". Hizmet isteminde de ayni temizlik yapiliyor.
+        setTypingValue(search, name.replace(/\(.*?\)/g, "").trim());
+        const option = await pickDrugOption(name);
+        if (!option) {
+          bridgeStatus(`${name} ilaç listesinde bulunamadı`, "bad");
+          continue;
+        }
+        pressNode(option);
+        await waitForDomQuiet(document.body, 320, 4000);
+        // Doktor sadece sikligi soylemis olabilir; doz ve veris yolu COMED'in
+        // varsayilaninda kalir.
+        pressDailyFrequency(drug?.frequency_per_day);
+        const reason = String(drug?.reason || "").trim();
+        if (reason) setValue(byPlaceholder("İstem Notu / Endikasyon"), reason);
+        const addButton = dialogButton("co-button-Ekle");
+        if (!addButton || addButton.disabled) {
+          /* Bazi ilaclar ek zorunlu alan istiyor (narkotik, kemoterapi gibi).
+             Yarim birakmak yerine doktora devrediyoruz. */
+          const cancel = dialogButton("co-button-Vazgeç");
+          if (cancel) pressNode(cancel);
+          await waitForDomQuiet(document.body, 260, 2500);
+          bridgeStatus(`${name} doktor tarafından tamamlanmalı`, "bad");
+          continue;
+        }
+        pressNode(addButton);
+        await waitForDomQuiet(document.body, 320, 4000);
+        added += 1;
+        bridgeFieldStatus("requested_drugs", true);
+      } catch (_) {
+        // Tek bir ilac tutmazsa digerlerini engelleme.
+      }
+    }
+    return added;
+  }
+
   async function fillDiagnoses(diagnoses = []) {
     const card = cardByTitle("Tanılar (ICD - 10)");
     if (!card) return 0;
@@ -2040,6 +2165,13 @@
       const serviceCount = await fillServiceRequests(fields.requested_services);
       record("requested_services", serviceCount > 0,
         `${serviceCount}/${fields.requested_services.length} istem`);
+    }
+    // İlaç istemleri hizmet istemlerinden hemen sonra: ikisi de ayrı istem
+    // ekranında açılıyor, aradaki kart alanlarına dönmeye gerek kalmıyor.
+    if ((fields.requested_drugs || []).length) {
+      const drugCount = await fillDrugRequests(fields.requested_drugs);
+      record("requested_drugs", drugCount > 0,
+        `${drugCount}/${fields.requested_drugs.length} ilaç`);
     }
     record("treatment_plan_label", Boolean(fields.treatment_plan_label)
       && clickCardOption("İzlem ve Plan", fields.treatment_plan_label));

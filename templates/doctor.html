@@ -30,26 +30,30 @@
 
   <main class="wrap wrap-wide">
 
-    <div class="stat-strip">
-      <div class="stat-box"><div class="s-lbl">COMED hastası</div><div class="s-val" id="stat-worklist">0</div></div>
-      <div class="stat-box"><div class="s-lbl">Görüşme raporu</div><div class="s-val" id="stat-records">0</div></div>
-      <div class="stat-box"><div class="s-lbl">Toplam token</div><div class="s-val" id="stat-token">0</div></div>
-      <div class="stat-box"><div class="s-lbl">Toplam maliyet</div><div class="s-val val-teal" id="stat-cost">$0.0000</div></div>
-      <div class="stat-box" title="Ses dökümü: {{ stt_provider }}"><div class="s-lbl">Model</div><div class="s-val s-sm">{{ provider }}</div></div>
+    <!-- COMED'in is listesi basligi gibi: once arama ve tarih araligi,
+         sonra liste. Sayim ve maliyet seridi sayfanin altina alindi. -->
+    <div class="comed-bar">
+      <div class="search-wrap">
+        <i class="bi bi-search"></i>
+        <input id="q" type="text" placeholder="İş listesi / kayıtlarda ara (hasta, tanı, şikayet, kayıt no)...">
+      </div>
+      <div class="date-range" title="Görüşme kayıtlarını tarihe göre süz">
+        <i class="bi bi-calendar3"></i>
+        <input id="date-from" type="date" aria-label="Başlangıç tarihi">
+        <span class="dash">–</span>
+        <input id="date-to" type="date" aria-label="Bitiş tarihi">
+        <button class="date-clear" id="date-clear" title="Tarih süzgecini kaldır" type="button">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+      <button class="btn-ghost" id="refresh"><i class="bi bi-arrow-clockwise"></i> Yenile</button>
     </div>
 
     <section class="worklist-section">
       <div class="rec-head rec-head-worklist"><span>COMED iş listesi</span><span class="ta-r" id="worklist-count">0 hasta</span></div>
       <div id="worklist"><div class="empty-box">Yükleniyor…</div></div>
+      <div id="bos-worklist" class="empty-box hidden">Aramaya uyan hasta yok.</div>
     </section>
-
-    <div class="admin-tools">
-      <div class="search-wrap">
-        <i class="bi bi-search"></i>
-        <input id="q" type="text" placeholder="Kayıtlarda ara (tanı, şikayet, kayıt no)...">
-      </div>
-      <button class="btn-ghost" id="refresh"><i class="bi bi-arrow-clockwise"></i> Yenile</button>
-    </div>
 
     <div class="rec-head rec-head-doctor">
       <span>No</span><span>Hasta bilgileri</span><span>Tarih / Saat</span>
@@ -58,6 +62,14 @@
 
     <div id="rec-list"><div class="empty-box">Yükleniyor…</div></div>
     <div id="bos-arama" class="empty-box hidden">Aramaya uyan kayıt yok.</div>
+
+    <div class="stat-strip stat-strip-foot">
+      <div class="stat-box"><div class="s-lbl">COMED hastası</div><div class="s-val" id="stat-worklist">0</div></div>
+      <div class="stat-box"><div class="s-lbl">Görüşme raporu</div><div class="s-val" id="stat-records">0</div></div>
+      <div class="stat-box"><div class="s-lbl">Toplam token</div><div class="s-val" id="stat-token">0</div></div>
+      <div class="stat-box"><div class="s-lbl">Toplam maliyet</div><div class="s-val val-teal" id="stat-cost">$0.0000</div></div>
+      <div class="stat-box" title="Ses dökümü: {{ stt_provider }}"><div class="s-lbl">Model</div><div class="s-val s-sm">{{ provider }}</div></div>
+    </div>
 
     <div class="db-note"><i class="bi bi-info-circle"></i>
       Yalnızca size atanmış görüşmeler listelenir. COMED aktarımında son kontrol, kayıt ve imza doktordadır.

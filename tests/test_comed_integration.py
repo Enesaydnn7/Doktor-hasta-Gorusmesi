@@ -238,8 +238,10 @@ class ComedIntegrationTests(unittest.TestCase):
                 "forms/document/saveDocumentProcesses",
                 "medical/examination/saveProfile*",
                 "medical/treatment/savevisitdiagnoses",
-                # Hizmet istemleri COMED'de ayri ekranda girilir.
+                # Hizmet ve ilac istemleri COMED'de ayri ekranlarda girilir
+                # (?app-action=action-order-procedure / action-order-drug).
                 "medical/order/serviceRequest",
+                "medical/order/drugRequest",
             ],
         )
 

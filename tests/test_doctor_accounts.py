@@ -102,9 +102,10 @@ class DoctorAccountTests(unittest.TestCase):
         )
         panel = self.client.get("/doctor")
         self.assertEqual(panel.status_code, 200)
-        # Yonetici panelindeki ayni iskelet parcalari.
+        # Ayni rapor/satir iskeleti korunur; ust serit COMED'in is listesi
+        # basligina benzetildi, bu yuzden admin-tools yerine comed-bar.
         for marker in (
-            "stat-strip", "admin-tools", "rec-head", "rec-list",
+            "stat-strip", "comed-bar", "rec-head", "rec-list",
             "search-wrap", "/static/admin.css",
         ):
             self.assertIn(marker, panel.text)
