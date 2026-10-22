@@ -177,6 +177,29 @@ def _format_semantic_turns(raw_text: str, usage: dict[str, Any]) -> str:
     return _format_turns(turns) if turns else _fallback_single_speaker(raw_text)
 
 
+def _prompt_unsupported(error: Exception) -> bool:
+    """Hata 'bu model prompt kabul etmiyor' anlamına mı geliyor?
+
+    Döküm, yalnız yönlendirme promptu yüzünden başarısız olmamalı; böyle bir
+    hatada çağrı promptsuz tekrarlanır. Ağ/kota/anahtar hataları buraya
+    girmez, onlar yukarı taşınır.
+    """
+    status = getattr(error, "status_code", None) or getattr(error, "status", None)
+    if status is not None and int(status) not in (400, 404, 422):
+        return False
+    message = str(error).casefold()
+    if "prompt" in message:
+        return True
+    # Bazı sürümler alan adını vermeden "unknown/unexpected parameter" diyor.
+    return any(
+        marker in message
+        for marker in (
+            "unknown parameter", "unexpected parameter", "unsupported parameter",
+            "extra fields not permitted", "not supported with this model",
+        )
+    )
+
+
 def _strip_prompt_echo(text: str) -> str:
     """STT'ye verilen yönlendirme promptu çıktıya kopyalandıysa temizle.
 
@@ -385,20 +408,41 @@ def _openai_transcribe(data: bytes, mime: str, filename: str) -> tuple[str, dict
     )
     fallback_response = None
     fallback_seconds = None
+    prompt_rejected = False
     try:
         # prompt: sessiz saniyelerde İngilizce uydurmayı ("I am, I am") azaltır
         # ve EKG/EKO gibi kısaltmaların doğru yazılmasını sağlar. Model promptu
         # transkripte kopyalayabildiği için çıktı _strip_prompt_echo ile
         # temizlenir. Boş yapılandırmada parametre hiç gönderilmez.
+        #
+        # ÖNEMLİ: her STT modeli ``prompt`` kabul etmiyor. Kabul etmeyen bir
+        # modelde istek 400 ile dönüyor ve görüşme komple kaybediliyordu.
+        # Döküm, prompt uğruna asla başarısız olmamalı: reddedilirse aynı
+        # çağrı promptsuz tekrarlanır.
         extra = {"prompt": config.OPENAI_STT_PROMPT} if config.OPENAI_STT_PROMPT else {}
-        response = client.audio.transcriptions.create(
-            model=config.OPENAI_STT_MODEL,
-            file=(filename, data, mime),
-            language=config.OPENAI_STT_LANGUAGE,
-            response_format="diarized_json",
-            chunking_strategy="auto",
-            **extra,
-        )
+
+        def _diarized(options: dict[str, Any]):
+            return client.audio.transcriptions.create(
+                model=config.OPENAI_STT_MODEL,
+                file=(filename, data, mime),
+                language=config.OPENAI_STT_LANGUAGE,
+                response_format="diarized_json",
+                chunking_strategy="auto",
+                **options,
+            )
+
+        try:
+            response = _diarized(extra)
+        except Exception as error:  # noqa: BLE001
+            if not extra or not _prompt_unsupported(error):
+                raise
+            logger.warning(
+                "STT modeli prompt parametresini kabul etmedi, promptsuz tekrar "
+                "deneniyor: %s", error,
+            )
+            prompt_rejected = True
+            extra = {}
+            response = _diarized(extra)
 
         segments = [
             segment
@@ -411,13 +455,23 @@ def _openai_transcribe(data: bytes, mime: str, filename: str) -> tuple[str, dict
         # konuşmacı ayrımı yapmayan STT modelini yalnızca bir kez yedek olarak çağır.
         if not segments and not combined_text:
             fallback_started = time.monotonic()
-            fallback_response = client.audio.transcriptions.create(
-                model=config.OPENAI_STT_FALLBACK_MODEL,
-                file=(filename, data, mime),
-                language=config.OPENAI_STT_LANGUAGE,
-                response_format="json",
-                **extra,
-            )
+
+            def _plain(options: dict[str, Any]):
+                return client.audio.transcriptions.create(
+                    model=config.OPENAI_STT_FALLBACK_MODEL,
+                    file=(filename, data, mime),
+                    language=config.OPENAI_STT_LANGUAGE,
+                    response_format="json",
+                    **options,
+                )
+
+            try:
+                fallback_response = _plain(extra)
+            except Exception as error:  # noqa: BLE001
+                if not extra or not _prompt_unsupported(error):
+                    raise
+                prompt_rejected = True
+                fallback_response = _plain({})
             fallback_seconds = round(time.monotonic() - fallback_started, 1)
     finally:
         client.close()
@@ -426,6 +480,10 @@ def _openai_transcribe(data: bytes, mime: str, filename: str) -> tuple[str, dict
     usage["segment_count"] = len(segments)
     usage["combined_text_chars"] = len(combined_text)
     usage["fallback_used"] = fallback_response is not None
+    # Hangi yolun kullanıldığı kayda geçsin: promptun gerçekten gidip
+    # gitmediğini tahmin etmek yerine veriden görelim.
+    usage["stt_prompt_sent"] = bool(config.OPENAI_STT_PROMPT) and not prompt_rejected
+    usage["stt_prompt_rejected"] = prompt_rejected
     usage["transcript_source"] = "diarized_segments" if segments else "combined_text"
 
     if fallback_response is not None:

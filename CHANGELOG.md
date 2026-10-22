@@ -1,3 +1,40 @@
+## v2.33.1 — 22 Ekim 2026 (ACİL DÜZELTME)
+
+### v2.33.0 dökümü tamamen bozdu
+
+v2.33.0'da OpenAI dökümüne eklenen `prompt` parametresi canlıda **her isteği
+503'e düşürdü**. Mobil uygulamada "Analiz servisi isteği tamamlayamadı"
+hatası çıkıyor, görüşme kaybediliyordu. Canlı `/transcribe` ucuna küçük bir
+ses dosyası gönderilerek yeniden üretildi.
+
+Sebep: **her STT modeli `prompt` parametresini kabul etmiyor.** v2.33.0
+öncesindeki `assertNotIn("prompt", kwargs)` testi muhtemelen tam da bunun
+için konmuştu; test güncellendi ama altındaki gerçek doğrulanmadı.
+
+### Kural: döküm, prompt uğruna asla başarısız olmamalı
+
+`prompt` bir **iyileştirmedir, zorunluluk değildir**:
+
+- Model reddederse aynı çağrı **promptsuz tekrarlanır**, görüşme kurtarılır.
+- Yalnız "parametre kabul edilmiyor" hataları yutulur. Kota (429), anahtar
+  (401), sunucu (500) ve ağ hataları **eskisi gibi yukarı taşınır** — gerçek
+  arızayı gizlemiyoruz.
+- Ne olduğu `usage.stt_prompt_sent` / `usage.stt_prompt_rejected` alanlarına
+  yazılıyor; promptun gidip gitmediğini tahmin etmek yerine veriden görüyoruz.
+- Hem ana diarize modeli hem yedek model için geçerli.
+
+Böylece prompt destekleniyorsa Türkçe yanlılığı korunur, desteklenmiyorsa
+sistem hiç bozulmadan çalışır.
+
+### Ders
+
+Bir satırlık "iyileştirme" bile canlıda doğrulanmadan gönderilmemeli.
+v2.33.0'ın hizmet/katalog değişiklikleri canlı COMED'de ölçülmüştü; STT
+promptu ölçülmedi ve kıran o oldu.
+
+Testler: 249 → 254. Yeni `test_stt_prompt_fallback.py` hem kurtarma yolunu
+hem de gerçek hataların yutulmadığını doğruluyor.
+
 ## v2.33.0 — 22 Ekim 2026
 
 ### Hizmet istemlerinde de yanlış tetkik seçimi düzeltildi

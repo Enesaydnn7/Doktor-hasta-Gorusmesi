@@ -123,7 +123,7 @@ Doktor: `Kullanici.kayadr;Kullanici.aydin1|tracer` / `1`
 
 | Dal | Commit | Sürüm |
 |---|---|---|
-| `main` | v2.33.0 | **v2.33.0** ← güncel |
+| `main` | v2.33.1 | **v2.33.1** ← güncel |
 | `mvp` | `2d6b671` | **v2.32.0** ← "bizim MVP sürümümüz" |
 | `mvp-v2.10.3` (etiket) | `7660ef4` | eski demo |
 
@@ -165,6 +165,19 @@ cd mobile_app; flutter test          # 12
 
 **Son iş: v2.33.0 — hizmet istemlerinde yanlış tetkik seçimi, STT Türkçe
 bağlamı, analiz promptu güçlendirmesi. Kullanıcı HENÜZ DENEMEDİ.**
+
+### ⚠️ DIŞ API PARAMETRESİ EKLERKEN (v2.33.0 dersi)
+
+v2.33.0'da OpenAI dökümüne tek satırlık `prompt` eklendi ve **canlıda bütün
+dökümü 503''e düşürdü** — her STT modeli bu parametreyi kabul etmiyor.
+Görüşmeler kaybedildi.
+
+Kural: **döküm/analiz, bir iyileştirme uğruna asla başarısız olmamalı.**
+Opsiyonel parametre eklerken reddedilme yolunu da yaz (`_prompt_unsupported`
++ promptsuz tekrar deneme). Ve gerçek hataları (429/401/500) yutma.
+
+Ayrıca: eski bir test bir şeyi YASAKLIYORSA önce **neden** yasakladığına bak.
+`assertNotIn("prompt", kwargs)` boşuna konmamıştı.
 
 ### ⚠️ KATALOG EŞLEŞTİRME KURALI (iki kez aynı hatayı yaptık)
 
