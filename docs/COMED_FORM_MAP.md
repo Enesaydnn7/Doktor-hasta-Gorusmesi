@@ -55,6 +55,39 @@ ekranlardadır. Köprü ikisini de dolduruyor; son kontrol ve imza doktordadır.
 | Hizmet İstem | `?app-action=action-order-procedure` | Hizmet adı, Uygulayan, Açıklama | Favoriler'de yoksa Genel sekmesinden arar; Uygulayan isteyen doktorla aynı seçilir. Radyolojide ek zorunlu alan çıkarsa istem doktora bırakılır |
 | İlaç İstem | `?app-action=action-order-drug` | Ana İlaç, Günlük sıklık, İstem Notu | Arama kutusundan seçer; doz/veriliş yolu/uygulama COMED varsayılanında kalır. Sıklık yalnız söylendiyse ve 1-12 arasındaysa işaretlenir |
 
+### İlaç İstem ekranı — canlı ölçüm (22 Ekim 2026)
+
+Hasta 22207363, goztepetest. Ölçülen gerçekler:
+
+- Adres parametresi tek başına ekranı açıyor; co-button-İlaç İstem diye bir
+  sekme düğmesi YOK. Beklemek 12 saniye boşa gidiyor.
+- Arama kutusunun placeholder'ı: "Temel ilaçlar kategorisinde ara". Aynı
+  ekranda alt araç çubuğunda "Ara" ve "İsteyen ara..." kutuları var; "ara"
+  geçenleri elemek hedef kutuyu da eliyor.
+- .co-input__label içinde "Ana İlaç" etiketi YOK; etiketle aramak tutmaz.
+- Öneri listesi: .autocomplete__item (10 sonuç).
+- Görünür co-button-Ekle sayısı 2, co-button-Vazgeç 1 → pencere içindeki
+  düğme "Vazgeç" hizasından seçilmeli.
+
+#### Aynı etken maddenin onlarca formu var
+
+"parol" araması: PAROL COLD, PAROL HOT, PAROL HOT Pediatrik, PAROL IV Flakon
+(iki ambalaj), PAROL Plus Süspansiyon, PAROL PLUS Tablet, PAROL Süspansiyon,
+PAROL Tablet 500 mg (iki ambalaj).
+
+"İlk başlayan eşleşme" kuralı PAROL COLD'u seçiyordu: grip ilacı,
+fenilpropanolamin içerir, yaşlı hipertansifte kontrendike. Bu yüzden puanlama
+ve veto kullanılıyor; emin olunamazsa ilaç HİÇ eklenmiyor.
+
+| Doktor ne dedi | Karar (canlı doğrulandı) |
+| --- | --- |
+| Parol, 500 mg | secilir: PAROL Tablet 500 mg |
+| Parol (doz yok) | secilir: PAROL Tablet 500 mg (ağızdan form varsayılan) |
+| Parol Cold | secilir: PAROL COLD (doktor açıkça istedi) |
+| Parol, 325 mg | doktora bırakılır (325 mg yalnız COLD'da var) |
+| Parol süspansiyon | doktora bırakılır |
+| Bilinmeyen ad | doktora bırakılır |
+
 ## Doldurulmayan ayrı iş akışları
 
 Konsültasyon/diyet/bakım/kan ürünü/kök hücre istemleri,

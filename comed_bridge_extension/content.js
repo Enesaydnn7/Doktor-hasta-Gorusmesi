@@ -1927,46 +1927,121 @@
      Doz/siklik soylenmediyse hicbir alana dokunmuyoruz; COMED'in varsayilani
      kalir ve doktor imzalamadan once kontrol eder. */
 
-  /** "Ana İlaç" arama kutusu. Ekran acilinca gorunur tek autocomplete odur. */
+  /** İlac arama kutusu.
+
+     CANLI OLCUM (22 Ekim 2026): placeholder "Temel ilaçlar kategorisinde ara".
+     Ayni ekranda alt arac cubugunda "Ara" ve "İsteyen ara..." kutulari da var;
+     onlar elenmeli. Onceki surumde kutular "ara" gecen placeholder'a bakilarak
+     eleniyordu -- dogru kutunun placeholder'i da "...kategorisinde ara" ile
+     bittigi icin hedef kutu bizzat eleniyor ve istem sessizce atlaniyordu.
+     Ayrica ".co-input__label" icinde "Ana İlaç" etiketi YOK; etiketle
+     bulmaya calismak da ise yaramaz. */
+  const DRUG_TOOLBAR_PLACEHOLDERS = ["ara", "isteyen ara...", "isteyen ara"];
+
   function drugSearchInput() {
-    const labelled = fieldGroupByLabel("Ana İlaç")
-      ?.querySelector(".autocomplete__input input, input");
-    if (labelled && labelled.offsetParent !== null) return labelled;
-    return [...document.querySelectorAll(".autocomplete__input input, input")]
-      .find((input) => input.offsetParent !== null
-        && !input.disabled
-        && !/ara|isteyen/i.test(input.placeholder || "")) || null;
+    const visible = [...document.querySelectorAll("input")]
+      .filter((input) => input.offsetParent !== null && !input.disabled);
+    const placeholderOf = (input) =>
+      (input.getAttribute("placeholder") || "").trim().toLocaleLowerCase("tr-TR");
+    // Olculen kesin yol: placeholder'da "ilaç" geciyor.
+    const byDrugWord = visible.find((input) => /ila[çc]/.test(placeholderOf(input)));
+    if (byDrugWord) return byDrugWord;
+    // Yedek: alt arac cubugunun kutularini eleyip kalan autocomplete girisi.
+    return visible.find((input) => {
+      if (!input.closest(".autocomplete__input")) return false;
+      return !DRUG_TOOLBAR_PLACEHOLDERS.includes(placeholderOf(input));
+    }) || null;
   }
 
-  /** Oneri listesinden ilaci sec. COMED tam adi uzun yaziyor
-     ("PAROL COLD Kapsül 325 mg/12.5 mg 20 kapsüllük ambalaj"), bu yuzden
-     "baslayan" eslesmesi aranir; yoksa listedeki ilk satir alinir. */
-  async function pickDrugOption(name) {
+  /* Ayni etken maddenin onlarca formu listeleniyor. "parol" aramasinin canli
+     sonucu (olculdu):
+       PAROL COLD Kapsül 325 mg ... Fenilpropanolamin HCl
+       PAROL HOT Granül ...
+       PAROL IV Flakon 10 mg/ml ...
+       PAROL Tablet 500 mg 20 tabletlik ambalaj Parasetamol
+     "Ilk baslayan eslesme" kurali COLD'u seciyordu: grip ilaci, icinde
+     sempatomimetik var, yasli/hipertansif hastada yanlis secim. Bu yuzden
+     puanlama kullaniyoruz ve emin olamazsak ILACI HIC EKLEMIYORUZ. */
+  const DRUG_QUALIFIERS = ["cold", "hot", "plus", "forte", "fort", "pediatrik"];
+  const DRUG_PARENTERAL = ["flakon", "ampul", "i.v", " iv ", "infüzyon", "infuzyon"];
+  const DRUG_ORAL = ["tablet", "kapsül", "kapsul", "film"];
+  /* Esik canli katalogda olculerek secildi: marka adi bas kelime olarak
+     eslesip (100) ya dozu tutuyorsa (+60) ya da agizdan form ise (+20)
+     kabul edilir. Daha dusuk her sey doktora birakilir. */
+  const DRUG_SCORE_THRESHOLD = 120;
+
+  function scoreDrugOption(text, wanted, dose) {
+    const lower = text.toLocaleLowerCase("tr-TR");
+    /* VETO: doktorun soylemedigi marka eki tasiyan urun BASKA bir ilactir.
+       "Parol" denince PAROL COLD secilmesi (sempatomimetik iceriyor, yasli
+       hipertansifte kontrendike) bu vetoyla engelleniyor. Puanla telafi
+       edilemez, dogrudan elenir. */
+    for (const qualifier of DRUG_QUALIFIERS) {
+      if (lower.includes(qualifier) && !wanted.includes(qualifier)) return -1000;
+    }
+    let score = 0;
+    // Marka adi bas kelime(ler) olarak birebir geciyorsa en guclu sinyal.
+    // Kelime siniri sart: "parol" ararken "PAROLOX" tam eslesme sayilmamali.
+    if (lower === wanted || lower.startsWith(`${wanted} `)) score += 100;
+    else if (lower.includes(wanted)) score += 20;
+    // Ayaktan muayenede agizdan form varsayilandir; enjeksiyonluk sekli
+    // doktor acikca soylemeden secme.
+    const parenteralWanted = DRUG_PARENTERAL.some((form) => wanted.includes(form.trim()))
+      || /damar|intraven/.test(wanted);
+    if (!parenteralWanted && DRUG_PARENTERAL.some((form) => lower.includes(form))) {
+      score -= 40;
+    }
+    // Doz soylendiyse eslesmesi sart: 500 mg istenip 325 mg secilmemeli.
+    if (dose) score += lower.includes(dose) ? 60 : -80;
+    // Form soylenmediyse agizdan tablet/kapsul tercih edilir.
+    const formWanted = [...DRUG_ORAL, ...DRUG_PARENTERAL]
+      .some((form) => wanted.includes(form.trim()))
+      || /şurup|surup|süspansiyon/.test(wanted);
+    if (!formWanted && DRUG_ORAL.some((form) => lower.includes(form))) score += 20;
+    return score;
+  }
+
+  /** Oneri listesinden ilaci sec. Emin olunamazsa null doner ve istem
+     doktora birakilir -- yanlis ilac eklemektense hic eklemeyiz. */
+  async function pickDrugOption(name, dose = "") {
     const wanted = name.toLocaleLowerCase("tr-TR").trim();
+    // Doz metninden sayiyi ve birimi cikar: "500 mg" -> "500 mg"
+    const doseKey = String(dose || "").toLocaleLowerCase("tr-TR")
+      .replace(/\s+/g, " ").trim();
     const options = await waitFor(() => {
       const found = [...document.querySelectorAll(".autocomplete__item")]
         .filter((item) => item.offsetParent !== null && textOf(item).trim());
       return found.length ? found : null;
     }, 6500);
     if (!options) return null;
-    const starts = options.find(
-      (item) => textOf(item).toLocaleLowerCase("tr-TR").trim().startsWith(wanted));
-    const includes = options.find(
-      (item) => textOf(item).toLocaleLowerCase("tr-TR").includes(wanted));
-    return starts || includes || options[0];
+    const scored = options
+      .map((item) => ({item, text: textOf(item), score: scoreDrugOption(textOf(item), wanted, doseKey)}))
+      .sort((a, b) => b.score - a.score);
+    const best = scored[0];
+    if (!best || best.score < DRUG_SCORE_THRESHOLD) return null;
+    return {node: best.item, text: best.text, score: best.score};
   }
 
-  /** Siklik: "Günlük" satirindaki "N Kez" dugmesi. Yoksa dokunulmaz. */
+  /** Siklik: "Günlük" satirindaki "N Kez" dugmesi. Yoksa dokunulmaz.
+     CANLI OLCUM: dugumler <div class="toggle-button__item xl"> seklinde. */
   function pressDailyFrequency(times) {
     if (!Number.isInteger(times) || times < 1 || times > 12) return false;
     const label = `${times} Kez`;
-    const button = [...document.querySelectorAll("button,.toggle-button__item,div,span")]
-      .find((item) => item.offsetParent !== null && textOf(item) === label);
+    const button = [...document.querySelectorAll(".toggle-button__item")]
+      .find((item) => item.offsetParent !== null && textOf(item) === label)
+      || [...document.querySelectorAll("button,div,span")]
+        .find((item) => item.offsetParent !== null && textOf(item) === label);
     if (!button) return false;
     return pressNode(button);
   }
 
-  /** İstem ekranini ac ve "İlaç İstem" sekmesine gec. */
+  /** İlac istem ekranini ac.
+
+     CANLI OLCUM: adres ?app-action=action-order-drug olunca ekran dogrudan
+     aciliyor; hizmet istemindeki gibi ayrica sekmeye basmak GEREKMIYOR --
+     "co-button-Ilac Istem" adinda bir dugme sayfada hic yok (ASCII yazildi,
+     testler bu adin secici olarak kullanilmadigini dogruluyor). Onceki surum
+     onu 12 saniye bosuna bekliyordu. Hazir oldugunu arama kutusundan anlariz. */
   async function openDrugScreen() {
     if (!location.search.includes(DRUG_SCREEN_PARAM)) {
       const url = `${location.pathname}?${DRUG_SCREEN_PARAM}`;
@@ -1974,43 +2049,101 @@
       window.dispatchEvent(new PopStateEvent("popstate"));
       await waitFor(() => location.search.includes(DRUG_SCREEN_PARAM), 4000);
     }
-    const tab = await waitFor(
-      () => document.querySelector('[data-test="co-button-İlaç İstem"]'), 12000);
-    if (tab) pressNode(tab);
-    // Sekme dugmesi bulunamasa da ekran acilmis olabilir; arama kutusu varsa
-    // devam et. Dugme adi degisirse istem komple durmasin.
     await waitForDomQuiet(document.body, 260, 3000);
-    return Boolean(await waitFor(() => drugSearchInput(), 6000));
+    return Boolean(await waitFor(() => drugSearchInput(), 12000));
   }
 
+  /** Arama kutusunu temizle: onceki ilacin suzgeci kalirsa yeni oneri listesi
+     acilmiyor. Hizmet isteminde de ayni temizlik yapiliyor. */
+  async function clearDrugSearch(search) {
+    if (!search || !search.value) return;
+    setTypingValue(search, " ");
+    search.value = "";
+    search.dispatchEvent(new Event("input", {bubbles: true}));
+    await waitForDomQuiet(document.body, 240, 2000);
+  }
+
+  /** Katalog sekmesi: varsayilan "Temel İlaç". Aranan ilac orada yoksa
+     "Tümü" sekmesine gecilip bir daha aranir (hizmet istemindeki
+     Favoriler -> Genel yedeginin ilac karsiligi). */
+  function pressAllDrugsTab() {
+    const tab = [...document.querySelectorAll("button,.toggle-button__item,div,span")]
+      .find((item) => item.offsetParent !== null && textOf(item) === "Tümü");
+    return tab ? pressNode(tab) : false;
+  }
+
+  /** @returns {{added:number, picked:string[], skipped:string[]}}
+     Neyin eklendigi ve neyin atlandigi doktora ve debug kaydina bildirilir;
+     istem sessizce kaybolmamali. */
   async function fillDrugRequests(drugs = []) {
-    if (!drugs.length) return 0;
-    if (!await openDrugScreen()) return 0;
-    let added = 0;
+    const result = {added: 0, picked: [], skipped: []};
+    if (!drugs.length) return result;
+    if (!await openDrugScreen()) {
+      result.skipped = drugs.map((drug) => `${drug?.name || "?"}: ilaç ekranı açılmadı`);
+      return result;
+    }
     for (const drug of drugs.slice(0, 10)) {
       const name = String(drug?.name || "").trim();
       if (!name) continue;
+      const dose = String(drug?.dose || "").trim();
       bridgeStatus(`İlaç istemi hazırlanıyor · ${name}`);
       try {
         const search = drugSearchInput();
-        if (!search) continue;
-        // Onceki ilacin aramasi kutuda kalirsa yeni oneri listesi acilmiyor.
-        if (search.value) {
-          setTypingValue(search, " ");
-          search.value = "";
-          search.dispatchEvent(new Event("input", {bubbles: true}));
-          await waitForDomQuiet(document.body, 240, 2000);
-        }
-        // Parantezli ek bilgi arama sonucunu daraltiyor: "Parol (tablet)" →
-        // "Parol". Hizmet isteminde de ayni temizlik yapiliyor.
-        setTypingValue(search, name.replace(/\(.*?\)/g, "").trim());
-        const option = await pickDrugOption(name);
-        if (!option) {
-          bridgeStatus(`${name} ilaç listesinde bulunamadı`, "bad");
+        if (!search) {
+          result.skipped.push(`${name}: arama kutusu bulunamadı`);
           continue;
         }
-        pressNode(option);
-        await waitForDomQuiet(document.body, 320, 4000);
+        await clearDrugSearch(search);
+        // Parantezli ek bilgi arama sonucunu daraltiyor: "Parol (tablet)" →
+        // "Parol". Hizmet isteminde de ayni temizlik yapiliyor.
+        const query = name.replace(/\(.*?\)/g, "").trim();
+        setTypingValue(search, query);
+        // Puanlama da aranan metinle ayni olmali: "Parol (tablet)" aranirken
+        // "parol" ile puanlanmazsa marka eslesmesi hic tutmaz.
+        let option = await pickDrugOption(query, dose);
+        if (!option) {
+          // "Temel İlaç" kategorisinde yoksa tum katalogda bir daha ara.
+          if (pressAllDrugsTab()) {
+            await waitForDomQuiet(document.body, 300, 3000);
+            const again = drugSearchInput();
+            if (again) {
+              await clearDrugSearch(again);
+              setTypingValue(again, query);
+              option = await pickDrugOption(query, dose);
+            }
+          }
+        }
+        if (!option) {
+          /* Guvenli taraf: ayni etken maddenin onlarca formu var (COLD, HOT,
+             IV flakon, suspansiyon...). Hangisi oldugundan emin degilsek
+             YANLIS ILACI EKLEMEKTENSE hic eklemeyip doktora birakiyoruz. */
+          result.skipped.push(dose
+            ? `${name} ${dose}: listede kesin eşleşme yok, doktor seçmeli`
+            : `${name}: birden çok form var, doktor seçmeli`);
+          bridgeStatus(`${name} için kesin eşleşme yok — doktor seçmeli`, "bad");
+          continue;
+        }
+        pressNode(option.node);
+        /* CANLI OLCUM: secimden sonra COMED formu kendisi dolduruyor
+           (Veriliş Yolu "Ağız Yoluyla", Miktar 1, Doz 500 mg) ve bu sirada
+           "Ekle" PASIF, "Sıklık Bilgisi" bolumu de henuz basilmamis oluyor.
+           Sabit beklemek yetmiyordu: 1,8 sn sonra bakildiginda siklik
+           dugmeleri "yok", Ekle "pasif" gorunuyordu. Artik formun HAZIR
+           olmasini bekliyoruz. */
+        const ready = await waitFor(() => {
+          const frequencyShown = [...document.querySelectorAll(".toggle-button__item")]
+            .some((item) => item.offsetParent !== null && /^\d+ Kez$/.test(textOf(item)));
+          const button = dialogButton("co-button-Ekle");
+          return frequencyShown && button && !button.disabled ? button : null;
+        }, 15000);
+        if (!ready) {
+          const cancel = dialogButton("co-button-Vazgeç");
+          if (cancel) pressNode(cancel);
+          await waitForDomQuiet(document.body, 260, 2500);
+          result.skipped.push(`${name}: form 15 sn içinde hazır olmadı`);
+          bridgeStatus(`${name} formu hazırlanamadı`, "bad");
+          continue;
+        }
         // Doktor sadece sikligi soylemis olabilir; doz ve veris yolu COMED'in
         // varsayilaninda kalir.
         pressDailyFrequency(drug?.frequency_per_day);
@@ -2023,18 +2156,22 @@
           const cancel = dialogButton("co-button-Vazgeç");
           if (cancel) pressNode(cancel);
           await waitForDomQuiet(document.body, 260, 2500);
+          result.skipped.push(`${name}: ek zorunlu alan istiyor, doktor tamamlamalı`);
           bridgeStatus(`${name} doktor tarafından tamamlanmalı`, "bad");
           continue;
         }
         pressNode(addButton);
         await waitForDomQuiet(document.body, 320, 4000);
-        added += 1;
+        result.added += 1;
+        // Hangi formun secildigi kayda gecsin: doktor imzalamadan once
+        // "ben Parol dedim, bu COLD mu Tablet mi" diye bakabilsin.
+        result.picked.push(option.text.slice(0, 120));
         bridgeFieldStatus("requested_drugs", true);
-      } catch (_) {
-        // Tek bir ilac tutmazsa digerlerini engelleme.
+      } catch (error) {
+        result.skipped.push(`${name}: ${error.message || "beklenmeyen hata"}`);
       }
     }
-    return added;
+    return result;
   }
 
   async function fillDiagnoses(diagnoses = []) {
@@ -2169,9 +2306,16 @@
     // İlaç istemleri hizmet istemlerinden hemen sonra: ikisi de ayrı istem
     // ekranında açılıyor, aradaki kart alanlarına dönmeye gerek kalmıyor.
     if ((fields.requested_drugs || []).length) {
-      const drugCount = await fillDrugRequests(fields.requested_drugs);
-      record("requested_drugs", drugCount > 0,
-        `${drugCount}/${fields.requested_drugs.length} ilaç`);
+      const drugResult = await fillDrugRequests(fields.requested_drugs);
+      const toplam = fields.requested_drugs.length;
+      // Secilen formu ve atlanan ilaclari ayrintiya yaz: doktor imzadan once
+      // "Parol dedim, COLD mu Tablet mi eklendi" diye kontrol edebilsin.
+      const detay = [
+        `${drugResult.added}/${toplam} ilaç`,
+        drugResult.picked.length ? `seçilen: ${drugResult.picked.join(" | ")}` : "",
+        drugResult.skipped.length ? `atlanan: ${drugResult.skipped.join(" | ")}` : "",
+      ].filter(Boolean).join(" — ");
+      record("requested_drugs", drugResult.added > 0, detay);
     }
     record("treatment_plan_label", Boolean(fields.treatment_plan_label)
       && clickCardOption("İzlem ve Plan", fields.treatment_plan_label));
@@ -2282,9 +2426,13 @@
       const gecen = Math.round((Date.now() - Date.parse(startedAt)) / 1000);
       const hizEtiketi = FILL_SPEEDS.find((item) => item.value === fillSpeed)?.label
         || `${fillSpeed}×`;
+      /* Doldurulamayan alan varsa bunu balonda SOYLE. Onceden "Aktarım bitti"
+         yaziyordu ve doktor hicbir ilacin eklenmedigini ancak COMED'e bakinca
+         anliyordu; sessiz basarisizlik yanlis guven veriyor. */
       bridgeStatus(
-        `${BRIDGE_FINAL_TEXT} · ${gecen} sn · ${hizEtiketi} hız`,
-        "ok",
+        `${BRIDGE_FINAL_TEXT} · ${gecen} sn · ${hizEtiketi} hız`
+        + (unresolved.length ? ` · ${unresolved.length} alan eksik` : ""),
+        unresolved.length ? "bad" : "ok",
       );
     } catch (error) {
       await updateStatus(transfer.id, "failed", error.message, {

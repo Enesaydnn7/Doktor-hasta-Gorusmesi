@@ -123,8 +123,8 @@ Doktor: `Kullanici.kayadr;Kullanici.aydin1|tracer` / `1`
 
 | Dal | Commit | Sürüm |
 |---|---|---|
-| `main` | v2.32.0 | **v2.32.0** ← güncel |
-| `mvp` | `043db86` | **v2.31.0** ← "bizim MVP sürümümüz" (22 Ekim'de main'den eşitlendi) |
+| `main` | v2.32.1 | **v2.32.1** ← güncel |
+| `mvp` | `2d6b671` | **v2.32.0** ← "bizim MVP sürümümüz" (22 Ekim'de main'den eşitlendi) |
 | `mvp-v2.10.3` (etiket) | `7660ef4` | eski demo |
 
 **mvp dalına kullanıcı AÇIKÇA söylemeden dokunma.** Geçmişte izinsiz 3 kez
@@ -163,8 +163,23 @@ cd mobile_app; flutter test          # 12
 
 ## 4. NEREDE KALDIK (son durum: 22 Ekim 2026)
 
-**Son iş: İlaç istemlerinin otomatik girilmesi + doktor panelinin COMED'e
-benzetilmesi — v2.32.0. Kod yazıldı, 227 test geçti, canlıda DENENMEDİ.**
+**Son iş: İlaç istemleri — v2.32.1. v2.32.0 CANLIDA PATLADI, sebepleri
+ölçülerek düzeltildi. Kullanıcı v2.32.1'i HENÜZ DENEMEDİ.**
+
+v2.32.0'ın üç hatası (22 Ekim'de canlı COMED'de ölçüldü):
+1. Arama kutusu bizzat eleniyordu — placeholder "Temel ilaçlar kategorisinde
+   ara", kod ise "ara" geçenleri atıyordu.
+2. `co-button-İlaç İstem` diye bir düğme YOK; 12 sn boşuna bekleniyordu.
+3. `.co-input__label` içinde "Ana İlaç" etiketi YOK.
+
+⚠️ **Ve bir hasta güvenliği hatası:** "ilk başlayan eşleşme" kuralı "Parol"
+için **PAROL COLD** (grip ilacı, fenilpropanolamin, yaşlı hipertansifte
+kontrendike) seçiyordu. Artık marka eki vetosu + doz eşleşmesi + eşik var;
+emin olunamazsa ilaç HİÇ eklenmiyor. Karar tablosu `docs/COMED_FORM_MAP.md`.
+
+**DERS: string arayan testler bu sınıf hatayı yakalamaz.** v2.32.0'ın testi
+`startsWith(wanted)` arıyordu — yani hatayı şart koşuyordu. Eklenti
+değişikliklerini canlı COMED'de ölçmeden "test geçti" deme.
 
 - `requested_drugs`: ad + doz + günlük sıklık + gerekçe. Köprü
   `?app-action=action-order-drug` ekranında arama kutusundan ilacı seçip

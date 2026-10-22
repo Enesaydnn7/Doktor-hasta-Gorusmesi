@@ -1,3 +1,67 @@
+## v2.32.1 — 22 Ekim 2026
+
+### İlaç istemi gerçekten çalışıyor (v2.32.0 hiç çalışmıyordu)
+
+v2.32.0 ilaç ekranını açıyor ama **hiçbir ilacı eklemeden** "Aktarım bitti ·
+20 sn" diyordu. Canlı COMED'de ölçülerek üç kök sebep bulundu:
+
+1. **Arama kutusu bizzat eleniyordu.** Kod, alt araç çubuğundaki "Ara" ve
+   "İsteyen ara..." kutularını elemek için placeholder'ında "ara" geçenleri
+   atıyordu. Hedef kutunun placeholder'ı da **"Temel ilaçlar kategorisinde
+   ara"** — yani doğru kutu da eleniyordu. Artık placeholder'da "ilaç"
+   geçmesine bakılıyor.
+2. **Olmayan bir sekme düğmesi 12 saniye bekleniyordu.** Hizmet isteminden
+   farklı olarak ilaç ekranında `co-button-İlaç İstem` diye bir düğme **yok**;
+   adres parametresi tek başına ekranı açıyor. 12 sn + 6 sn bekleme, doktorun
+   gördüğü "20 sn"nin kaynağıydı.
+3. **"Ana İlaç" etiketiyle arama tutmuyordu.** `.co-input__label` içinde böyle
+   bir etiket yok.
+
+### ⚠️ Hasta güvenliği: yanlış ilaç seçimi düzeltildi
+
+v2.32.0 öneri listesinden **ilk başlayan eşleşmeyi** alıyordu. "parol"
+araması COMED'de 10 sonuç veriyor ve ilki **PAROL COLD** — bir grip ilacı,
+içinde fenilpropanolamin (sempatomimetik) var, yaşlı/hipertansif hastada
+kontrendike. Yani köprü doktorun önüne yanlış ilacı koyuyordu.
+
+Artık puanlama + veto var:
+
+- Doktorun söylemediği marka eki (**COLD, HOT, PLUS, FORTE, PEDİATRİK**)
+  taşıyan ürün **doğrudan elenir**; puanla telafi edilemez.
+- Söylenen doz eşleşmeli: 500 mg istenip 325 mg seçilemez.
+- Ayaktan muayenede ağızdan form varsayılan; IV flakon/ampul doktor açıkça
+  söylemeden seçilmez.
+- Marka adı kelime sınırıyla eşleşmeli: "Parol" ararken "PAROLOX" tam
+  eşleşme sayılmaz.
+- **Emin olunamazsa ilaç HİÇ EKLENMEZ**, doktora bırakılır.
+
+Canlı katalogda doğrulanan kararlar (`docs/COMED_FORM_MAP.md`'de tablo var):
+
+| Doktor ne dedi | Karar |
+| --- | --- |
+| Parol, 500 mg | PAROL Tablet 500 mg seçilir |
+| Parol (doz yok) | PAROL Tablet 500 mg seçilir |
+| Parol Cold | PAROL COLD seçilir (açıkça istendi) |
+| Parol, 325 mg | doktora bırakılır |
+| Parol süspansiyon | doktora bırakılır |
+| Bilinmeyen ad | doktora bırakılır |
+
+### Sessiz başarısızlık bitti
+
+Aktarım bitiş balonu artık eksik alan varsa **"· N alan eksik"** yazıyor ve
+kırmızıya dönüyor. Ayrıca hangi ilacın hangi formla eklendiği ve neyin neden
+atlandığı aktarım kaydına yazılıyor; doktor imzalamadan önce "ben Parol
+dedim, COLD mu Tablet mi eklenmiş" diye bakabiliyor.
+
+### Diğer
+
+- "Temel İlaç" kategorisinde bulunamayan ilaç için **"Tümü"** sekmesi yedeği
+  (hizmet istemindeki Favoriler→Genel yedeğinin karşılığı).
+- Testler: v2.32.0'ın `startsWith(wanted)` iddiası **hatayı şart koşuyordu**,
+  kaldırıldı. Yerine canlı ölçümleri kayıt altına alan regresyon testleri
+  geldi. Dürüst not: depoda JS/DOM test altyapısı olmadığı için bu testler
+  kodun metnine bakar; asıl kanıt belgelenmiş canlı ölçümlerdir.
+
 ## v2.32.0 — 22 Ekim 2026
 
 ### İlaç istemleri otomatik
