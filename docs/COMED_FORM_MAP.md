@@ -89,6 +89,19 @@ aynı anda işaretlenip tek "Ekle" ile eklenebiliyor.
 
 **Hemogram (796)** onay kutusu PASİF geliyor; işaretlenemez, atlanır.
 
+**Zorunluluk "Ekle"den SONRA bildiriliyor.** İşaretleme anında hiçbir zorunlu
+alan görünmüyor; "Ekle"ye basınca "Form Alanları Hatası / Zorunlu alanları
+doldurunuz" çıkıyor ve alanlar o anda işaretleniyor:
+
+| Tetkik | Zorunlu alan | Davranış |
+| --- | --- | --- |
+| RDUS / radyoloji satırları | "Girilen açıklama hasta tetkik raporunda yer alacaktır" (min 4 karakter) | "Acil bir durum yoktur" yazılır |
+| Vitamin D3 (25-OH-Kolekalsiferol) | Endikasyon seçiniz | klinik seçim — doktora bırakılır |
+| Hemogram (796) | — | onay kutusu pasif |
+
+Alan sınıf/kırmızı-nokta ile bulunamıyor; **placeholder ile** bulunmalı
+(canlı ölçümde 7/7 doldu).
+
 Radyoloji istemlerinde "Acil" yanındaki açıklama kutusu zorunlu olabiliyor
 (kırmızı nokta); doktor aciliyet belirtmediyse "Aciliyeti yok" yazılır.
 "Dokümanları Doldurunuz" uyarısı çıkan tetkik hiç gönderilmez, doktora bırakılır.

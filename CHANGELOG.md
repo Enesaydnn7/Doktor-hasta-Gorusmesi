@@ -1,3 +1,40 @@
+## v2.34.1 — 22 Ekim 2026
+
+### Tetkik İstem: zorunlu alanlar ancak "Ekle"den SONRA ortaya çıkıyor
+
+v2.34.0'da zorunlu alanlar işaretleme anında aranıyordu ve hiçbiri
+görünmüyordu. Canlı ölçümde gerçek davranış bulundu: COMED doğrulamayı
+**"Ekle"ye basıldıktan sonra** yapıyor ve o anda şunu gösteriyor:
+
+```
+Form Alanları Hatası / Zorunlu alanları doldurunuz
+  → "Girilen açıklama hasta tetkik raporunda yer alacaktır alanı zorunludur,
+     uzunluğu 3 degerinden büyük olmalı."   (her radyoloji satırı için)
+  → "Endikasyon seçiniz alanı zorunludur."  (örn. Vitamin D3)
+```
+
+Düzeltmeler:
+
+- Zorunlu açıklama kutusu **placeholder ile** bulunuyor. Sınıf/kırmızı-nokta
+  tespiti canlıda hiç tutmadı; placeholder ile **7/7** alan dolduruldu.
+- Varsayılan metin **"Acil bir durum yoktur"** (COMED en az 4 karakter
+  istiyor).
+- "Ekle"den sonra hâlâ hata varsa alanlar doldurulup **bir kez daha**
+  deneniyor — zorunluluk o ana kadar görünmediği için tek deneme yetmiyordu.
+- İkinci denemeden sonra da hata kalıyorsa (örn. **Endikasyon** gibi klinik
+  seçim isteyen alan) istem gönderilmiyor, sebebiyle birlikte doktora
+  bırakılıyor. Endikasyonu otomatik seçmek tıbbi karar vermek olurdu.
+
+### Ölçülen zorunluluklar
+
+| Tetkik | Zorunlu alan | Davranış |
+| --- | --- | --- |
+| RDUS / radyoloji satırları | "Girilen açıklama..." metni | varsayılan yazılır |
+| Vitamin D3 (25-OH-Kolekalsiferol) | **Endikasyon seçiniz** | doktora bırakılır |
+| Hemogram (796) | — | onay kutusu pasif, atlanır |
+
+Laboratuvar tetkiklerinin geri kalanında zorunlu alan yok.
+
 ## v2.34.0 — 22 Ekim 2026
 
 ### Tetkik İstem ekranı eklendi (üçüncü istem ekranı)

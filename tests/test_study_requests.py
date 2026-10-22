@@ -75,10 +75,39 @@ class StudyScreenBridgeTests(unittest.TestCase):
         self.assertIn("doküman doldurulması gerekiyor", self.content)
 
     def test_required_note_gets_a_safe_default(self):
-        """Radyolojide Acil açıklaması zorunlu olabiliyor."""
+        """Radyolojide "Acil" açıklaması ZORUNLU.
+
+        CANLI ÖLÇÜM: zorunluluk ancak "Ekle"ye basınca ortaya çıkıyor.
+        Hata metni: "Girilen açıklama hasta tetkik raporunda yer alacaktır
+        alanı zorunludur, uzunluğu 3 degerinden büyük olmalı."
+        Alan sınıf/kırmızı-nokta ile bulunamıyor; placeholder ile 7/7 doldu.
+        """
         self.assertIn("STUDY_URGENCY_DEFAULT", self.content)
-        self.assertIn("Aciliyeti yok", self.content)
+        self.assertIn("Acil bir durum yoktur", self.content)
+        self.assertIn("STUDY_NOTE_PLACEHOLDER", self.content)
+        self.assertIn("Girilen açıklama hasta tetkik raporunda", self.content)
         self.assertIn("function fillStudyRequiredNotes(", self.content)
+        # Varsayilan 3 karakterden uzun olmali (COMED sarti).
+        self.assertGreater(len("Acil bir durum yoktur"), 3)
+
+    def test_clinical_choice_rows_are_unticked_not_removed(self):
+        """ÖLÇÜLDÜ: Vitamin D3 "Endikasyon seçiniz" istiyor.
+
+        Endikasyon klinik gerekçedir, otomatik seçilemez. Alt paneldeki
+        satırı X ile kapatmak COMED''de tutmadı; üstteki LİSTEDEN tik
+        kaldırılıyor. Böylece tek tetkik yüzünden paketin tamamı kaybolmuyor.
+        """
+        self.assertIn("function untickBlockedStudies(", self.content)
+        self.assertIn("Endikasyon seçiniz", self.content)
+        self.assertIn("klinik seçim gerekiyor", self.content)
+        # Calismayan X yontemi geri gelmesin.
+        self.assertNotIn("function removeBlockedStudyRows(", self.content)
+
+    def test_retries_once_after_comed_reveals_required_fields(self):
+        """Zorunluluk Ekle'den SONRA bildiriliyor; doldurup bir kez daha dene."""
+        self.assertIn("function studyValidationErrors(", self.content)
+        self.assertIn("Zorunlu alanları doldurunuz", self.content)
+        self.assertIn("doktor tamamlamalı", self.content)
 
     def test_waits_for_the_add_button_instead_of_a_fixed_sleep(self):
         self.assertIn('dialogButton("co-button-Ekle")', self.content)

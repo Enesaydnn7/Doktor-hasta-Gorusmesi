@@ -1784,10 +1784,16 @@
     "akciğer grafisi", "Bt koroner", "alt ekstremite doppler", "ekooo",
     "karotis", "karotis mrlar",
   ];
-  /* Radyoloji istemlerinde "Acil" yanindaki aciklama kutusu zorunlu olabiliyor
-     (kirmizi nokta). Doktor aciliyet belirtmediyse bu varsayilan yazilir --
-     bos birakip istemi kaybetmektense notu doktor duzeltsin. */
-  const STUDY_URGENCY_DEFAULT = "Aciliyeti yok";
+  /* Radyoloji istemlerinde "Acil" yanindaki aciklama kutusu ZORUNLU.
+
+     CANLI OLCUM: zorunluluk ancak "Ekle"ye basinca ortaya cikiyor --
+     "Form Alanları Hatası / Zorunlu alanları doldurunuz" ve her satir icin
+     "Girilen açıklama hasta tetkik raporunda yer alacaktır alanı zorunludur,
+      uzunluğu 3 degerinden büyük olmalı".
+     Alan placeholder'indan bulunur (sinif/kirmizi-nokta tespiti tutmuyor).
+     Doktor aciliyet belirtmediyse bu varsayilan yazilir. */
+  const STUDY_URGENCY_DEFAULT = "Acil bir durum yoktur";
+  const STUDY_NOTE_PLACEHOLDER = /Girilen açıklama hasta tetkik raporunda/i;
 
   async function openStudyScreen() {
     if (!location.search.includes(STUDY_SCREEN_PARAM)) {
@@ -1881,19 +1887,70 @@
     return best && best.value >= 120 ? best.row : null;
   }
 
-  /** Alt paneldeki bos zorunlu aciklama kutularini varsayilanla doldur. */
+  /** Alt paneldeki zorunlu aciklama kutularini varsayilanla doldur.
+
+     Placeholder ile bulunuyor: canli olcumde sinif/kirmizi-nokta tespiti
+     hic tutmadi, placeholder ile 7/7 doldu. */
   function fillStudyRequiredNotes() {
     let filled = 0;
-    for (const field of document.querySelectorAll("textarea, input[type='text']")) {
+    for (const field of document.querySelectorAll("textarea, input")) {
       if (field.offsetParent === null || field.value) continue;
-      const holder = field.closest("div");
-      if (!holder) continue;
-      const marked = /required|error|invalid/.test(String(holder.className || ""))
-        || getComputedStyle(holder, "::before").content !== "none";
-      if (!marked) continue;
+      if (!STUDY_NOTE_PLACEHOLDER.test(field.getAttribute("placeholder") || "")) continue;
       if (setValue(field, STUDY_URGENCY_DEFAULT)) filled += 1;
     }
     return filled;
+  }
+
+  /** Klinik secim isteyen tetkiklerin TIKINI LISTEDEN kaldir.
+
+     CANLI OLCUM: "Vitamin D3 (25-OH-Kolekalsiferol)" satiri "Endikasyon
+     seçiniz" istiyor. Endikasyon klinik gerekcedir, otomatik secmek tibbi
+     karar vermek olur.
+
+     Alt paneldeki satiri X ile kapatmayi denedik, COMED'de tutmadi. Onun
+     yerine ustteki LISTEDEN tiki kaldiriyoruz -- isaretleme mekanizmasi
+     zaten calisiyor. Boylece tek sorunlu tetkik yuzunden paketteki diger
+     20 tetkik kaybolmuyor.
+     @returns {string[]} tiki kaldirilan tetkik adlari */
+  function untickBlockedStudies() {
+    const blocked = new Set();
+    const errors = [...document.querySelectorAll("*")].filter(
+      (node) => node.offsetParent !== null && node.children.length === 0
+        && /Endikasyon seçiniz|alanı zorunludur/i.test(textOf(node)));
+    for (const error of errors) {
+      let holder = error;
+      for (let step = 0; step < 9 && holder; step += 1) {
+        holder = holder.parentElement;
+        if (!holder) break;
+        const text = textOf(holder);
+        if (text.length < 20 || text.length > 320) continue;
+        // "Vitamin D3 (25-OH-Kolekalsiferol) - Kan Endikasyon seçiniz"
+        const name = text.split(/\s-\s|Endikasyon|Açıklama/)[0].trim();
+        if (name.length > 3) blocked.add(name);
+        break;
+      }
+    }
+    const removed = [];
+    for (const name of blocked) {
+      const simple = simplifyStudy(name);
+      for (const row of studyRows()) {
+        const box = row.querySelector('input[type="checkbox"]');
+        if (!box || !box.checked) continue;
+        if (!simplifyStudy(studyRowName(row)).startsWith(simple.slice(0, 18))) continue;
+        pressNode(box.closest("label") || box);
+        removed.push(name);
+        break;
+      }
+    }
+    return [...new Set(removed)];
+  }
+
+  /** "Ekle"den sonra COMED hala zorunlu alan istiyor mu? */
+  function studyValidationErrors() {
+    return [...document.querySelectorAll("*")]
+      .filter((node) => node.offsetParent !== null && node.children.length === 0
+        && /alanı zorunludur|Zorunlu alanları doldurunuz/i.test(textOf(node)))
+      .map((node) => textOf(node));
   }
 
   /** Doküman isteyen istem satiri var mi? (ornek: Gliko Hemoglobin HbA1C) */
@@ -1970,6 +2027,47 @@
       }
       pressNode(ekle);
       await waitForDomQuiet(document.body, 350, 5000);
+      /* COMED zorunlulugu ancak "Ekle"den sonra bildiriyor. Alanlar o anda
+         gorunur hale geliyor: doldurup BIR KEZ daha deniyoruz. */
+      if (studyValidationErrors().length) {
+        const eklenen = fillStudyRequiredNotes();
+        if (eklenen) {
+          await waitForDomQuiet(document.body, 300, 3000);
+          const tekrar = dialogButton("co-button-Ekle");
+          if (tekrar && !tekrar.disabled) {
+            pressNode(tekrar);
+            await waitForDomQuiet(document.body, 350, 5000);
+          }
+        }
+      }
+      let kalanHata = studyValidationErrors();
+      if (kalanHata.length) {
+        /* Endikasyon gibi KLINIK secim isteyen satirlar kaldi (olcum:
+           Vitamin D3 "Endikasyon seçiniz" istiyor). Bunu otomatik secmek
+           tibbi karar vermek olur. Ama tek satir yuzunden paketteki diger
+           20 tetkigi kaybetmeyelim: SORUNLU SATIRI panelden cikarip
+           kalanlari ekliyoruz, cikarilan doktora bildiriliyor. */
+        const sorunlu = untickBlockedStudies();
+        sorunlu.forEach((ad) => {
+          result.skipped.push(`${ad}: klinik seçim gerekiyor (Endikasyon vb.), doktor tamamlamalı`);
+          const index = isaretli.findIndex((item) => item.label.includes(ad) || ad.includes(item.name));
+          if (index >= 0) isaretli.splice(index, 1);
+        });
+        if (sorunlu.length && isaretli.length) {
+          await waitForDomQuiet(document.body, 300, 3000);
+          const ucuncu = dialogButton("co-button-Ekle");
+          if (ucuncu && !ucuncu.disabled) {
+            pressNode(ucuncu);
+            await waitForDomQuiet(document.body, 350, 5000);
+          }
+        }
+        kalanHata = studyValidationErrors();
+      }
+      if (kalanHata.length || !isaretli.length) {
+        isaretli.forEach((item) => result.skipped.push(
+          `${item.name}: ${(kalanHata[0] || "zorunlu alan").slice(0, 60)} — doktor tamamlamalı`));
+        continue;
+      }
       result.added += isaretli.length;
       isaretli.forEach((item) => result.picked.push(item.label.slice(0, 80)));
       bridgeFieldStatus("requested_services", true);
