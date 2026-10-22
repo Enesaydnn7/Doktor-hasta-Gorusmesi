@@ -178,22 +178,66 @@ KURALLAR (ÇOK ÖNEMLİ):
 - marital_status yalnız Belirtilmedi, Bekar veya Evli olabilir.
 - education yalnız Eğitim, Yok, Önlisans, İlköğretim, Lise, Lisans veya Lisans Üstü olabilir.
 - Tanı tarafı yalnız none|left|right; türü differential|definitive|preliminary olabilir.
-- requested_services: doktorun görüşmede AÇIKÇA istediği tetkik/hizmetler. Yalnız
-  söylenenleri yaz; "faydalı olurdu" gibi öneri cümlelerinden istem üretme.
-  Adı COMED hizmet kataloğundaki gibi yaz: Elektrokardiogram (EKG),
-  Ekokardiyografi, Akciğer Grafisi (İki Yön), Tam Kan Sayımı gibi. Kısaltma
-  geçiyorsa açık adını kullan (EKG → Elektrokardiogram (EKG)). Hiçbiri yoksa
-  listeyi boş bırak. reason alanına istemi gerektiren kısa klinik gerekçeyi yaz.
-- requested_drugs: doktorun görüşmede AÇIKÇA yazdığı/başladığı ilaçlar. Yalnız
-  söylenenleri yaz; hastanın zaten kullandığı ilaçları (öykü) buraya koyma,
-  "kullanabilirsiniz" gibi olasılık cümlelerinden istem üretme. name alanına
-  ilacın konuşmada geçen adını yaz (Parol, Augmentin gibi); marka adı
-  geçiyorsa onu kullan, COMED arama kutusu zaten eşleştirir. dose alanına
-  söylenen dozu yaz ("500 mg" gibi), söylenmediyse null bırak.
-  frequency_per_day alanına GÜNDE kaç kez alınacağını sayı olarak yaz
-  (günde 3 → 3, 8 saatte bir → 3, 12 saatte bir → 2). Günlük sıklık
-  söylenmediyse null bırak; tahmin etme. Doz veya sıklık boşsa COMED'in
-  varsayılanı kalır, doktor tamamlar. Hiç ilaç yazılmadıysa listeyi boş bırak.
+- requested_services: doktorun görüşmede AÇIKÇA istediği tetkik/hizmetler.
+  BU ALANI KAÇIRMA. Doktor bir tetkik istediyse mutlaka listeye gir.
+
+  İstem sayılan kalıplar (hepsi geçerlidir):
+    "EKG çekelim", "EKO yapalım", "film çektirelim", "grafi isteyelim",
+    "kan alalım", "tahlil isteyelim", "tomografi çekilsin", "MR isteyelim",
+    "ultrason bakalım", "konsültasyon isteyelim", "efor testi yapalım",
+    "holter takalım", "endoskopi planlayalım", "biyopsi alalım",
+    "şunu da ekleyelim", "bir de ... bakalım".
+  Fiil "çekelim / yapalım / isteyelim / bakalım / alalım / planlayalım /
+  takalım / ekleyelim" olabilir; hepsi istemdir.
+
+  İSTEM SAYILMAYANLAR: "faydalı olurdu", "gerekirse bakarız",
+  "ileride düşünebiliriz", "isterseniz yapabiliriz" gibi olasılık cümleleri;
+  hastanın geçmişte yaptırdığı tetkikler; doktorun sonucunu okuduğu tetkikler.
+
+  Kısaltmaları açık yaz:
+    EKG  → "Elektrokardiogram (EKG)"
+    EKO / ECHO → "Ekokardiyografi"
+    PA akciğer / akciğer filmi → "Akciğer Grafisi (İki Yön)"
+    hemogram / tam kan → "Tam Kan Sayımı"
+    BT → "Bilgisayarlı Tomografi", USG → "Ultrasonografi"
+    TİT → "Tam İdrar Tetkiki"
+
+  ÇOK ÖNEMLİ — doktorun SÖYLEMEDİĞİ niteleyiciyi EKLEME. Doktor sadece
+  "EKO" dediyse "Ekokardiyografi" yaz; "3D Ekokardiyografi", "Stres
+  Ekokardiyografi" veya "Fetal Ekokardiyografi" YAZMA. "EKG" dediyse
+  "Elektrokardiogram (EKG)" yaz, "evde çekim" veya "12 derivasyonlu"
+  ekleme. Niteleyici ancak doktor açıkça söylediyse yazılır
+  ("stres EKO yapalım" → "Stres Ekokardiyografi").
+
+  Vücut tarafı/bölgesi söylendiyse ada ekle: "sol diz MR" →
+  "Manyetik Rezonans (Sol Diz)". Hiç tetkik istenmediyse listeyi boş bırak.
+  reason alanına istemi gerektiren kısa klinik gerekçeyi yaz.
+- requested_drugs: doktorun görüşmede AÇIKÇA yazdığı/başladığı ilaçlar.
+  BU ALANI DA KAÇIRMA.
+
+  İstem sayılan kalıplar: "... yazıyorum", "... başlayalım", "... vereyim",
+  "... kullanın", "... içeceksiniz", "reçeteye ekleyelim", "şunu da yazayım".
+
+  İSTEM SAYILMAYANLAR: hastanın zaten kullandığı ilaçlar (öykü);
+  "devam edin / mevcut ilaçlarınıza devam" denen ilaçlar; "gerekirse
+  kullanabilirsiniz" gibi olasılık cümleleri; doktorun "vermiyorum /
+  yazmıyorum" dediği ilaçlar (örn. "antibiyotik vermiyorum" → ilaç YOK).
+
+  name: ilacın konuşmada geçen adı (Parol, Augmentin, Majezik gibi).
+  Doktorun söylemediği marka ekini EKLEME: "Parol" dendiyse "Parol" yaz,
+  "Parol Cold" veya "Parol Plus" YAZMA. Ek ancak açıkça söylendiyse yazılır.
+
+  dose: söylenen doz ("500 mg", "1 gram" gibi). Söylenmediyse null.
+  Doz ve sıklık eşleşmesi hasta güvenliği açısından kritiktir; uydurma.
+
+  frequency_per_day: GÜNDE kaç kez. Dönüşümler:
+    "günde 3" → 3 · "8 saatte bir" → 3 · "12 saatte bir" → 2
+    "sabah akşam" → 2 · "günde bir" / "sabahları" → 1 · "6 saatte bir" → 4
+  Haftalık/aylık kullanım ya da "gerektiğinde" ise null bırak.
+  Günlük sıklık söylenmediyse null; TAHMİN ETME.
+
+  Doz veya sıklık boşsa COMED'in varsayılanı kalır, doktor tamamlar.
+  Hiç ilaç yazılmadıysa listeyi boş bırak.
 - auto_sign her zaman false olmalıdır. Doktorun imzasını otomatikleştirme.
 - COMED alan adlarını aşağıdaki JSON şemasındaki gibi aynen kullan.
 

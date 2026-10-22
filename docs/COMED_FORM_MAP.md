@@ -55,6 +55,26 @@ ekranlardadır. Köprü ikisini de dolduruyor; son kontrol ve imza doktordadır.
 | Hizmet İstem | `?app-action=action-order-procedure` | Hizmet adı, Uygulayan, Açıklama | Favoriler'de yoksa Genel sekmesinden arar; Uygulayan isteyen doktorla aynı seçilir. Radyolojide ek zorunlu alan çıkarsa istem doktora bırakılır |
 | İlaç İstem | `?app-action=action-order-drug` | Ana İlaç, Günlük sıklık, İstem Notu | Arama kutusundan seçer; doz/veriliş yolu/uygulama COMED varsayılanında kalır. Sıklık yalnız söylendiyse ve 1-12 arasındaysa işaretlenir |
 
+### Hizmet İstem kataloğu — canlı ölçüm (22 Ekim 2026)
+
+Aynı tetkikin nitelikli türevleri var, düz hali olmayabiliyor:
+
+| Arama | Katalogda çıkan |
+| --- | --- |
+| elektrokardiogram | Elektrokardiogram (EKG) · 12 derivasyonlu yorumlama · evde çekim · trase monitorizasyonu · Fetal |
+| ekokardiyografi | 3D · Fetal (kadın hastalıkları) · Stres — **düz "Ekokardiyografi" YOK** |
+| tam kan sayımı / hemogram | **hiç sonuç yok** |
+| akciğer grafisi | Akciğer Grafisi (İki Yön) · (Lateral Tek Yön) |
+
+"İlk includes eşleşmesi" kuralı "EKO" için 3D ekokardiyografi seçiyordu.
+Kural: tam hücre eşleşmesi kazanır; doktorun söylemediği niteleyici
+(3D/Fetal/Stres/evde/trase/holter/efor/pediatrik/ambulatuar/yorumlama/
+monitorizasyon) VETO; ilk hücresi kod olmayan satır (zaten eklenmiş istem)
+aday değil; emin olunamazsa doktora bırakılır.
+
+Kategori sekmeleri: Tümü · Genel · Favoriler (varsayılan Favoriler).
+Arama kutusu placeholder'ı: "Ara".
+
 ### İlaç İstem ekranı — canlı ölçüm (22 Ekim 2026)
 
 Hasta 22207363, goztepetest. Ölçülen gerçekler:

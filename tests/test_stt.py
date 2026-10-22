@@ -198,7 +198,7 @@ class ElevenLabsTranscriptionTests(unittest.TestCase):
 
 class OpenAiTranscriptionTests(unittest.TestCase):
     @patch("openai.OpenAI")
-    def test_diarized_transcription_api_is_called_without_generation_prompt(self, client_class):
+    def test_diarized_transcription_api_is_called_with_turkish_prompt(self, client_class):
         response = SimpleNamespace(
             duration=12.4,
             segments=[
@@ -239,7 +239,11 @@ class OpenAiTranscriptionTests(unittest.TestCase):
         self.assertEqual(kwargs["response_format"], "diarized_json")
         self.assertEqual(kwargs["chunking_strategy"], "auto")
         self.assertEqual(kwargs["language"], "tr")
-        self.assertNotIn("prompt", kwargs)
+        # Sessiz saniyelerde İngilizce uydurmayı ("I am, I am") azaltmak ve
+        # EKG/EKO kısaltmalarını düzeltmek için kısa Türkçe bağlam veriliyor.
+        # Sızma riskine karşı çıktı _strip_prompt_echo ile temizleniyor.
+        self.assertEqual(kwargs["prompt"], config.OPENAI_STT_PROMPT)
+        self.assertIn("Türkçe", kwargs["prompt"])
         self.assertEqual(kwargs["file"], ("gorusme.webm", b"webm-data", "audio/webm"))
         client.close.assert_called_once()
 
@@ -367,7 +371,7 @@ class OpenAiTranscriptionTests(unittest.TestCase):
         self.assertEqual(calls[0].kwargs["response_format"], "diarized_json")
         self.assertEqual(calls[1].kwargs["model"], "gpt-transcribe")
         self.assertEqual(calls[1].kwargs["response_format"], "json")
-        self.assertNotIn("prompt", calls[1].kwargs)
+        self.assertEqual(calls[1].kwargs["prompt"], config.OPENAI_STT_PROMPT)
         classify.assert_called_once_with(fallback_text)
 
     @patch("openai.OpenAI")

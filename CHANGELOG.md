@@ -1,3 +1,77 @@
+## v2.33.0 — 22 Ekim 2026
+
+### Hizmet istemlerinde de yanlış tetkik seçimi düzeltildi
+
+İlaç tarafında bulunan PAROL COLD hatasının aynısı hizmet isteminde de vardı.
+Canlı COMED'de ölçüldü (hasta 22207363):
+
+| Doktor ne dedi | Katalogda ne var |
+| --- | --- |
+| EKG | `Elektrokardiogram (EKG)` + 12 derivasyonlu, evde çekim, trase, Fetal |
+| **EKO** | **düz "Ekokardiyografi" YOK** — yalnız 3D / Fetal / Stres |
+| **Tam Kan Sayımı** | **katalogda hiç yok** (hemogram da 0 sonuç) |
+| Akciğer Grafisi | `Akciğer Grafisi (İki Yön)` var |
+
+Eski kural ilk `includes` eşleşmesini alıyordu: doktor "EKO yapalım"
+dediğinde **3D ekokardiyografi** sipariş ediliyordu.
+
+Artık ilaçtakiyle aynı disiplin:
+
+- Tam hücre eşleşmesi her zaman kazanır.
+- Doktorun söylemediği niteleyici (**3D, Fetal, Stres, evde çekim, trase,
+  holter, efor, pediatrik, ambulatuar, yorumlama, monitorizasyon**) taşıyan
+  satır **veto** edilir.
+- Katalog satırı olmayanlar (zaten eklenmiş istemler) elenir — ilk hücresi
+  kod olmayan satır aday sayılmaz, böylece aynı istem iki kez girilmez.
+- Emin olunamazsa **tetkik istenmez**, doktora bırakılır ve sebebi yazılır.
+
+Canlı doğrulandı: EKG ve Akciğer Grafisi doğru satırı buluyor; EKO ve Tam Kan
+Sayımı doktora bırakılıyor.
+
+### Hizmet isteminde sessiz atlama bitti
+
+İlaç tarafında yapıldığı gibi, hangi tetkikin hangi satırla eklendiği ve
+neyin neden atlandığı aktarım kaydına yazılıyor; bitiş balonu eksik varsa
+uyarıyor.
+
+### STT artık Türkçeye yaslanıyor ("I am, I am" sorunu)
+
+Kayıtlarda sessiz saniyelerde İngilizce parçalar çıkıyordu. `language="tr"`
+zaten ayarlıydı ama tek başına yetmiyor; modele bağlam vermek gerekiyordu.
+
+- OpenAI dökümüne **kısa Türkçe tıbbi bağlam** promptu eklendi.
+- **RİSK VE SAVUNMA:** Whisper ailesi prompt metnini bazen transkriptin
+  başına kopyalıyor. Bu yüzden prompt kasıtlı olarak kısa tutuldu (uzun terim
+  listesi sızsa tıbbi kayıtta çok kötü görünürdü) ve `_strip_prompt_echo`
+  ile çıktıdan temizleniyor. Gerçek konuşmaya dokunulmuyor — bunun için
+  ayrı testler var.
+- `OPENAI_STT_PROMPT=` boş bırakılırsa prompt hiç gönderilmez.
+
+Not: eski `test_..._without_generation_prompt` testi bilinçli olarak
+güncellendi; promptsuz çalışma kararı OpenAI diarize API'sine geçişte
+alınmıştı, belgelenmiş bir sızma olayı yoktu.
+
+### Analiz promptu güçlendirildi
+
+Doktorun istediği tetkik/ilaç kaçmasın diye:
+
+- **İstem sayılan kalıplar** sayıldı: "çekelim / yapalım / isteyelim /
+  bakalım / alalım / planlayalım / takalım / ekleyelim".
+- **İstem sayılmayanlar** netleştirildi: "faydalı olurdu", "gerekirse",
+  hastanın geçmişte yaptırdıkları, doktorun **"vermiyorum / yazmıyorum"**
+  dedikleri.
+- Kısaltma sözlüğü: EKG, EKO/ECHO, PA akciğer, hemogram, BT, USG, TİT.
+- **Söylenmeyen niteleyici eklenmesi yasaklandı**: "EKO" → "Ekokardiyografi",
+  asla "3D/Stres/Fetal"; "Parol" → "Parol", asla "Parol Cold".
+- Sıklık dönüşümleri: "sabah akşam" → 2, "8 saatte bir" → 3,
+  "6 saatte bir" → 4; haftalık/"gerektiğinde" ise null.
+
+### Testler
+
+240 → 249. Yeni: `test_stt_prompt_echo.py` (saf fonksiyon, gerçek birim
+testi). Eklenti betiklerinin tamamı gerçek V8'de `new Function` ile
+ayrıştırılarak doğrulandı.
+
 ## v2.32.1 — 22 Ekim 2026
 
 ### İlaç istemi gerçekten çalışıyor (v2.32.0 hiç çalışmıyordu)

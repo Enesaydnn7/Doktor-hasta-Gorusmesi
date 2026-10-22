@@ -7,7 +7,7 @@ load_dotenv(override=True)  # .env her zaman kazanır
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
-APP_VERSION = os.getenv("APP_VERSION", "v2.32.1")
+APP_VERSION = os.getenv("APP_VERSION", "v2.33.0")
 
 # COMED test ortamı. Kimlik doğrulama anahtarları uygulama sunucusunda tutulmaz;
 # aktarım, kurumsal ağdaki yetkili tarayıcı köprüsü üzerinden tamamlanır.
@@ -40,6 +40,21 @@ OPENAI_STT_MODEL = os.getenv("OPENAI_STT_MODEL", "gpt-4o-transcribe-diarize")
 OPENAI_STT_FALLBACK_MODEL = os.getenv("OPENAI_STT_FALLBACK_MODEL", "gpt-transcribe")
 OPENAI_STT_LANGUAGE = os.getenv("OPENAI_STT_LANGUAGE", "tr")
 OPENAI_STT_TIMEOUT = float(os.getenv("OPENAI_STT_TIMEOUT", "900"))
+
+# Whisper ailesi sessiz/gürültülü saniyelerde İngilizce uydurmaya eğilimli;
+# kayıtlarda "I am, I am" gibi parçalar çıkıyordu. language="tr" tek başına
+# bunu durdurmuyor, modele Türkçe tıbbi bağlam vermek gerekiyor.
+#
+# RİSK: Whisper ailesi prompt metnini bazen transkriptin başına aynen
+# kopyalıyor. Bu yüzden prompt (a) KISA ve doğal bir Türkçe cümledir -- uzun
+# terim listesi sızarsa tıbbi kayıtta çok kötü görünür -- ve (b) sızarsa
+# ``stt._strip_prompt_echo`` tarafından temizlenir.
+# Boş bırakılırsa ("" veya OPENAI_STT_PROMPT=) prompt hiç gönderilmez.
+_DEFAULT_OPENAI_STT_PROMPT = (
+    "Türkçe doktor-hasta muayene görüşmesi. "
+    "Tıbbi terimler: EKG, EKO, akciğer grafisi, tam kan sayımı, reçete, doz."
+)
+OPENAI_STT_PROMPT = os.getenv("OPENAI_STT_PROMPT", _DEFAULT_OPENAI_STT_PROMPT).strip()
 
 # 0 = deterministik: aynı görüşme -> mümkün olduğunca aynı çıktı
 TEMPERATURE = float(os.getenv("TEMPERATURE", "0"))

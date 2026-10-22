@@ -123,8 +123,8 @@ Doktor: `Kullanici.kayadr;Kullanici.aydin1|tracer` / `1`
 
 | Dal | Commit | Sürüm |
 |---|---|---|
-| `main` | v2.32.1 | **v2.32.1** ← güncel |
-| `mvp` | `2d6b671` | **v2.32.0** ← "bizim MVP sürümümüz" (22 Ekim'de main'den eşitlendi) |
+| `main` | v2.33.0 | **v2.33.0** ← güncel |
+| `mvp` | `2d6b671` | **v2.32.0** ← "bizim MVP sürümümüz" |
 | `mvp-v2.10.3` (etiket) | `7660ef4` | eski demo |
 
 **mvp dalına kullanıcı AÇIKÇA söylemeden dokunma.** Geçmişte izinsiz 3 kez
@@ -163,8 +163,25 @@ cd mobile_app; flutter test          # 12
 
 ## 4. NEREDE KALDIK (son durum: 22 Ekim 2026)
 
-**Son iş: İlaç istemleri — v2.32.1. v2.32.0 CANLIDA PATLADI, sebepleri
-ölçülerek düzeltildi. Kullanıcı v2.32.1'i HENÜZ DENEMEDİ.**
+**Son iş: v2.33.0 — hizmet istemlerinde yanlış tetkik seçimi, STT Türkçe
+bağlamı, analiz promptu güçlendirmesi. Kullanıcı HENÜZ DENEMEDİ.**
+
+### ⚠️ KATALOG EŞLEŞTİRME KURALI (iki kez aynı hatayı yaptık)
+
+COMED kataloğunda aynı şeyin onlarca nitelikli türevi var ve **düz hali
+bulunmayabiliyor**. "İlk eşleşmeyi al" kuralı iki kez klinik hata üretti:
+
+| Doktor dedi | Yanlış seçilen | Neden tehlikeli |
+| --- | --- | --- |
+| "Parol" | PAROL COLD | fenilpropanolamin, yaşlı hipertansifte kontrendike |
+| "EKO" | 3D ekokardiyografi | istenmeyen/pahalı farklı tetkik |
+
+Kural: **tam eşleşme kazanır → söylenmeyen niteleyici VETO → emin değilsen
+EKLEME, doktora bırak.** Hem `scoreDrugOption` hem `scoreServiceRow` bunu
+uygular. Yeni bir katalog alanı eklerken aynısını yap.
+
+Canlı ölçümler `docs/COMED_FORM_MAP.md`'de. Örnek: "Tam Kan Sayımı"
+katalogda HİÇ YOK, "Ekokardiyografi"nin düz hali YOK.
 
 v2.32.0'ın üç hatası (22 Ekim'de canlı COMED'de ölçüldü):
 1. Arama kutusu bizzat eleniyordu — placeholder "Temel ilaçlar kategorisinde

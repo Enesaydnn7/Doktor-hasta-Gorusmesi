@@ -177,6 +177,39 @@ def _format_semantic_turns(raw_text: str, usage: dict[str, Any]) -> str:
     return _format_turns(turns) if turns else _fallback_single_speaker(raw_text)
 
 
+def _strip_prompt_echo(text: str) -> str:
+    """STT'ye verilen yönlendirme promptu çıktıya kopyalandıysa temizle.
+
+    Whisper ailesi prompt metnini bazen transkriptin başına aynen yazıyor.
+    Tıbbi kayıtta konuşulmamış bir cümlenin durması kabul edilemez. Yalnız
+    promptun KENDİSİ silinir; hastanın/doktorun sözüne dokunulmaz.
+    """
+    prompt = (config.OPENAI_STT_PROMPT or "").strip()
+    if not prompt:
+        return text
+    cleaned = text.strip()
+    if not cleaned:
+        return text
+    # Noktalama/boşluk farklarını tolere et: sadeleştirilmiş biçimde karşılaştır.
+    simplify = lambda value: re.sub(r"[\s\W_]+", " ", value.casefold()).strip()
+    simple_prompt = simplify(prompt)
+    if not simple_prompt:
+        return text
+    # Promptun tamamı ya da ilk cümlesi baştaysa kırp.
+    for candidate in (prompt, prompt.split(".")[0].strip()):
+        if not candidate:
+            continue
+        if simplify(cleaned).startswith(simplify(candidate)):
+            # Sadeleştirilmiş uzunluk kadar değil, gerçek metinden kırpmak için
+            # orijinal metinde eşleşen ön eki bul.
+            for size in range(len(candidate) + 12, len(candidate) - 2, -1):
+                head = cleaned[:size]
+                if simplify(head) == simplify(candidate):
+                    return cleaned[size:].lstrip(" .,:;-\n")
+            return cleaned[len(candidate):].lstrip(" .,:;-\n")
+    return text
+
+
 def _label_transcript(
     segments: Iterable[Any], combined_text: str, usage: dict[str, Any],
 ) -> str:
@@ -186,6 +219,22 @@ def _label_transcript(
         for segment in list(segments or [])
         if str(_field(segment, "text", "") or "").strip()
     ]
+    combined_text = _strip_prompt_echo(combined_text or "")
+    # Echo genelde ilk segmentin başında görünür; o segmenti de temizle.
+    if segments:
+        first = segments[0]
+        original = str(_field(first, "text", "") or "")
+        cleaned = _strip_prompt_echo(original)
+        if cleaned != original:
+            if isinstance(first, dict):
+                first["text"] = cleaned
+            else:
+                try:
+                    first.text = cleaned
+                except Exception:  # noqa: BLE001 - salt okunur yanıt nesnesi
+                    pass
+            segments = [s for s in segments
+                        if str(_field(s, "text", "") or "").strip()]
     if not segments:
         return _format_semantic_turns(combined_text, usage) if combined_text else ""
 
@@ -337,12 +386,18 @@ def _openai_transcribe(data: bytes, mime: str, filename: str) -> tuple[str, dict
     fallback_response = None
     fallback_seconds = None
     try:
+        # prompt: sessiz saniyelerde İngilizce uydurmayı ("I am, I am") azaltır
+        # ve EKG/EKO gibi kısaltmaların doğru yazılmasını sağlar. Model promptu
+        # transkripte kopyalayabildiği için çıktı _strip_prompt_echo ile
+        # temizlenir. Boş yapılandırmada parametre hiç gönderilmez.
+        extra = {"prompt": config.OPENAI_STT_PROMPT} if config.OPENAI_STT_PROMPT else {}
         response = client.audio.transcriptions.create(
             model=config.OPENAI_STT_MODEL,
             file=(filename, data, mime),
             language=config.OPENAI_STT_LANGUAGE,
             response_format="diarized_json",
             chunking_strategy="auto",
+            **extra,
         )
 
         segments = [
@@ -361,6 +416,7 @@ def _openai_transcribe(data: bytes, mime: str, filename: str) -> tuple[str, dict
                 file=(filename, data, mime),
                 language=config.OPENAI_STT_LANGUAGE,
                 response_format="json",
+                **extra,
             )
             fallback_seconds = round(time.monotonic() - fallback_started, 1)
     finally:
@@ -373,7 +429,8 @@ def _openai_transcribe(data: bytes, mime: str, filename: str) -> tuple[str, dict
     usage["transcript_source"] = "diarized_segments" if segments else "combined_text"
 
     if fallback_response is not None:
-        fallback_text = str(_field(fallback_response, "text", "") or "").strip()
+        fallback_text = _strip_prompt_echo(
+            str(_field(fallback_response, "text", "") or "").strip())
         fallback_usage = _read_usage(fallback_response, duration_priced=True)
         fallback_usage.update({
             "provider": "OpenAI",

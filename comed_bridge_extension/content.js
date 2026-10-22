@@ -1765,22 +1765,63 @@
       .filter((row) => row.offsetParent !== null && textOf(row).length > 10);
   }
 
-  /** Hizmet adini satirla esle: once tam ad, sonra parcali. */
+  /* CANLI OLCUM (22 Ekim 2026): katalogda ayni tetkikin nitelikli turevleri
+     var ve duz hali bulunmayabiliyor.
+       "ekokardiyografi"   -> 3D / Fetal / Stres ekokardiyografi
+                              (duz "Ekokardiyografi" YOK)
+       "elektrokardiogram" -> Elektrokardiogram (EKG) + 12 derivasyonlu,
+                              evde cekim, trase monitorizasyonu, Fetal ...
+       "tam kan sayimi" / "hemogram" -> HIC SONUC YOK
+     Eski kural (ilk "includes" eslesmesi) doktor "EKO" dediginde
+     "3D ekokardiyografi" siparis ediyordu -- ilac tarafindaki PAROL COLD
+     hatasinin aynisi. Artik tam hucre eslesmesi kazanir, istenmeyen nitelik
+     tasiyan satir VETO edilir, emin olunamazsa istem doktora birakilir. */
+  const SERVICE_QUALIFIERS = [
+    "3d", "fetal", "stres", "evde", "trase", "pediatrik", "holter", "efor",
+    "yorumlama", "monitorizasyon", "kadın hastalıkları", "ambulatuar",
+  ];
+  const SERVICE_SCORE_THRESHOLD = 100;
+
+  function serviceCells(row) {
+    return [...row.querySelectorAll("td,[role=cell]")]
+      .map((cell) => textOf(cell)).filter(Boolean);
+  }
+
+  function scoreServiceRow(row, wanted, core) {
+    const cells = serviceCells(row);
+    if (!cells.length) return -1000;
+    /* Katalog satirlarinin ilk hucresi kod ("16384", "208", "MRD-1"). Zaten
+       eklenmis istem satirlari "Hizmet" ile basliyor; onlari tekrar ekleme. */
+    if (!/^[A-Za-z0-9-]{2,12}$/.test(cells[0])) return -1000;
+    const lower = cells.join(" ").toLocaleLowerCase("tr-TR");
+    for (const qualifier of SERVICE_QUALIFIERS) {
+      if (lower.includes(qualifier)
+        && !wanted.includes(qualifier) && !core.includes(qualifier)) return -1000;
+    }
+    const named = cells.some((cell) => {
+      const value = cell.toLocaleLowerCase("tr-TR");
+      return value === wanted || value === core
+        || value.startsWith(`${core} `) || value.startsWith(`${core}(`);
+    });
+    if (named) return 100;
+    return lower.includes(core) ? 40 : 0;
+  }
+
+  /** Hizmet adini satirla esle. Emin olunamazsa null doner. */
   function matchServiceRow(name) {
     const wanted = name.toLocaleLowerCase("tr-TR").trim();
+    // "Elektrokardiogram (EKG)" aranirken cekirdek "elektrokardiogram".
+    const core = wanted.replace(/\(.*?\)/g, "").trim() || wanted;
     const rows = serviceRows();
-    const exact = rows.find((row) => {
-      const cells = [...row.querySelectorAll("td,[role=cell]")].map(
-        (cell) => textOf(cell).toLocaleLowerCase("tr-TR"));
-      return cells.some((cell) => cell === wanted);
-    });
+    const exact = rows.find((row) => serviceCells(row).some((cell) => {
+      const value = cell.toLocaleLowerCase("tr-TR");
+      return value === wanted || value === core;
+    }));
     if (exact) return exact;
-    // "Elektrokardiogram (EKG)" aranirken "EKG" de kabul edilsin.
-    const core = wanted.replace(/\(.*?\)/g, "").trim();
-    return rows.find((row) => {
-      const text = textOf(row).toLocaleLowerCase("tr-TR");
-      return text.includes(wanted) || (core.length > 3 && text.includes(core));
-    }) || null;
+    const best = rows
+      .map((row) => ({row, score: scoreServiceRow(row, wanted, core)}))
+      .sort((a, b) => b.score - a.score)[0];
+    return best && best.score >= SERVICE_SCORE_THRESHOLD ? best.row : null;
   }
 
   /** Istem ekranini ac ve "Hizmet İstem" sekmesine gec. */
@@ -1835,13 +1876,17 @@
     return true;
   }
 
+  /** @returns {{added:number, picked:string[], skipped:string[]}} */
   async function fillServiceRequests(services = []) {
-    if (!services.length) return 0;
-    if (!await openServiceScreen()) return 0;
+    const result = {added: 0, picked: [], skipped: []};
+    if (!services.length) return result;
+    if (!await openServiceScreen()) {
+      result.skipped = services.map((s) => `${s?.name || "?"}: hizmet ekranı açılmadı`);
+      return result;
+    }
     // Isteyen doktor zaten dolu gelir; uygulayan icin ayni adi kullanacagiz.
     const requester = textOf(
       document.querySelector('[data-test^="personnel-department"]')) || "";
-    let added = 0;
     for (const service of services.slice(0, 8)) {
       const name = String(service?.name || "").trim();
       if (!name) continue;
@@ -1882,14 +1927,26 @@
             row = matchServiceRow(name);
           }
         }
-        if (!row) continue;
+        if (!row) {
+          /* Katalogda kesin karsiligi yok ya da yalniz nitelikli turevleri
+             var (ornek: duz "Ekokardiyografi" yok, 3D/Fetal/Stres var;
+             "Tam Kan Sayimi" hic yok). Yanlis tetkik istemektense doktora
+             birakiyoruz. */
+          result.skipped.push(`${name}: katalogda kesin eşleşme yok, doktor seçmeli`);
+          bridgeStatus(`${name} için kesin eşleşme yok — doktor seçmeli`, "bad");
+          continue;
+        }
+        const rowText = textOf(row).slice(0, 90);
         pressNode(row);
         // Pencerenin acilmasini "Vazgeç" ile anla: "Ekle" adi sayfada birden
         // cok yerde geciyor.
         const opened = await waitFor(
           () => [...document.querySelectorAll('[data-test="co-button-Vazgeç"]')]
             .some((item) => item.offsetParent !== null), 6000);
-        if (!opened) continue;
+        if (!opened) {
+          result.skipped.push(`${name}: istem penceresi açılmadı`);
+          continue;
+        }
         const doctorOk = await pickPerformingDoctor(requester);
         const reason = String(service?.reason || "").trim();
         if (reason) setValue(byPlaceholder("Açıklama"), reason);
@@ -1900,18 +1957,22 @@
              Istemi yarim birakmiyoruz: pencereyi kapatip doktora birakiyoruz. */
           pressNode(dialogButton("co-button-Vazgeç"));
           await waitForDomQuiet(document.body, 260, 2500);
+          result.skipped.push(doctorOk
+            ? `${name}: ek zorunlu alan istiyor, doktor tamamlamalı`
+            : `${name}: uygulayan doktor seçilemedi`);
           bridgeStatus(`${name} doktor tarafından tamamlanmalı`, "bad");
           continue;
         }
         pressNode(addButton);
         await waitForDomQuiet(document.body, 320, 4000);
-        added += 1;
+        result.added += 1;
+        result.picked.push(rowText);
         bridgeFieldStatus("requested_services", true);
-      } catch (_) {
-        // Tek bir istem tutmazsa digerlerini engelleme.
+      } catch (error) {
+        result.skipped.push(`${name}: ${error.message || "beklenmeyen hata"}`);
       }
     }
-    return added;
+    return result;
   }
 
   /* ---------- İLAÇ İSTEM ----------
@@ -2299,9 +2360,14 @@
       record("diagnoses", diagnosisCount > 0, `${diagnosisCount} tanı`);
     }
     if ((fields.requested_services || []).length) {
-      const serviceCount = await fillServiceRequests(fields.requested_services);
-      record("requested_services", serviceCount > 0,
-        `${serviceCount}/${fields.requested_services.length} istem`);
+      const serviceResult = await fillServiceRequests(fields.requested_services);
+      const toplamHizmet = fields.requested_services.length;
+      const hizmetDetay = [
+        `${serviceResult.added}/${toplamHizmet} istem`,
+        serviceResult.picked.length ? `seçilen: ${serviceResult.picked.join(" | ")}` : "",
+        serviceResult.skipped.length ? `atlanan: ${serviceResult.skipped.join(" | ")}` : "",
+      ].filter(Boolean).join(" — ");
+      record("requested_services", serviceResult.added > 0, hizmetDetay);
     }
     // İlaç istemleri hizmet istemlerinden hemen sonra: ikisi de ayrı istem
     // ekranında açılıyor, aradaki kart alanlarına dönmeye gerek kalmıyor.

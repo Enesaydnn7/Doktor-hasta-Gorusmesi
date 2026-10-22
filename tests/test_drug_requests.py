@@ -318,7 +318,11 @@ class DrugRequestPanelTests(unittest.TestCase):
         self.assertIn("requested_drugs", prompts)
         self.assertIn("frequency_per_day", prompts)
         # Hastanin zaten kullandigi ilaclar istem degildir.
-        self.assertIn("zaten kullandığı ilaçları", prompts)
+        self.assertIn("zaten kullandığı ilaçlar", prompts)
+        # Doktorun soylemedigi marka eki (Parol Cold) uydurulmamali.
+        self.assertIn("söylemediği marka ekini EKLEME", prompts)
+        # "vermiyorum/yazmiyorum" denen ilac istem sayilmamali.
+        self.assertIn("vermiyorum", prompts)
 
 
 if __name__ == "__main__":
