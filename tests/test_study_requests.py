@@ -44,15 +44,30 @@ class StudyScreenBridgeTests(unittest.TestCase):
             with self.subTest(ekran=param):
                 self.assertIn(param, self.content)
 
-    def test_study_is_tried_before_the_service_screen(self):
-        """Hangi istemin hangi ekranda olduğunu katalog söyler, model değil.
+    def test_order_is_service_then_drug_then_study(self):
+        """İstek: muayene formu -> Hizmet İstem -> İlaç İstem -> Tetkik İstem.
 
-        Önce Tetkik İstem denenir; bulunamayanlar Hizmet İstem'e devredilir
-        (EKG gibi işlemler orada).
+        Hangi istemin hangi ekranda olduğunu katalog söyler, model değil:
+        önce Hizmet İstem denenir (EKG, grafi gibi işlemler orada),
+        bulunamayanlar Tetkik İstem'e (laboratuvar) devredilir.
         """
-        self.assertIn("fillStudyRequests(fields.requested_services)", self.content)
-        self.assertIn("studyResult.remaining", self.content)
-        self.assertIn("fillServiceRequests(studyResult.remaining)", self.content)
+        self.assertIn("fillServiceRequests(fields.requested_services)", self.content)
+        self.assertIn("serviceResult.remaining", self.content)
+        self.assertIn("fillStudyRequests(kalanlar)", self.content)
+        # Sira: hizmet < ilac < tetkik
+        hizmet = self.content.index("fillServiceRequests(fields.requested_services)")
+        ilac = self.content.index("fillDrugRequests(fields.requested_drugs)")
+        tetkik = self.content.index("fillStudyRequests(kalanlar)")
+        self.assertLess(hizmet, ilac, "hizmet istemi ilaçtan önce gelmeli")
+        self.assertLess(ilac, tetkik, "ilaç istemi tetkikten önce gelmeli")
+
+    def test_each_order_screen_is_closed_afterwards(self):
+        """İstek: "bir istemi açıp bitirince kapatmıyor, diğerlerini göremedim."
+
+        Ekranlar üst üste biniyordu; her istem türü bitince karta dönülüyor.
+        """
+        self.assertIn("async function closeOrderScreen(", self.content)
+        self.assertGreaterEqual(self.content.count("await closeOrderScreen()"), 4)
 
     def test_measured_favourite_packages_are_listed(self):
         self.assertIn("STUDY_PACKAGES", self.content)

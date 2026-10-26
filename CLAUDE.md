@@ -123,7 +123,7 @@ Doktor: `Kullanici.kayadr;Kullanici.aydin1|tracer` / `1`
 
 | Dal | Commit | Sürüm |
 |---|---|---|
-| `main` | v2.34.0 | **v2.34.0** ← güncel |
+| `main` | v2.35.0 | **v2.35.0** ← güncel |
 | `mvp` | `2d6b671` | **v2.32.0** ← "bizim MVP sürümümüz" |
 | `mvp-v2.10.3` (etiket) | `7660ef4` | eski demo |
 
@@ -165,6 +165,21 @@ cd mobile_app; flutter test          # 12
 
 **Son iş: v2.33.0 — hizmet istemlerinde yanlış tetkik seçimi, STT Türkçe
 bağlamı, analiz promptu güçlendirmesi. Kullanıcı HENÜZ DENEMEDİ.**
+
+### CANLI TEST NASIL YAPILIR (v2.35.0) — "test geçti" demeden önce bunu yap
+
+Eklentiyi Chrome'a yüklemeden **üretim kodunu** canlı COMED'de koşturmak için:
+
+1. `python scripts/live_order_test.py > paket.js` — content.js'ten
+   `fillOrders` ve kullandığı her şeyi BİREBİR çıkarır (elle kopyalama yok).
+2. paket.js'i CORS + `Access-Control-Allow-Private-Network: true` başlıklı
+   yerel bir sunucuyla sun (https COMED sayfası localhost'tan okuyabilsin).
+3. Giriş yapılmış COMED sekmesinde: `fetch(...)` → `(0, eval)(kod)` →
+   `window.__klinot.fillOrders(fields, record)`.
+4. **Sonucu sayaçtan değil, COMED'in kendi istem listesinden doğrula.**
+   v2.35.0'da sayaç "3 eklendi" deyip listeye hiç düşmediği görüldü.
+
+COMED oturumu SEKMEYE özel; yeni sekme giriş ister. Şifreyi Claude girmez.
 
 ### COMED''de ÜÇ İSTEM EKRANI VAR (v2.34.0)
 

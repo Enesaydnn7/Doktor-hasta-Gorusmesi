@@ -44,7 +44,10 @@ class ComedExtensionTests(unittest.TestCase):
         self.assertIn("identityPanelTried = false;", source)
         # Gizli dugum taramasi da korunur.
         self.assertIn("function deepTextOf", source)
-        self.assertIn("deepTextOf(document.body)", source)
+        self.assertIn("deepTextOf(doc?.body)", source)
+        # Ayristirici artik bir belge aliyor: ayni etiketli okuma
+        # gorunmez cerceve icin de kullaniliyor.
+        self.assertIn("function parsePatientIdentity(doc = document)", source)
 
     def test_patient_name_strips_comed_header_metadata(self):
         """COMED basligi isme cinsiyet/yas/dogum/hasta no yapistiriyor; ad temiz kalmali."""

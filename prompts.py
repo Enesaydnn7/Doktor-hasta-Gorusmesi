@@ -194,13 +194,37 @@ KURALLAR (ÇOK ÖNEMLİ):
   "ileride düşünebiliriz", "isterseniz yapabiliriz" gibi olasılık cümleleri;
   hastanın geçmişte yaptırdığı tetkikler; doktorun sonucunu okuduğu tetkikler.
 
-  Kısaltmaları açık yaz:
-    EKG  → "Elektrokardiogram (EKG)"
-    EKO / ECHO → "Ekokardiyografi"
+  ADLANDIRMA — COMED kataloğunda nasıl yazıyorsa öyle yaz. COMED kısaltmayı
+  başa alır, bilimsel uzun adı kullanmaz. Doğru karşılıklar:
+
+    EKG                      → "Elektrokardiogram (EKG)"
+    EKO / ECHO               → "Ekokardiyografi"
     PA akciğer / akciğer filmi → "Akciğer Grafisi (İki Yön)"
-    hemogram / tam kan → "Tam Kan Sayımı"
-    BT → "Bilgisayarlı Tomografi", USG → "Ultrasonografi"
-    TİT → "Tam İdrar Tetkiki"
+    hemogram / tam kan       → "Hemogram"
+    açlık kan şekeri / AKŞ   → "Açlık Kan Şekeri (AKŞ)"
+    karaciğer enzimleri      → "ALT (SGPT)" ve "AST (SGOT)" (ikisi ayrı satır)
+    CRP / sedim              → "CRP (Kantitatif)"
+    troponin                 → "Troponin I"
+    CK-MB                    → "Kreatin Kinaz-MB (CK-MB)"
+    demir                    → "Demir (Fe)"
+    demir bağlama            → "Total Demir Bağlama Kapasitesi (TIBC)"
+    HbA1c / şeker regülasyonu → "Gliko Hemoglobin (Hb A1C) %"
+    kreatinin                → "Kreatinin (Serum)"
+    kolesterol               → "Kolesterol, Total" (HDL/LDL ayrı istenirse
+                               "HDL-Kolesterol" / "LDL-Kolesterol")
+    BT                       → "Bilgisayarlı Tomografi"
+    USG                      → "Ultrasonografi"
+    TİT                      → "Tam İdrar Tetkiki"
+    karotis doppler          → "RDUS, Karotis Ve Vertebral Arterler"
+
+  Bilmediğin bir tetkikte Türkçe yaygın adını yaz, uydurma kod ekleme.
+
+  GRUP İSTEKLERİNİ TEK TEK AÇ. Doktor "rutin tetkikler", "karaciğer
+  fonksiyonları", "böbrek fonksiyonları", "kardiyak enzimler" gibi toplu bir
+  şey söylediyse bunu TEK satır yazma; içindeki tetkikleri ayrı satırlara aç
+  (kardiyak enzimler → "Troponin I" + "Kreatin Kinaz-MB (CK-MB)").
+  Doktor neyi kastettiğini açıkça söylemediyse ve tahmin gerekiyorsa o grubu
+  hiç yazma; uydurma tetkik istemektense eksik bırak.
 
   ÇOK ÖNEMLİ — doktorun SÖYLEMEDİĞİ niteleyiciyi EKLEME. Doktor sadece
   "EKO" dediyse "Ekokardiyografi" yaz; "3D Ekokardiyografi", "Stres
@@ -212,6 +236,12 @@ KURALLAR (ÇOK ÖNEMLİ):
   Vücut tarafı/bölgesi söylendiyse ada ekle: "sol diz MR" →
   "Manyetik Rezonans (Sol Diz)". Hiç tetkik istenmediyse listeyi boş bırak.
   reason alanına istemi gerektiren kısa klinik gerekçeyi yaz.
+
+  NEREYE GİDECEĞİNİ SEN BELİRLEME. COMED'de istemler üç ayrı ekrana dağılmış
+  (Hizmet İstem / İlaç İstem / Tetkik İstem). Hangi tetkiğin hangi ekranda
+  olduğunu köprü kataloğa bakarak buluyor. Sen yalnız doğru ADI yaz; ekran
+  seçimi, grup adı ya da "laboratuvar/radyoloji" etiketi EKLEME.
+  İlaçlar buraya DEĞİL, requested_drugs alanına yazılır.
 - requested_drugs: doktorun görüşmede AÇIKÇA yazdığı/başladığı ilaçlar.
   BU ALANI DA KAÇIRMA.
 

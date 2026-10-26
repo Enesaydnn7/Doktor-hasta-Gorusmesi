@@ -1,3 +1,87 @@
+## v2.35.0 — 26 Ekim 2026
+
+### İstemler sabit sırayla, her ekran kapanarak
+
+Doktorun isteği: önce muayene formu, sonra **Hizmet İstem → İlaç İstem →
+Tetkik İstem**. İstem bölümü `fillFormDraft`'ın ortasından alınıp ayrı bir
+`fillOrders` fonksiyonuna taşındı ve formun **en sonuna** kondu. Her istem
+türü bitince ekran kapatılıp karta dönülüyor; önceden ekranlar üst üste
+biniyor, doktor sonrakini göremiyordu.
+
+### Gerçek test: üretim kodu canlı COMED'de
+
+`scripts/live_order_test.py` eklendi. content.js'ten `fillOrders`'ı ve
+kullandığı 53 bildirimi **dosyadan birebir çıkarıp** canlı COMED sayfasında
+çalıştırılabilir paket yapıyor. Elle kopyalama yok; üretim kodu değişirse
+test de değişir. (v2.32.0'daki ilaç hatası kopyanın üretim koduyla
+ayrışmasındandı.)
+
+Test diyaloğu (EKG, EKO, akciğer grafisi, tam kan, CRP, troponin + 5 ilaç)
+canlı backend'den geçirildi, çıkan veri bu paketle hasta 22207363'te
+koşturuldu. İlk koşu **6 istemden 1**'ini ekledi; aşağıdaki hatalar o
+koşulardan bulundu.
+
+### Canlıda bulunan ve düzeltilen hatalar
+
+1. **EKG "istem penceresi açılmadı".** Hizmet İstem ilk açıldığında liste
+   yeniden çiziliyor; eşleştiricinin bulduğu satır DOM'dan kopuyor, kopuk
+   satıra basmak hiçbir şey açmıyor. Tek başına denenince pencere 0,5 sn'de
+   açılıyordu. Açılmazsa satır yeniden bulunup bir kez daha basılıyor.
+2. **Akciğer Grafisi / Troponin Hizmet İstem'de takılıyordu.** İkisi de Hizmet
+   kataloğunda da var ama orada radyoloji/laboratuvar ek alanı istiyor.
+   Artık vazgeçilmiyor, **Tetkik İstem'e devrediliyor**; orada varsayılan
+   açıklamayla ekleniyor.
+3. **Tetkik ekranı liste görünümüne düşüyordu.** "Ekle"den sonra ekran
+   favori ağacı olmayan istem LİSTESİ görünümüne dönebiliyor; sonraki 8 paket
+   "menüde görünmüyor" diye **sessizce** atlanıyordu. Artık
+   "Yeni Tetkik İstem" ile ekleme görünümüne dönülüyor ve atlanma loglanıyor.
+4. **İkinci paketten itibaren tikler kaydedilmiyordu.** Bir paketin
+   "Ekle"sinden sonra onay kutusu görünüşte tikleniyor ama alt istek paneli
+   açılmıyor, "Ekle" pasif kalıyor. İstem gönderilen her paketten sonra
+   Tetkik ekranı kapatılıp **taze açılıyor**.
+5. ⚠️ **"Eklendi" yalan söylüyordu.** Hata çıkmaması kaydedildiği anlamına
+   gelmiyordu: tam koşuda sayaç "3 tetkik eklendi" dedi, COMED'in istem
+   listesine tek satır düşmedi. Başarı artık **COMED istem listesine yeni
+   satır düşmesiyle** ölçülüyor; düşmezse "Ekle'ye basıldı ama listeye
+   düşmedi — doktor kontrol etmeli" yazılıyor.
+
+Ayrıca paket başlığı ("Favoriler : …") seçilen pakete geçene kadar
+bekleniyor; başarısız paketin tikleri sonrakine karışmasın diye kaldırılıyor.
+
+### Son koşu — COMED listelerinden bağımsız doğrulandı (14:42:53 → 14:44:03)
+
+| Ekran | Kaydedilen |
+| --- | --- |
+| Hizmet İstem | Elektrokardiogram (EKG) |
+| Tetkik İstem | CRP (kantitatif), Troponin I, Akciğer Grafisi (İki Yön) |
+| İlaç İstem | PAROL Tablet 500 mg |
+
+Eklenemeyenler katalog boşluğu: düz "Ekokardiyografi" yok (yalnız
+3D/Fetal/Stres), "Tam Kan Sayımı"nın katalog adı "Hemogram" ve pasif;
+Augmentin/Ventolin/Nexium/Aferin COMED ilaç kataloğunda yok.
+
+### Analiz promptu
+
+- COMED katalog adlandırması öğretildi (kısaltma başta): hemogram, ALT (SGPT),
+  AST (SGOT), CRP (Kantitatif), Troponin I, CK-MB, Demir (Fe), TIBC, HbA1c,
+  Kreatinin (Serum), HDL/LDL-Kolesterol, karotis doppler.
+- Toplu istekler tek tek açılıyor ("kardiyak enzimler" → Troponin I + CK-MB);
+  ne kastedildiği belli değilse yazılmıyor.
+- Model ekran seçmiyor: hangi istemin hangi ekranda olduğunu köprü kataloğa
+  bakarak buluyor.
+
+### Kimlik okuma (bu sürüme dahil)
+
+Görünmez çerçeve hasta kimliğini "ilk 11 haneli sayı / ilk tarih" ile
+okuyordu; panel açılmadan kartta telefon, protokol no, geliş tarihi
+bulunduğu için yanlış kimlik dönüyor ve bir daha denenmiyordu. Artık panel
+okumasıyla aynı **etiketli** ayrıştırıcı kullanılıyor ve başarısız deneme
+sınırlı sayıda tekrar ediliyor. Testi content.js'teki gerçek düzenli
+ifadeleri çalıştırıyor.
+
+Testler: 277 → 288.
+
+
 ## v2.34.1 — 22 Ekim 2026
 
 ### Tetkik İstem: zorunlu alanlar ancak "Ekle"den SONRA ortaya çıkıyor

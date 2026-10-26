@@ -397,17 +397,17 @@
     return (root?.textContent || "").replace(/\s+/g, " ").trim();
   }
 
-  function parsePatientIdentity() {
-    const identityRoots = [...document.querySelectorAll('[role="dialog"],.co-popover,.co-drawer,.patient-info')];
+  function parsePatientIdentity(doc = document) {
+    const identityRoots = [...(doc?.querySelectorAll('[role="dialog"],.co-popover,.co-drawer,.patient-info') || [])];
     // COMED, hasta kimlik alanlar\u0131n\u0131 yaln\u0131zca "Hasta Bilgileri" a\u00e7\u0131l\u0131r panelinde
     // g\u00f6sterir. ``innerText`` sadece g\u00f6r\u00fcnen metni verdi\u011fi i\u00e7in panel kapal\u0131yken
     // TCKN ve do\u011fum tarihi okunam\u0131yor, hasta giri\u015fi de e\u015fle\u015femiyordu. Bu y\u00fczden
     // g\u00f6r\u00fcn\u00fcr metne ek olarak gizli d\u00fc\u011f\u00fcmleri de kapsayan ``textContent`` taran\u0131r.
     const raw = [
       identityRoots.map(textOf).join(" "),
-      textOf(document.body),
+      textOf(doc?.body),
       identityRoots.map(deepTextOf).join(" "),
-      deepTextOf(document.body),
+      deepTextOf(doc?.body),
     ].join(" ").replace(/\u00a0/g, " ");
     const phone = raw.match(/Telefon\s*[:\-]?\s*\(?0?(\d{3})\)?[\s-]*(\d{3})[\s-]*(\d{2})[\s-]*(\d{2})/i);
     const phoneDigits = phone ? phone.slice(1).join("") : "";
@@ -1795,6 +1795,18 @@
   const STUDY_URGENCY_DEFAULT = "Acil bir durum yoktur";
   const STUDY_NOTE_PLACEHOLDER = /Girilen açıklama hasta tetkik raporunda/i;
 
+  /** Istem ekranini kapat ve hasta kartina don.
+
+     Istek: "herhangi bir istemi acip bitirince kapatmiyor, digerlerini
+     goremedim." Ekranlar ust uste biniyordu. Her istem turu bitince karta
+     donuyoruz; sonraki ekran temiz aciliyor ve doktor arada formu gorebiliyor. */
+  async function closeOrderScreen() {
+    if (!/[?&]app-action=/.test(location.search)) return;
+    history.pushState({}, "", location.pathname);
+    window.dispatchEvent(new PopStateEvent("popstate"));
+    await waitForDomQuiet(document.body, 300, 3500);
+  }
+
   async function openStudyScreen() {
     if (!location.search.includes(STUDY_SCREEN_PARAM)) {
       history.pushState({}, "", `${location.pathname}?${STUDY_SCREEN_PARAM}`);
@@ -1802,6 +1814,9 @@
       await waitFor(() => location.search.includes(STUDY_SCREEN_PARAM), 4000);
     }
     await waitForDomQuiet(document.body, 300, 4000);
+    await waitFor(() => studyMenuVisible()
+      || document.querySelector('[data-test="co-button-Yeni Tetkik İstem"]'), 15000);
+    await ensureStudyAddView();
     return Boolean(await waitFor(() => studyRows().length ? true : null, 15000));
   }
 
@@ -1822,14 +1837,89 @@
     return String(named || textOf(row)).split(" - ")[0].trim();
   }
 
-  /** Sol menuden favori paketini sec. */
+  /* CANLI OLCUM (26 Ekim): Tetkik ekrani iki gorunumlu. "Ekle"den sonra ya da
+     bir istem reddedilince EKLEME gorunumu (sol favori agaci + onay kutulu
+     liste) yerine ISTEM LISTESI gorunumune donebiliyor: ustte Ilac/Diyet/
+     Bakim/Tetkik/Hizmet sekmeleri, solda "+ Yeni Tetkik İstem" dugmesi.
+     Bu gorunumde favori agaci HIC yok; toplu calismada sonraki 8 paket
+     "menude gorunmuyor" diye sessizce atlaniyor, Akciger Grafisi bu yuzden
+     eklenmiyordu. "Yeni Tetkik İstem" ekleme gorunumunu geri getiriyor. */
+  function studyMenuVisible() {
+    const leaves = new Set([...document.querySelectorAll("a,li,div,span")]
+      .filter((node) => node.offsetParent !== null && node.children.length === 0)
+      .map((node) => textOf(node)));
+    return STUDY_PACKAGES.some((name) => leaves.has(name));
+  }
+
+  async function ensureStudyAddView() {
+    if (studyMenuVisible()) return true;
+    const button = [...document.querySelectorAll('[data-test="co-button-Yeni Tetkik İstem"]')]
+      .find((node) => node.offsetParent !== null);
+    if (!button) return false;
+    pressNode(button);
+    return Boolean(await waitFor(studyMenuVisible, 8000));
+  }
+
+  /** Ekrandaki istem listesinin (Aktif Protokol) tarihli satirlari.
+
+     CANLI OLCUM (26 Ekim): "Ekle"den sonra hata cikmamasi KAYDEDILDIGI
+     anlamina GELMIYOR. Tam kosuda sayac "3 tetkik eklendi" dedi, COMED'in
+     istem listesine tek satir dusmedi. Doktora "eklendi" deyip eklememek en
+     kotu sonuc. Basariyi listeye YENI satir dusmesiyle olcuyoruz. */
+  function studyOrderRows() {
+    return [...document.querySelectorAll("tbody tr, [role=row]")]
+      .filter((row) => row.offsetParent !== null
+        && /\d{2}\.\d{2}\.\d{4} \d{2}:\d{2}/.test(textOf(row)))
+      .map((row) => textOf(row));
+  }
+
+  /** once alinan listeye gore yeni dusen satir sayisi (ayni metinli satirlari
+     da sayar: ayni dakikada ikinci CRP de "yeni"dir). */
+  function newStudyOrderCount(before) {
+    const kalan = new Map();
+    before.forEach((text) => kalan.set(text, (kalan.get(text) || 0) + 1));
+    let yeni = 0;
+    for (const text of studyOrderRows()) {
+      const adet = kalan.get(text) || 0;
+      if (adet > 0) kalan.set(text, adet - 1);
+      else yeni += 1;
+    }
+    return yeni;
+  }
+
+  /** Basarisiz paketin tiklerini kaldir: sonraki paketin "Ekle"sine
+     karismasinlar. */
+  function untickStudyRows(labels) {
+    const wanted = new Set(labels.map((label) => simplifyStudy(label)));
+    for (const row of studyRows()) {
+      const box = row.querySelector('input[type="checkbox"]');
+      if (!box || !box.checked || box.disabled) continue;
+      if (!wanted.has(simplifyStudy(studyRowName(row)))) continue;
+      pressNode(box.closest("label") || box);
+    }
+  }
+
+  /** Sol menuden favori paketini sec ve listenin O PAKETE gecmesini bekle.
+
+     CANLI OLCUM (26 Ekim): toplu calismada paket degisirken liste hemen
+     yenilenmiyor; eslestirme bir onceki paketin satirlarina bakip "yok"
+     diyordu. Akciger Grafisi tek basina eklenirken toplu calismada
+     "bulunamadi" diye dusuyordu. Liste basligi ("Favoriler : Akciğer
+     Grafisi") secilen pakete gecene kadar bekliyoruz. */
   async function selectStudyPackage(name) {
+    await ensureStudyAddView();
     const item = [...document.querySelectorAll("a,li,div,span")].find(
       (node) => node.offsetParent !== null && node.children.length === 0
         && textOf(node) === name,
     );
     if (!item) return false;
+    const wanted = name.toLocaleLowerCase("tr-TR");
+    const headerShows = () => [...document.querySelectorAll("*")].some(
+      (node) => node.offsetParent !== null && node.children.length <= 2
+        && /^Favoriler\s*:/i.test(textOf(node))
+        && textOf(node).toLocaleLowerCase("tr-TR").includes(wanted));
     pressNode(item);
+    await waitFor(headerShows, 6000);
     await waitForDomQuiet(document.body, 300, 3500);
     return true;
   }
@@ -1980,9 +2070,28 @@
     }
     // Paketleri tek tek gez; her pakette bulunanlari isaretle. COMED birden
     // cok tetkigi tek "Ekle" ile kabul ediyor, bu yuzden paket basina topluyoruz.
+    /* CANLI OLCUM (26 Ekim): bir paketin "Ekle"sinden SONRA ekran "kayit
+       sonrasi" durumda kaliyor. Sonraki pakette onay kutusu gorunuste
+       tikleniyor ama COMED onu kaydetmiyor: alt istek paneli hic acilmiyor
+       (Vazgec yok), "Ekle" pasif. Taze acilmis ekranda ilk paket her zaman
+       calisiyor. Bu yuzden istem gonderilen her paketten sonra ekrani kapatip
+       TAZE aciyoruz -- doktorun elle yapacagi da bu. */
+    let ekranKirli = false;
     for (const paket of STUDY_PACKAGES) {
       if (!kalan.size) break;
-      if (!await selectStudyPackage(paket)) continue;
+      if (ekranKirli) {
+        await closeOrderScreen();
+        if (!await openStudyScreen()) {
+          bridgeStatus("Tetkik ekranı yeniden açılamadı", "bad");
+          break;
+        }
+        ekranKirli = false;
+      }
+      if (!await selectStudyPackage(paket)) {
+        // Sessizce gecmeyelim: canli testte paketler bu yuzden atlaniyordu.
+        bridgeStatus(`Tetkik paketi menüde görünmüyor · ${paket}`, "bad");
+        continue;
+      }
       const isaretli = [];
       for (const [name] of [...kalan]) {
         const row = matchStudyRow(name);
@@ -2003,6 +2112,7 @@
         kalan.delete(name);
       }
       if (!isaretli.length) continue;
+      ekranKirli = true;
       bridgeStatus(`Tetkik istemi hazırlanıyor · ${paket}`);
       await waitForDomQuiet(document.body, 320, 4000);
       /* Doküman isteyen tetkik varsa istemi hic gondermiyoruz: yarim
@@ -2021,10 +2131,14 @@
         return button && !button.disabled ? button : null;
       }, 10000);
       if (!ekle) {
+        /* Olcum: ayni tetkik zaten AKTIF istem olarak varsa (ornek Troponin I)
+           COMED "Ekle"yi acmiyor. Tikleri kaldirip devam ediyoruz. */
+        untickStudyRows(isaretli.map((item) => item.label));
         isaretli.forEach((item) => result.skipped.push(
-          `${item.name}: "Ekle" etkinleşmedi, doktor tamamlamalı`));
+          `${item.name}: "Ekle" etkinleşmedi (zaten aktif istem olabilir), doktor kontrol etmeli`));
         continue;
       }
+      const listeOnce = studyOrderRows();
       pressNode(ekle);
       await waitForDomQuiet(document.body, 350, 5000);
       /* COMED zorunlulugu ancak "Ekle"den sonra bildiriyor. Alanlar o anda
@@ -2064,12 +2178,29 @@
         kalanHata = studyValidationErrors();
       }
       if (kalanHata.length || !isaretli.length) {
+        untickStudyRows(isaretli.map((item) => item.label));
         isaretli.forEach((item) => result.skipped.push(
           `${item.name}: ${(kalanHata[0] || "zorunlu alan").slice(0, 60)} — doktor tamamlamalı`));
         continue;
       }
-      result.added += isaretli.length;
-      isaretli.forEach((item) => result.picked.push(item.label.slice(0, 80)));
+      const dusen = await waitFor(() => {
+        const adet = newStudyOrderCount(listeOnce);
+        return adet > 0 ? adet : null;
+      }, 9000) || 0;
+      if (!dusen) {
+        untickStudyRows(isaretli.map((item) => item.label));
+        isaretli.forEach((item) => result.skipped.push(
+          `${item.name}: "Ekle"ye basıldı ama COMED istem listesine düşmedi — doktor kontrol etmeli`));
+        bridgeStatus(`${paket}: Ekle sonrası istem listeye düşmedi`, "bad");
+        continue;
+      }
+      if (dusen < isaretli.length) {
+        bridgeStatus(`${paket}: ${isaretli.length} tetkikten ${dusen} tanesi listeye düştü`, "bad");
+      }
+      result.added += Math.min(dusen, isaretli.length);
+      isaretli.slice(0, dusen).forEach((item) => result.picked.push(item.label.slice(0, 80)));
+      isaretli.slice(dusen).forEach((item) => result.skipped.push(
+        `${item.name}: listeye düşmedi — doktor kontrol etmeli`));
       bridgeFieldStatus("requested_services", true);
     }
     // Kalanlar tetkik degil, islem olabilir (EKG gibi) -> Hizmet Istem denesin.
@@ -2193,12 +2324,15 @@
     return true;
   }
 
-  /** @returns {{added:number, picked:string[], skipped:string[]}} */
+  /** @returns {{added:number, picked:string[], skipped:string[], remaining:object[]}}
+     remaining: hizmet katalogunda bulunamayanlar. Hata degildir --
+     laboratuvar tetkikleri Tetkik Istem ekraninda duruyor, oraya devredilir. */
   async function fillServiceRequests(services = []) {
-    const result = {added: 0, picked: [], skipped: []};
+    const result = {added: 0, picked: [], skipped: [], remaining: []};
     if (!services.length) return result;
     if (!await openServiceScreen()) {
-      result.skipped = services.map((s) => `${s?.name || "?"}: hizmet ekranı açılmadı`);
+      // Ekran acilmadiysa hepsini tetkik ekranina devret, kaybetme.
+      result.remaining = services.slice();
       return result;
     }
     // Isteyen doktor zaten dolu gelir; uygulayan icin ayni adi kullanacagiz.
@@ -2245,23 +2379,33 @@
           }
         }
         if (!row) {
-          /* Katalogda kesin karsiligi yok ya da yalniz nitelikli turevleri
-             var (ornek: duz "Ekokardiyografi" yok, 3D/Fetal/Stres var;
-             "Tam Kan Sayimi" hic yok). Yanlis tetkik istemektense doktora
-             birakiyoruz. */
-          result.skipped.push(`${name}: katalogda kesin eşleşme yok, doktor seçmeli`);
-          bridgeStatus(`${name} için kesin eşleşme yok — doktor seçmeli`, "bad");
+          /* Hizmet katalogunda yok. Laboratuvar tetkigi olabilir (Tam Kan
+             Sayimi gibi) -> Tetkik Istem ekranina devret. Orada da yoksa
+             orasi "bulunamadi" diye bildirir. */
+          result.remaining.push(service);
           continue;
         }
         const rowText = textOf(row).slice(0, 90);
-        pressNode(row);
-        // Pencerenin acilmasini "Vazgeç" ile anla: "Ekle" adi sayfada birden
-        // cok yerde geciyor.
-        const opened = await waitFor(
-          () => [...document.querySelectorAll('[data-test="co-button-Vazgeç"]')]
-            .some((item) => item.offsetParent !== null), 6000);
+        /* CANLI OLCUM (26 Ekim): ekran ilk acildiginda liste YENIDEN
+           ciziliyor. Eslestiricinin buldugu satir DOM'dan kopuyor, kopuk
+           satira basmak hicbir sey acmiyor. Listenin ilk istemi (EKG) tam o
+           ana denk geldigi icin "istem penceresi açılmadı" diye dusuyordu;
+           tek basina denendiginde pencere 0,5 sn'de aciliyordu. Acilmazsa
+           satiri YENIDEN bulup bir kez daha basiyoruz. */
+        const dialogOpen = () => [...document.querySelectorAll('[data-test="co-button-Vazgeç"]')]
+          .some((item) => item.offsetParent !== null);
+        let opened = false;
+        for (let deneme = 0; deneme < 2 && !opened; deneme += 1) {
+          const target = deneme === 0 && row.isConnected ? row : matchServiceRow(name);
+          if (!target) break;
+          pressNode(target);
+          // Pencerenin acilmasini "Vazgeç" ile anla: "Ekle" adi sayfada birden
+          // cok yerde geciyor.
+          opened = Boolean(await waitFor(dialogOpen, deneme === 0 ? 4000 : 6000));
+        }
         if (!opened) {
-          result.skipped.push(`${name}: istem penceresi açılmadı`);
+          // Tetkik ekraninda ayni istem olabilir; orada bir kez daha denensin.
+          result.remaining.push({...service, hizmetNotu: "istem penceresi açılmadı"});
           continue;
         }
         const doctorOk = await pickPerformingDoctor(requester);
@@ -2274,10 +2418,14 @@
              Istemi yarim birakmiyoruz: pencereyi kapatip doktora birakiyoruz. */
           pressNode(dialogButton("co-button-Vazgeç"));
           await waitForDomQuiet(document.body, 260, 2500);
-          result.skipped.push(doctorOk
-            ? `${name}: ek zorunlu alan istiyor, doktor tamamlamalı`
-            : `${name}: uygulayan doktor seçilemedi`);
-          bridgeStatus(`${name} doktor tarafından tamamlanmalı`, "bad");
+          /* CANLI OLCUM (26 Ekim): Akciger Grafisi ve Troponin Hizmet Istem
+             katalogunda DA var ama orada radyoloji/laboratuvar ek alani
+             istiyor. Tetkik Istem ekraninda ayni kalem varsayilan aciklamayla
+             ekleniyor. Burada vazgecmek yerine Tetkik ekranina devrediyoruz;
+             orada da olmazsa bu not raporlanir. */
+          result.remaining.push({...service, hizmetNotu: doctorOk
+            ? "Hizmet İstem'de ek zorunlu alan istiyor"
+            : "uygulayan doktor seçilemedi"});
           continue;
         }
         pressNode(addButton);
@@ -2676,42 +2824,6 @@
       const diagnosisCount = await fillDiagnoses(fields.diagnoses || []);
       record("diagnoses", diagnosisCount > 0, `${diagnosisCount} tanı`);
     }
-    if ((fields.requested_services || []).length) {
-      /* COMED'de istemler UC ayri ekrana dagilmis durumda. Hangi tetkigin
-         hangi ekranda oldugunu modele sordurmak hataya acik; katalog dogruyu
-         soyluyor. Once Tetkik Istem (laboratuvar + radyoloji) denenir,
-         bulunamayanlar Hizmet Istem'e devredilir (EKG gibi islemler orada). */
-      const toplamHizmet = fields.requested_services.length;
-      const studyResult = await fillStudyRequests(fields.requested_services);
-      const serviceResult = studyResult.remaining.length
-        ? await fillServiceRequests(studyResult.remaining)
-        : {added: 0, picked: [], skipped: []};
-      const eklenen = studyResult.added + serviceResult.added;
-      const secilen = [...studyResult.picked, ...serviceResult.picked];
-      const atlanan = [...studyResult.skipped, ...serviceResult.skipped];
-      const hizmetDetay = [
-        `${eklenen}/${toplamHizmet} istem`,
-        studyResult.added ? `tetkik: ${studyResult.added}` : "",
-        serviceResult.added ? `hizmet: ${serviceResult.added}` : "",
-        secilen.length ? `seçilen: ${secilen.join(" | ")}` : "",
-        atlanan.length ? `atlanan: ${atlanan.join(" | ")}` : "",
-      ].filter(Boolean).join(" — ");
-      record("requested_services", eklenen > 0, hizmetDetay);
-    }
-    // İlaç istemleri hizmet istemlerinden hemen sonra: ikisi de ayrı istem
-    // ekranında açılıyor, aradaki kart alanlarına dönmeye gerek kalmıyor.
-    if ((fields.requested_drugs || []).length) {
-      const drugResult = await fillDrugRequests(fields.requested_drugs);
-      const toplam = fields.requested_drugs.length;
-      // Secilen formu ve atlanan ilaclari ayrintiya yaz: doktor imzadan once
-      // "Parol dedim, COLD mu Tablet mi eklendi" diye kontrol edebilsin.
-      const detay = [
-        `${drugResult.added}/${toplam} ilaç`,
-        drugResult.picked.length ? `seçilen: ${drugResult.picked.join(" | ")}` : "",
-        drugResult.skipped.length ? `atlanan: ${drugResult.skipped.join(" | ")}` : "",
-      ].filter(Boolean).join(" — ");
-      record("requested_drugs", drugResult.added > 0, detay);
-    }
     record("treatment_plan_label", Boolean(fields.treatment_plan_label)
       && clickCardOption("İzlem ve Plan", fields.treatment_plan_label));
     if (fields.is_surgery_will_planned === true) {
@@ -2728,7 +2840,74 @@
       controlSwitch.click();
       record("is_control_suggested", true);
     }
+
+    await fillOrders(fields, record);
+
     return {filled, fieldResults, systemSaved: systemResult.saved};
+  }
+
+  /** Istemleri sabit sirayla gir: Hizmet -> Ilac -> Tetkik.
+
+     fillFormDraft'tan ayri fonksiyona alindi ki canli testte BIREBIR
+     uretim kodu calistirilabilsin (scripts/live_order_test.py bu
+     fonksiyonu dosyadan cikarip COMED sayfasinda kosturuyor). */
+  async function fillOrders(fields, record) {
+    /* ---------- İSTEMLER (en sonda, sabit sirayla) ----------
+
+       Sira: muayene formu -> Hizmet Istem -> Ilac Istem -> Tetkik Istem.
+       Istemler kart alanlarinin ustune ayri ekran olarak aciliyor; forma
+       geri donup alan doldurmak gerekmesin diye hepsi EN SONA alindi.
+
+       Her istem turu bitince ekran KAPATILIYOR (closeOrderScreen): ekranlar
+       ust uste binince doktor sonrakini goremiyordu.
+
+       Hangi istemin hangi ekranda oldugunu katalog soyluyor, model degil:
+       once Hizmet Istem denenir (EKG, grafi gibi islemler orada), orada
+       bulunamayanlar Tetkik Istem'e (laboratuvar) devredilir. */
+    const istemVar = (fields.requested_services || []).length
+      || (fields.requested_drugs || []).length;
+    if (istemVar) await closeOrderScreen();
+
+    let serviceResult = {added: 0, picked: [], skipped: [], remaining: []};
+    if ((fields.requested_services || []).length) {
+      serviceResult = await fillServiceRequests(fields.requested_services);
+      await closeOrderScreen();
+    }
+
+    if ((fields.requested_drugs || []).length) {
+      const drugResult = await fillDrugRequests(fields.requested_drugs);
+      const toplamIlac = fields.requested_drugs.length;
+      // Secilen formu ve atlanan ilaclari ayrintiya yaz: doktor imzadan once
+      // "Parol dedim, COLD mu Tablet mi eklendi" diye kontrol edebilsin.
+      record("requested_drugs", drugResult.added > 0, [
+        `${drugResult.added}/${toplamIlac} ilaç`,
+        drugResult.picked.length ? `seçilen: ${drugResult.picked.join(" | ")}` : "",
+        drugResult.skipped.length ? `atlanan: ${drugResult.skipped.join(" | ")}` : "",
+      ].filter(Boolean).join(" — "));
+      await closeOrderScreen();
+    }
+
+    if ((fields.requested_services || []).length) {
+      const kalanlar = serviceResult.remaining || [];
+      const studyResult = kalanlar.length
+        ? await fillStudyRequests(kalanlar)
+        : {added: 0, picked: [], skipped: [], remaining: []};
+      await closeOrderScreen();
+      const eklenen = serviceResult.added + studyResult.added;
+      const secilen = [...serviceResult.picked, ...studyResult.picked];
+      const atlanan = [...serviceResult.skipped, ...studyResult.skipped,
+        ...(studyResult.remaining || []).map((item) => `${item?.name || "?"}: ${
+          item?.hizmetNotu
+            ? `${item.hizmetNotu}, Tetkik İstem'de de bulunamadı — doktor tamamlamalı`
+            : "hiçbir istem ekranında bulunamadı"}`)];
+      record("requested_services", eklenen > 0, [
+        `${eklenen}/${fields.requested_services.length} istem`,
+        serviceResult.added ? `hizmet: ${serviceResult.added}` : "",
+        studyResult.added ? `tetkik: ${studyResult.added}` : "",
+        secilen.length ? `seçilen: ${secilen.join(" | ")}` : "",
+        atlanan.length ? `atlanan: ${atlanan.join(" | ")}` : "",
+      ].filter(Boolean).join(" — "));
+    }
   }
 
   async function updateStatus(id, status, error = null, debug = null) {
@@ -2867,7 +3046,14 @@
      <iframe> ile karti yukluyoruz; hasta adina tiklayip kimligi okuyor ve
      cerceveyi siliyoruz. Yeni sekme ACILMAZ, doktor hicbir sey gormez,
      oturum ayni sekmede oldugu icin yeniden giris de gerekmez. */
-  const identityTried = new Set();     // ayni hastayi tur tur denemeyelim
+  /* Ayni hastayi tur tur denemeyelim; ama BASARISIZ bir deneme de kalici
+     olmamali. Eskiden visit_id denemeden ONCE isaretleniyordu: kart yavas
+     yuklendiyse (30 sn asim) ya da panel acilmadiysa o hasta, doktor sayfayi
+     yenileyene kadar bir daha hic denenmiyordu. Simdi deneme sayisi
+     tutuluyor -- basarisizlik sinirli sayida tekrarlanir, basari kalici
+     olarak kapatir. */
+  const IDENTITY_MAX_TRIES = 3;
+  const identityTried = new Map();     // visit_id -> deneme sayisi
   let identityFrameBusy = false;
 
   function frameWaitFor(getter, timeoutMs) {
@@ -2884,15 +3070,23 @@
     });
   }
 
-  /** Kart belgesinden T.C. kimlik ve dogum tarihini oku. */
+  /** Kart belgesinden T.C. kimlik ve dogum tarihini oku.
+
+     Burada eskiden govdedeki ILK 11 haneli sayi ve ILK tarih aliniyordu.
+     Kartta bunlardan bolca var -- telefon 0XXXXXXXXXX tam 11 hane, gelis
+     tarihi, protokol numarasi -- ve hepsi panel ACILMADAN da DOM'da duruyor.
+     Bu yuzden bekleme, panel acilmadan hemen YANLIS bir kimlikle doniyordu.
+     Sunucuya hatali ozet yazilinca hasta randevusuna baglanamiyor, kayit
+     "kimligi tamam" sayildigi icin bir daha da denenmiyordu; yalnizca doktor
+     karti elle acinca dogrusuyla uzerine yaziliyordu. Kullanicinin tarif
+     ettigi "bazen kartin icine girip yenileyince esliyor" tam olarak buydu.
+
+     Artik cerceve okumasi da panel okumasiyla AYNI etiketli ayristiriciyi
+     kullaniyor: "T.C. ..." ve "Dogum Tarihi ..." etiketleri yoksa kimlik yok
+     sayilir. Panel gercekten acilana kadar beklenir. */
   function readIdentityFromDocument(doc) {
-    const raw = (doc?.body?.textContent || "").replace(/ /g, " ").replace(/\s+/g, " ");
-    const tckn = raw.match(/\b(\d{11})\b/)?.[1] || "";
-    const birth = raw.match(/\b(\d{2})[.\/-](\d{2})[.\/-](\d{4})\b/);
-    return {
-      tckn,
-      birth_date: birth ? `${birth[1]}.${birth[2]}.${birth[3]}` : "",
-    };
+    const {tckn, birth_date} = parsePatientIdentity(doc);
+    return {tckn, birth_date};
   }
 
   /** Bir hastanin kimligini gorunmez cercevede okuyup sunucuya yolla. */
@@ -2923,10 +3117,22 @@
       // 2) HASTA ADINA TIKLA -> "Hasta Bilgileri" paneli acilir.
       adOgesi.click();
       // 3) Kimlik gorunene kadar bekle.
-      const identity = await frameWaitFor(() => {
+      const kimlikBekle = (sure) => frameWaitFor(() => {
         const value = readIdentityFromDocument(frame.contentDocument);
         return value.tckn && value.birth_date ? value : null;
-      }, 15000);
+      }, sure);
+      let identity = await kimlikBekle(9000);
+      if (!identity) {
+        /* Ad tiklamasi her kurulumda paneli acmiyor. Acik hasta kartinda
+           calistigi olculen ikinci yol -- profil ikonu -- burada da denenir;
+           cerceve gizli oldugu icin doktor hicbir sey gormez. */
+        const ikon = frame.contentDocument
+          ?.querySelector('[data-test="co-button-icon-patient-profile"]');
+        if (ikon) {
+          activateNode(ikon);   // dosyanin her yerinde kullanilan tiklama
+          identity = await kimlikBekle(9000);
+        }
+      }
       if (!identity) return false;
       await request("/api/v1/mobile/comed/worklist/sync", {
         method: "POST",
@@ -2961,13 +3167,17 @@
       return;                         // sunucu eski surumse sessiz gec
     }
     const hedef = (bekleyen?.items || []).find(
-      (item) => item.visit_id && !identityTried.has(String(item.visit_id)),
+      (item) => item.visit_id
+        && (identityTried.get(String(item.visit_id)) || 0) < IDENTITY_MAX_TRIES,
     );
     if (!hedef) return;
-    identityTried.add(String(hedef.visit_id));
+    const anahtar = String(hedef.visit_id);
     identityFrameBusy = true;         // ayni anda tek cerceve
     try {
-      await collectIdentityInFrame(hedef);
+      const basarili = await collectIdentityInFrame(hedef);
+      identityTried.set(anahtar, basarili
+        ? IDENTITY_MAX_TRIES                       // oldu, bir daha bakma
+        : (identityTried.get(anahtar) || 0) + 1);  // olmadi, tekrar denenebilir
     } finally {
       identityFrameBusy = false;
     }
