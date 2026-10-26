@@ -1,3 +1,43 @@
+## v2.36.0 — 26 Ekim 2026
+
+### Her istem TEK ekrana gider
+
+Doktorun isteği: "EKO ve EKG Hizmet İstem'de, akciğer grafisi Tetkik
+İstem'de olacak; bir şey hem hizmette hem tetkikte alınmayacak."
+
+- Model her istemin ekranını yazıyor: `screen: "hizmet" | "tetkik"`
+  (laboratuvar + radyoloji → tetkik; EKG, EKO, efor, holter, endoskopi gibi
+  işlemler → hizmet).
+- Sunucu (`comed_integration._service_screen`) kullanıcı kuralını sabitliyor:
+  EKG/EKO her zaman hizmet, grafi/röntgen her zaman tetkik — model yanlış
+  etiketlese de.
+- Köprü: `tetkik` istemleri Hizmet İstem'e hiç sokulmuyor; `hizmet` istemi
+  bulunamazsa Tetkik'e devredilmiyor, "Hizmet İstem'de bulunamadı — doktor
+  tamamlamalı" diye rapor ediliyor. Ekranı belirsiz eski kayıtlar eski yoldan.
+- **Neden:** CANLI ÖLÇÜM — Hizmet İstem kataloğunda laboratuvar da var
+  (CRP L101850). "Önce Hizmet'te dene" kuralı CRP'yi yanlış ekrandan ekliyordu.
+
+### ALT, AST, AKŞ sessizce kayboluyordu
+
+Köprü Hizmet İstem'de yalnız **ilk 8** istemi deniyordu (`slice(0, 8)`);
+11 istemli görüşmede 9.–11. (ALT, AST, AKŞ) atlanan listesine bile
+yazılmadan düşüyordu. Sınır kaldırıldı (üst sınır sunucuda 25).
+
+### Prompt
+
+Ses dökümü hataları için örnekler eklendi ("tromponin", "CK-MP", "alete",
+"aset'e", "promoni").
+
+### Canlı test (hasta 22207363, 16:20)
+
+11 istem: EKG Hizmet'ten; CRP, Kreatinin, ALT, AST, AKŞ, Troponin I, CK-MB,
+Akciğer Grafisi Tetkik'ten — COMED listesinden doğrulandı, her biri tek kez.
+Atlanan: Hemogram (COMED'de pasif), Ekokardiyografi (katalogda düz hali yok).
+
+Not: Hizmet İstem ekranının alt listesi Hizmet + Laboratuvar + Radyoloji
+istemlerinin hepsini gösterir; Tetkik İstem ekranınınki yalnız Laboratuvar
++ Radyoloji. Aynı tetkiğin iki ekranda görünmesi çift istem DEĞİLDİR.
+
 ## v2.35.0 — 26 Ekim 2026
 
 ### İstemler sabit sırayla, her ekran kapanarak

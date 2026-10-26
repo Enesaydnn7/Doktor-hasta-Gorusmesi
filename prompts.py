@@ -237,11 +237,27 @@ KURALLAR (ÇOK ÖNEMLİ):
   "Manyetik Rezonans (Sol Diz)". Hiç tetkik istenmediyse listeyi boş bırak.
   reason alanına istemi gerektiren kısa klinik gerekçeyi yaz.
 
-  NEREYE GİDECEĞİNİ SEN BELİRLEME. COMED'de istemler üç ayrı ekrana dağılmış
-  (Hizmet İstem / İlaç İstem / Tetkik İstem). Hangi tetkiğin hangi ekranda
-  olduğunu köprü kataloğa bakarak buluyor. Sen yalnız doğru ADI yaz; ekran
-  seçimi, grup adı ya da "laboratuvar/radyoloji" etiketi EKLEME.
+  EKRAN (screen) — her istemin hangi COMED ekranına gideceğini yaz. COMED'de
+  istemler ayrı ekranlarda girilir; bir istem YALNIZ BİR ekrana yazılır, aynı
+  istem iki kez ya da iki ekrana birden YAZILMAZ.
+    "hizmet" → Hizmet İstem: işlem ve testler. EKG (Elektrokardiogram),
+               EKO (Ekokardiyografi), efor testi, holter, solunum fonksiyon
+               testi, endoskopi, kolonoskopi, biyopsi, konsültasyon,
+               pansuman, enjeksiyon, odyometri gibi.
+    "tetkik" → Tetkik İstem: LABORATUVAR (kan, idrar, gaita, biyokimya,
+               hemogram, CRP, troponin, CK-MB, kreatinin, ALT, AST, şeker,
+               hormon, kültür…) ve RADYOLOJİ (akciğer grafisi ve bütün
+               grafiler/röntgenler, BT, MR, ultrason/USG, doppler, mamografi).
+  KESİN KURAL: EKG ve EKO her zaman "hizmet"; akciğer grafisi ve diğer
+  grafiler her zaman "tetkik"; kan/idrar tahlilleri her zaman "tetkik".
   İlaçlar buraya DEĞİL, requested_drugs alanına yazılır.
+
+  SES DÖKÜMÜ HATALARI — metin konuşmadan otomatik çevrilir, tıbbi terimler
+  bozuk gelebilir. Bağlamdan neyin kastedildiği AÇIKSA doğru adla yaz:
+    "tromponin" → Troponin I · "CK-MP" → CK-MB · "alete / alt'e" → ALT ·
+    "aset'e / aste" → AST · "ekg'yi / ekgi" → EKG · "promoni" → pnömoni ·
+    "koronary" → koroner · "kandı CRP" → kanda CRP.
+  Neyin kastedildiği belli değilse tahmin etme, yazma.
 - requested_drugs: doktorun görüşmede AÇIKÇA yazdığı/başladığı ilaçlar.
   BU ALANI DA KAÇIRMA.
 
@@ -334,7 +350,9 @@ YANITINI SADECE şu JSON olarak ver:
   ],
   "treatment_note_v2": "tedavi/öneri notu veya null",
   "requested_services": [
-    {"name": "Elektrokardiogram (EKG)", "reason": "eforla gelen göğüs ağrısı"}
+    {"name": "Elektrokardiogram (EKG)", "reason": "eforla gelen göğüs ağrısı", "screen": "hizmet"},
+    {"name": "Akciğer Grafisi (İki Yön)", "reason": "öksürük ve ateş", "screen": "tetkik"},
+    {"name": "Troponin I", "reason": "akut koroner sendrom dışlama", "screen": "tetkik"}
   ],
   "requested_drugs": [
     {"name": "Parol", "dose": "500 mg", "frequency_per_day": 3, "reason": "ateş ve ağrı"}

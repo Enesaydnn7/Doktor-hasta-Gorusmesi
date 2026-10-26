@@ -2338,7 +2338,10 @@
     // Isteyen doktor zaten dolu gelir; uygulayan icin ayni adi kullanacagiz.
     const requester = textOf(
       document.querySelector('[data-test^="personnel-department"]')) || "";
-    for (const service of services.slice(0, 8)) {
+    // Sinir yok: eskiden ilk 8 hizmet deneniyor, 9. ve sonrasi (ALT, AST,
+    // AKŞ) SESSIZCE kayboluyordu -- atlanan listesine bile yazilmiyordu.
+    // Ust sinir sunucuda (25).
+    for (const service of services) {
       const name = String(service?.name || "").trim();
       if (!name) continue;
       bridgeStatus(`Hizmet istemi hazırlanıyor · ${name}`);
@@ -2861,18 +2864,29 @@
        Her istem turu bitince ekran KAPATILIYOR (closeOrderScreen): ekranlar
        ust uste binince doktor sonrakini goremiyordu.
 
-       Hangi istemin hangi ekranda oldugunu katalog soyluyor, model degil:
-       once Hizmet Istem denenir (EKG, grafi gibi islemler orada), orada
-       bulunamayanlar Tetkik Istem'e (laboratuvar) devredilir. */
-    const istemVar = (fields.requested_services || []).length
-      || (fields.requested_drugs || []).length;
+       Her istemin EKRANI sunucudan gelir (screen: "hizmet" | "tetkik").
+       CANLI OLCUM (26 Ekim): Hizmet Istem katalogunda laboratuvar da var
+       (CRP L101850), yani "once Hizmet'te dene" kurali laboratuvari yanlis
+       ekrandan ekliyordu. Istek: EKG/EKO Hizmet Istem'de, akciger grafisi
+       ve laboratuvar Tetkik Istem'de; bir istem IKI ekranda denenmez.
+       Ekrani belli olmayan (eski kayit) istemlerde eski davranis: once
+       Hizmet, bulunamazsa Tetkik. */
+    const istemler = fields.requested_services || [];
+    const hizmetler = istemler.filter((item) => item?.screen !== "tetkik");
+    const tetkikler = istemler.filter((item) => item?.screen === "tetkik");
+    const istemVar = istemler.length || (fields.requested_drugs || []).length;
     if (istemVar) await closeOrderScreen();
 
     let serviceResult = {added: 0, picked: [], skipped: [], remaining: []};
-    if ((fields.requested_services || []).length) {
-      serviceResult = await fillServiceRequests(fields.requested_services);
+    if (hizmetler.length) {
+      serviceResult = await fillServiceRequests(hizmetler);
       await closeOrderScreen();
     }
+    // Ekrani "hizmet" olan istem Tetkik'e devredilmez; bulunamadiysa doktora.
+    const hizmetteKalan = (serviceResult.remaining || [])
+      .filter((item) => item?.screen === "hizmet");
+    const kalanlar = [...tetkikler, ...(serviceResult.remaining || [])
+      .filter((item) => item?.screen !== "hizmet")];
 
     if ((fields.requested_drugs || []).length) {
       const drugResult = await fillDrugRequests(fields.requested_drugs);
@@ -2887,19 +2901,22 @@
       await closeOrderScreen();
     }
 
-    if ((fields.requested_services || []).length) {
-      const kalanlar = serviceResult.remaining || [];
+    if (istemler.length) {
       const studyResult = kalanlar.length
         ? await fillStudyRequests(kalanlar)
         : {added: 0, picked: [], skipped: [], remaining: []};
-      await closeOrderScreen();
+      if (kalanlar.length) await closeOrderScreen();
       const eklenen = serviceResult.added + studyResult.added;
       const secilen = [...serviceResult.picked, ...studyResult.picked];
       const atlanan = [...serviceResult.skipped, ...studyResult.skipped,
+        ...hizmetteKalan.map((item) => `${item?.name || "?"}: ${
+          item?.hizmetNotu || "Hizmet İstem'de bulunamadı"} — doktor tamamlamalı`),
         ...(studyResult.remaining || []).map((item) => `${item?.name || "?"}: ${
-          item?.hizmetNotu
-            ? `${item.hizmetNotu}, Tetkik İstem'de de bulunamadı — doktor tamamlamalı`
-            : "hiçbir istem ekranında bulunamadı"}`)];
+          item?.screen === "tetkik"
+            ? "Tetkik İstem'de bulunamadı — doktor tamamlamalı"
+            : item?.hizmetNotu
+              ? `${item.hizmetNotu}, Tetkik İstem'de de bulunamadı — doktor tamamlamalı`
+              : "hiçbir istem ekranında bulunamadı"}`)];
       record("requested_services", eklenen > 0, [
         `${eklenen}/${fields.requested_services.length} istem`,
         serviceResult.added ? `hizmet: ${serviceResult.added}` : "",

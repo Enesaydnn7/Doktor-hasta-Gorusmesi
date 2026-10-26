@@ -243,6 +243,31 @@ def _fold_text(value: Any) -> str:
     return "".join(char for char in text if not unicodedata.combining(char)).replace("ı", "i")
 
 
+# Kullanici kurali (26 Ekim): EKG ve EKO Hizmet Istem'de, akciger grafisi ve
+# diger grafiler Tetkik Istem'de. Model yanlis etiketlese de bu ikisi sabit.
+# "Ekokardiyografi" icinde "grafi" gectigi icin once hizmet kurali bakilir.
+_HIZMET_FIXED = re.compile(r"\b(ekg|eko|echo)\b|elektrokardiyo|elektrokardiog|ekokardiyo|ekokardiog")
+_TETKIK_FIXED = re.compile(r"\bgrafi(si|leri)?\b|rontgen")
+
+
+def _service_screen(name: str, screen: Any) -> str:
+    """İstemin COMED ekranı: "hizmet", "tetkik" ya da "" (belirsiz).
+
+    Belirsiz istemi köprü eski yoldan götürür: önce Hizmet, yoksa Tetkik.
+    """
+    folded = _fold_text(name)
+    if _HIZMET_FIXED.search(folded):
+        return "hizmet"
+    if _TETKIK_FIXED.search(folded):
+        return "tetkik"
+    label = _fold_text(screen)
+    if "hizmet" in label:
+        return "hizmet"
+    if any(word in label for word in ("tetkik", "laboratuvar", "radyoloji")):
+        return "tetkik"
+    return ""
+
+
 def _patient_transcript_text(transcript: Any) -> str:
     """Return only patient turns so a doctor's screening question cannot set a field."""
     patient_turns = []
@@ -602,7 +627,8 @@ def normalize_draft(draft: dict[str, Any] | None) -> dict[str, Any]:
         if key in seen_services:
             continue
         seen_services.add(key)
-        services.append({"name": name[:120], "reason": reason[:200] or None})
+        screen = _service_screen(name, item.get("screen") if isinstance(item, dict) else None)
+        services.append({"name": name[:120], "reason": reason[:200] or None, "screen": screen})
     # Sinir 8'di; tek görüşmede 16 tetkik istenebildiği ölçüldü (kardiyoloji
     # paneli + grafi + doppler + EKG). Sessizce kesmek istemi kaybediyordu.
     data["requested_services"] = services[:25]

@@ -45,17 +45,12 @@ class StudyScreenBridgeTests(unittest.TestCase):
                 self.assertIn(param, self.content)
 
     def test_order_is_service_then_drug_then_study(self):
-        """İstek: muayene formu -> Hizmet İstem -> İlaç İstem -> Tetkik İstem.
-
-        Hangi istemin hangi ekranda olduğunu katalog söyler, model değil:
-        önce Hizmet İstem denenir (EKG, grafi gibi işlemler orada),
-        bulunamayanlar Tetkik İstem'e (laboratuvar) devredilir.
-        """
-        self.assertIn("fillServiceRequests(fields.requested_services)", self.content)
+        """İstek: muayene formu -> Hizmet İstem -> İlaç İstem -> Tetkik İstem."""
+        self.assertIn("fillServiceRequests(hizmetler)", self.content)
         self.assertIn("serviceResult.remaining", self.content)
         self.assertIn("fillStudyRequests(kalanlar)", self.content)
         # Sira: hizmet < ilac < tetkik
-        hizmet = self.content.index("fillServiceRequests(fields.requested_services)")
+        hizmet = self.content.index("fillServiceRequests(hizmetler)")
         ilac = self.content.index("fillDrugRequests(fields.requested_drugs)")
         tetkik = self.content.index("fillStudyRequests(kalanlar)")
         self.assertLess(hizmet, ilac, "hizmet istemi ilaçtan önce gelmeli")

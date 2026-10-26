@@ -123,7 +123,7 @@ Doktor: `Kullanici.kayadr;Kullanici.aydin1|tracer` / `1`
 
 | Dal | Commit | Sürüm |
 |---|---|---|
-| `main` | v2.35.0 | **v2.35.0** ← güncel |
+| `main` | v2.36.0 | **v2.36.0** ← güncel |
 | `mvp` | `2d6b671` | **v2.32.0** ← "bizim MVP sürümümüz" |
 | `mvp-v2.10.3` (etiket) | `7660ef4` | eski demo |
 
@@ -180,6 +180,12 @@ Eklentiyi Chrome'a yüklemeden **üretim kodunu** canlı COMED'de koşturmak iç
    v2.35.0'da sayaç "3 eklendi" deyip listeye hiç düşmediği görüldü.
 
 COMED oturumu SEKMEYE özel; yeni sekme giriş ister. Şifreyi Claude girmez.
+
+### HER İSTEM TEK EKRANA (v2.36.0) — kullanıcı kuralı
+EKG ve EKO → **Hizmet İstem**; akciğer grafisi ve bütün laboratuvar/radyoloji →
+**Tetkik İstem**. Bir istem iki ekranda denenmez. Model `screen` alanını yazar,
+`comed_integration._service_screen` EKG/EKO/grafi kuralını sabitler.
+Hizmet İstem alt listesi tetkikleri de gösterir — bu çift istem değildir.
 
 ### COMED''de ÜÇ İSTEM EKRANI VAR (v2.34.0)
 

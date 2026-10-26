@@ -67,6 +67,15 @@ COMED'de istemler ÜÇ ayrı ekrana dağılmış:
 
 "Tam Kan Sayımı katalogda yok" sonucunun sebebi buydu: yanlış ekranda aranıyordu.
 
+**Ekran seçimi (v2.36.0):** her istem tek ekrana gider — EKG/EKO → Hizmet,
+laboratuvar + radyoloji (akciğer grafisi dahil) → Tetkik. Hizmet İstem
+kataloğunda laboratuvar da var (CRP L101850, canlı ölçüm 26 Ekim); bu yüzden
+"önce Hizmet'te dene" kuralı bırakıldı.
+
+**Alt liste:** Hizmet İstem ekranının alt listesi Hizmet + Laboratuvar +
+Radyoloji istemlerinin hepsini gösterir; Tetkik İstem'inki yalnız
+Laboratuvar + Radyoloji. Aynı satırın iki ekranda görünmesi çift istem değildir.
+
 Sol ağaç: Favoriler (paketler) · Laboratuvar · Radyoloji · Patoloji · Kardiyoloji.
 Soldaki "Ara" kutusu GLOBAL DEĞİL, yalnız seçili paketin içinde arar.
 
