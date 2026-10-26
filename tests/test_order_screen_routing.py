@@ -34,7 +34,7 @@ class ServiceScreenNormalizationTests(unittest.TestCase):
             {"name": "Akciğer Grafisi (İki Yön)", "screen": "hizmet"},
         )
         self.assertEqual(got["Elektrokardiogram (EKG)"], "hizmet")
-        self.assertEqual(got["Ekokardiyografi"], "hizmet")
+        self.assertEqual(got["Transözofageal ekokardiografi"], "hizmet")
         self.assertEqual(got["Akciğer Grafisi (İki Yön)"], "tetkik")
 
     def test_model_label_is_used_otherwise(self):
@@ -46,6 +46,21 @@ class ServiceScreenNormalizationTests(unittest.TestCase):
         self.assertEqual(got, {
             "CRP (Kantitatif)": "tetkik", "Efor Testi": "hizmet", "Troponin I": "tetkik",
         })
+
+    def test_plain_eko_becomes_the_only_comed_eko(self):
+        """İstek: doktor "EKO" derse COMED'deki Transözofageal ekokardiografi eklensin."""
+        for ad in ("Ekokardiyografi", "EKO", "Ekokardiyografi (EKO)", "ekokardiografi"):
+            with self.subTest(ad=ad):
+                self.assertEqual(
+                    screens({"name": ad}),
+                    {"Transözofageal ekokardiografi": "hizmet"},
+                )
+
+    def test_qualified_eko_is_left_alone(self):
+        self.assertEqual(
+            screens({"name": "Stres Ekokardiyografi"}),
+            {"Stres Ekokardiyografi": "hizmet"},
+        )
 
     def test_unknown_screen_stays_empty(self):
         """Belirsiz istem eski yoldan gider (önce Hizmet, yoksa Tetkik)."""

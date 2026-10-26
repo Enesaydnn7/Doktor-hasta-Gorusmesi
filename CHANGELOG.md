@@ -1,3 +1,16 @@
+## v2.36.1 — 26 Ekim 2026
+
+### Doktor "EKO" derse COMED'deki EKO eklenir
+
+Doktorun isteği: "eko derse hemen bunu yazsın, eklesin." CANLI ÖLÇÜM: Hizmet
+İstem'de "eko" araması yalnız **Transözofageal ekokardiografi** (kod 10782,
+SUT 700610) döndürüyor; düz "Ekokardiyografi" katalogda yok. Sunucu düz
+EKO / Ekokardiyografi adını bu kaleme çeviriyor
+(`comed_integration._comed_service_name`). Stres/3D/fetal gibi nitelikli
+EKO'lar olduğu gibi kalır. Eklenti değişmedi.
+
+Canlı test 16:32: istem Hizmet İstem listesine düştü.
+
 ## v2.36.0 — 26 Ekim 2026
 
 ### Her istem TEK ekrana gider
