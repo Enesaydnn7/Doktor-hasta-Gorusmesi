@@ -81,6 +81,18 @@ class BridgeRoutingTests(unittest.TestCase):
         self.assertIn('filter((item) => item?.screen === "hizmet")', self.content)
         self.assertIn("Hizmet İstem'de bulunamadı", self.content)
 
+    def test_reason_is_not_written_into_the_clinical_card(self):
+        """CANLI: gerekçe kartın "Psikolojik Durum" açıklamasını eziyordu."""
+        self.assertNotIn('setValue(byPlaceholder("Açıklama"), reason)', self.content)
+
+    def test_waits_for_add_button_to_enable(self):
+        """CANLI: TEE penceresinde "Ekle" geç etkinleşiyor."""
+        self.assertIn("return button && !button.disabled ? button : null;", self.content)
+
+    def test_exact_match_only_on_catalogue_rows(self):
+        """CANLI: tam ad eşleşmesi alttaki eski EKG istem satırını yakalıyordu."""
+        self.assertIn(".filter((row) => /^[A-Za-z0-9-]{2,12}$/.test(serviceCells(row)[0]", self.content)
+
     def test_no_silent_cap_on_service_list(self):
         self.assertNotIn("services.slice(0, 8)", self.content)
 

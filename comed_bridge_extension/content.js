@@ -2260,7 +2260,11 @@
     const wanted = name.toLocaleLowerCase("tr-TR").trim();
     // "Elektrokardiogram (EKG)" aranirken cekirdek "elektrokardiogram".
     const core = wanted.replace(/\(.*?\)/g, "").trim() || wanted;
-    const rows = serviceRows();
+    /* Yalniz KATALOG satirlari (ilk hucre kod). CANLI OLCUM (26 Ekim): tam ad
+       eslesmesi alttaki istem listesindeki eski "Hizmet Elektrokardiogram
+       (EKG)" satirini yakaliyordu; katalog yerine eski isteme basiliyordu. */
+    const rows = serviceRows()
+      .filter((row) => /^[A-Za-z0-9-]{2,12}$/.test(serviceCells(row)[0] || ""));
     const exact = rows.find((row) => serviceCells(row).some((cell) => {
       const value = cell.toLocaleLowerCase("tr-TR");
       return value === wanted || value === core;
@@ -2357,14 +2361,19 @@
           search.dispatchEvent(new Event("input", {bubbles: true}));
           await waitForDomQuiet(document.body, 260, 2500);
         }
-        let row = matchServiceRow(name);
+        /* Her hizmet ONCE aranir, sonra tiklanir. CANLI OLCUM (26 Ekim): bir
+           istem eklendikten sonra favori listesindeki satira aramasiz basinca
+           pencere acilip 0,5 sn icinde kapaniyordu ("Ekle" pasif -> EKG'den
+           sonra EKO hep dusuyordu). Arama listeyi yeniden cizince tiklama
+           tutuyor. */
         const query = name.replace(/\(.*?\)/g, "").trim();
-        if (!row && search) {
-          // Favorilerde yoksa arama kutusundan ara.
+        let row = null;
+        if (search) {
           setTypingValue(search, query);
           await waitForDomQuiet(document.body, 300, 3500);
           row = matchServiceRow(name);
         }
+        if (!row) row = matchServiceRow(name);
         if (!row) {
           /* Liste varsayilan olarak "Favoriler" sekmesinde aciliyor; orada
              olmayan hizmet (ornegin Ekokardiyografi) bulunamiyordu. Tum
@@ -2406,15 +2415,39 @@
           // cok yerde geciyor.
           opened = Boolean(await waitFor(dialogOpen, deneme === 0 ? 4000 : 6000));
         }
+        if (opened) {
+          /* CANLI OLCUM (26 Ekim): ikinci hizmette onceki pencerenin "Vazgeç"i
+             hala ekranda, "acildi" kontrolu aninda geciyor. Uygulayan yeni
+             pencere yuklenmeden seciliyor, yuklenince SIFIRLANIYOR ve "Ekle"
+             pasif kaliyordu (EKG'den sonra EKO hep dusuyordu). Yeni pencerenin
+             bos "Uygulayan" alaniyla gelmesini bekle. */
+          await waitFor(() => {
+            const opener = document.querySelector('[data-test="personnel-department-Uygulayan"]');
+            return !opener || /^Uygulayan$/i.test(textOf(opener));
+          }, 4000);
+          await waitForDomQuiet(document.body, 260, 2000);
+        }
         if (!opened) {
           // Tetkik ekraninda ayni istem olabilir; orada bir kez daha denensin.
           result.remaining.push({...service, hizmetNotu: "istem penceresi açılmadı"});
           continue;
         }
         const doctorOk = await pickPerformingDoctor(requester);
-        const reason = String(service?.reason || "").trim();
-        if (reason) setValue(byPlaceholder("Açıklama"), reason);
-        const addButton = doctorOk ? dialogButton("co-button-Ekle") : null;
+        /* Gerekce BILEREK yazilmiyor. CANLI OLCUM (26 Ekim): istem penceresinde
+           "Açıklama" kutusu yok; byPlaceholder("Açıklama") arkadaki kartin
+           ILK Açıklama alanini -- "Psikolojik Durum" aciklamasini -- buluyor ve
+           her istemin gerekcesi oraya yaziliyordu. Gerekce zorunlu degil. */
+        /* CANLI OLCUM (26 Ekim): Transözofageal ekokardiografi penceresinde
+           "Ekle" uygulayan secilip aciklama yazildiktan sonra GEC etkinlesiyor.
+           Hemen bakinca pasif goruldu, istem "ek zorunlu alan istiyor" diye
+           doktora birakildi; tek basina denendiginde ekleniyordu. Pasifse
+           etkinlesmesini bekle; gercekten zorunlu alan varsa pasif kalir. */
+        const addButton = doctorOk
+          ? (await waitFor(() => {
+            const button = dialogButton("co-button-Ekle");
+            return button && !button.disabled ? button : null;
+          }, 8000)) || dialogButton("co-button-Ekle")
+          : null;
         if (!addButton || addButton.disabled) {
           /* Uygulayan secilemedi ya da bu hizmet turu ek zorunlu alan
              istiyor (radyolojide cekim yontemi, vucut bolgesi gibi).

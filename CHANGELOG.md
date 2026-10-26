@@ -1,3 +1,35 @@
+## v2.37.0 — 26 Ekim 2026
+
+### Hizmet İstem: EKG'den sonra EKO hep düşüyordu (canlıda bulundu)
+
+Doktorun aktarımında EKO "Hizmet İstem'de ek zorunlu alan istiyor" diye
+atlandı; tek başına denenince ekleniyordu. Canlı COMED'de adım adım ölçülen
+sebepler:
+
+1. **Aramasız tıklama.** Bir istem eklendikten sonra favori listesindeki
+   satıra aramasız basınca pencere açılıp 0,5 sn içinde kapanıyor. Artık her
+   hizmet ÖNCE aranıyor, sonra tıklanıyor.
+2. **Eski pencere.** İkinci hizmette önceki pencerenin "Vazgeç"i ekranda
+   kaldığı için "açıldı" kontrolü anında geçiyordu. Artık yeni pencerenin boş
+   "Uygulayan" alanıyla gelmesi bekleniyor.
+3. **"Ekle" geç etkinleşiyor.** Pasif görülürse 8 sn'ye kadar bekleniyor.
+4. **Yanlış satır.** Tam ad eşleşmesi alttaki istem listesindeki eski
+   "Hizmet Elektrokardiogram (EKG)" satırını yakalıyordu. Artık yalnız katalog
+   satırları (ilk hücre kod) eşleşir.
+
+### Hata: istem gerekçesi "Psikolojik Durum" açıklamasını eziyordu
+
+İstem penceresinde "Açıklama" kutusu yok; `byPlaceholder("Açıklama")` arkadaki
+kartın İLK Açıklama alanını — Psikolojik Durum açıklamasını — buluyordu. Her
+hizmet isteminin gerekçesi oraya yazılıyordu. Gerekçe yazımı kaldırıldı
+(zorunlu değil).
+
+### Canlı test (hasta 22207363)
+
+EKG + EKO (gerekçeli): iki kez arka arkaya, her seferinde Hizmet İstem
+listesi tam +2. 11 istemli tam akış: Hizmet +2 (EKG, Transözofageal
+ekokardiografi), Tetkik +8; atlanan yalnız Hemogram (COMED'de pasif).
+
 ## v2.36.1 — 26 Ekim 2026
 
 ### Doktor "EKO" derse COMED'deki EKO eklenir
