@@ -1,3 +1,18 @@
+## v2.38.0 — 3 Kasım 2026
+
+- **EKO → Transözofageal ekokardiografi** (kesin kullanıcı kuralı; v2.37.1'deki
+  3D geri alındı). Hizmet İstem penceresi EKG ile aynı akışla doluyor
+  (v2.37.0'da canlı doğrulandı).
+- **Allergodil.** Model/ses dökümü "Alergodil" yazıyordu, COMED'de arama sonuç
+  vermiyordu. Sunucu adı "Allergodil burun spreyi"ne çeviriyor; prompt'a
+  COMED yazımı eklendi.
+- **İlaç araması:** aramaya yalnız marka yazılıyor ("Allergodil burun spreyi"
+  aramasında COMED sonuç vermiyor), puanlama tam adla. Doktorun söylediği
+  yerel form (sprey, damla, krem…) üründe varsa +20; virgülle biten ad
+  ("…burun spreyi, çözelti") tam eşleşme sayılıyor. Allergodil böylece
+  eşiği (120) geçiyor.
+- Canlı COMED testi bu sürümde yapılamadı (oturum yok).
+
 ## v2.37.1 — 3 Kasım 2026
 
 Doktorun isteği: düz "EKO" → COMED'deki **3D ekokardiyografi** (önceden

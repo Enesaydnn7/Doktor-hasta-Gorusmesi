@@ -34,7 +34,7 @@ class ServiceScreenNormalizationTests(unittest.TestCase):
             {"name": "Akciğer Grafisi (İki Yön)", "screen": "hizmet"},
         )
         self.assertEqual(got["Elektrokardiogram (EKG)"], "hizmet")
-        self.assertEqual(got["3D ekokardiyografi"], "hizmet")
+        self.assertEqual(got["Transözofageal ekokardiografi"], "hizmet")
         self.assertEqual(got["Akciğer Grafisi (İki Yön)"], "tetkik")
 
     def test_model_label_is_used_otherwise(self):
@@ -53,7 +53,7 @@ class ServiceScreenNormalizationTests(unittest.TestCase):
             with self.subTest(ad=ad):
                 self.assertEqual(
                     screens({"name": ad}),
-                    {"3D ekokardiyografi": "hizmet"},
+                    {"Transözofageal ekokardiografi": "hizmet"},
                 )
 
     def test_qualified_eko_is_left_alone(self):
@@ -106,3 +106,25 @@ class PromptTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class DrugNameTests(unittest.TestCase):
+    """CANLI (3 Kasım): "Alergodil" aranınca COMED sonuç vermedi."""
+
+    def drug(self, name):
+        out = comed_integration.normalize_draft({"requested_drugs": [{"name": name}]})
+        return out.get("fields", out)["requested_drugs"][0]["name"]
+
+    def test_allergodil_spelling_is_fixed(self):
+        for ad in ("Alergodil", "Allergodil", "alergodil burun spreyi", "Allergodil sprey"):
+            with self.subTest(ad=ad):
+                self.assertEqual(self.drug(ad), "Allergodil burun spreyi")
+
+    def test_other_drugs_untouched(self):
+        self.assertEqual(self.drug("Parol"), "Parol")
+
+    def test_bridge_searches_brand_and_scores_local_forms(self):
+        content = (ROOT / "comed_bridge_extension" / "content.js").read_text(encoding="utf-8")
+        self.assertIn(r"const searchText = query.split(/\s+/)[0] || query;", content)
+        self.assertIn("DRUG_LOCAL_FORMS", content)
+        self.assertIn("lower.startsWith(`${wanted},`)", content)

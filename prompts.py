@@ -198,7 +198,8 @@ KURALLAR (ÇOK ÖNEMLİ):
   başa alır, bilimsel uzun adı kullanmaz. Doğru karşılıklar:
 
     EKG                      → "Elektrokardiogram (EKG)"
-    EKO / ECHO               → "Ekokardiyografi"
+    EKO / ECHO               → "Ekokardiyografi" (köprü COMED'deki
+                               Transözofageal ekokardiografi'ye çevirir)
     PA akciğer / akciğer filmi → "Akciğer Grafisi (İki Yön)"
     hemogram / tam kan       → "Hemogram"
     açlık kan şekeri / AKŞ   → "Açlık Kan Şekeri (AKŞ)"
@@ -270,6 +271,11 @@ KURALLAR (ÇOK ÖNEMLİ):
   yazmıyorum" dediği ilaçlar (örn. "antibiyotik vermiyorum" → ilaç YOK).
 
   name: ilacın konuşmada geçen adı (Parol, Augmentin, Majezik gibi).
+  COMED'deki yazımı kullan, ses dökümündeki bozuk yazımı düzelt:
+    "alergodil / allerjodil" → "Allergodil burun spreyi" (çift L; COMED'de
+    tek formu burun spreyi) · "venturin / ventolün" → "Ventolin".
+  Doktor formu söylediyse (burun spreyi, damla, şurup, krem) adla birlikte
+  yaz: "Allergodil burun spreyi", "Ventolin sprey".
   Doktorun söylemediği marka ekini EKLEME: "Parol" dendiyse "Parol" yaz,
   "Parol Cold" veya "Parol Plus" YAZMA. Ek ancak açıkça söylendiyse yazılır.
 

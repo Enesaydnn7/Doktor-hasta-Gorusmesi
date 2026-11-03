@@ -250,18 +250,35 @@ _HIZMET_FIXED = re.compile(r"\b(ekg|eko|echo)\b|elektrokardiyo|elektrokardiog|ek
 _TETKIK_FIXED = re.compile(r"\bgrafi(si|leri)?\b|rontgen")
 
 
-# Kullanici kurali (3 Kasim, 26 Ekim'deki Transozofageal yerine): doktor duz
-# "EKO" derse COMED'deki "3D ekokardiyografi" eklenir. CANLI OLCUM: Hizmet Istem'de "eko" aramasi yalniz
+# Kullanici kurali (3 Kasim, kesin): doktor duz "EKO" derse COMED Hizmet
+# Istem'deki "Transözofageal ekokardiografi" eklenir (3D degil). CANLI OLCUM: Hizmet Istem'de "eko" aramasi yalniz
 # "Transözofageal ekokardiografi" (kod 10782, SUT 700610) donduruyor; duz
 # "Ekokardiyografi" katalogda yok. Stres/3D/fetal gibi nitelikli EKO'lar
 # oldugu gibi kalir.
 _PLAIN_EKO = re.compile(r"^(eko|echo|ekokardiyografi|ekokardiografi)( \((eko|echo)\))?$")
-COMED_EKO_NAME = "3D ekokardiyografi"
+COMED_EKO_NAME = "Transözofageal ekokardiografi"
 
 
 def _comed_service_name(name: str) -> str:
     if _PLAIN_EKO.match(_fold_text(name).strip()):
         return COMED_EKO_NAME
+    return name
+
+
+# Ses dokumu/model ilac adini COMED'den farkli yaziyor. CANLI OLCUM (3 Kasim):
+# "Alergodil" aramasi sonuc vermiyor; COMED'de "ALLERGODIL Burun Spreyi,
+# Çözelti" -- tek formu burun spreyi. Kopru "allergodil burun spreyi" ile
+# puanlayinca bu urunu esigin ustunde seciyor.
+_DRUG_ALIASES = (
+    (re.compile(r"^a?ll?ergodil\b"), "Allergodil burun spreyi"),
+)
+
+
+def _comed_drug_name(name: str) -> str:
+    folded = _fold_text(name).strip()
+    for pattern, comed in _DRUG_ALIASES:
+        if pattern.match(folded):
+            return comed
     return name
 
 
@@ -669,6 +686,7 @@ def normalize_draft(draft: dict[str, Any] | None) -> dict[str, Any]:
             name = item.strip()
         if not name:
             continue
+        name = _comed_drug_name(name)
         key = name.casefold()
         if key in seen_drugs:
             continue

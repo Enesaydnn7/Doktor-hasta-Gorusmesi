@@ -2531,6 +2531,7 @@
      eslesip (100) ya dozu tutuyorsa (+60) ya da agizdan form ise (+20)
      kabul edilir. Daha dusuk her sey doktora birakilir. */
   const DRUG_SCORE_THRESHOLD = 120;
+  const DRUG_LOCAL_FORMS = ["sprey", "damla", "krem", "pomad", "jel", "şurup", "inhaler", "fitil"];
 
   function scoreDrugOption(text, wanted, dose) {
     const lower = text.toLocaleLowerCase("tr-TR");
@@ -2544,7 +2545,9 @@
     let score = 0;
     // Marka adi bas kelime(ler) olarak birebir geciyorsa en guclu sinyal.
     // Kelime siniri sart: "parol" ararken "PAROLOX" tam eslesme sayilmamali.
-    if (lower === wanted || lower.startsWith(`${wanted} `)) score += 100;
+    // "allergodil burun spreyi, çözelti" -> ad virgulle de bitebilir.
+    if (lower === wanted || lower.startsWith(`${wanted} `)
+      || lower.startsWith(`${wanted},`)) score += 100;
     else if (lower.includes(wanted)) score += 20;
     // Ayaktan muayenede agizdan form varsayilandir; enjeksiyonluk sekli
     // doktor acikca soylemeden secme.
@@ -2560,6 +2563,9 @@
       .some((form) => wanted.includes(form.trim()))
       || /şurup|surup|süspansiyon/.test(wanted);
     if (!formWanted && DRUG_ORAL.some((form) => lower.includes(form))) score += 20;
+    // Doktorun soyledigi form (burun spreyi, damla, krem...) urunde varsa
+    // agizdan tablet tercihinin karsiligi: +20. Allergodil boyle esigi geciyor.
+    if (DRUG_LOCAL_FORMS.some((form) => wanted.includes(form) && lower.includes(form))) score += 20;
     return score;
   }
 
@@ -2659,7 +2665,11 @@
         // Parantezli ek bilgi arama sonucunu daraltiyor: "Parol (tablet)" →
         // "Parol". Hizmet isteminde de ayni temizlik yapiliyor.
         const query = name.replace(/\(.*?\)/g, "").trim();
-        setTypingValue(search, query);
+        /* Aramaya yalniz MARKA yazilir, puanlama tam adla yapilir. CANLI
+           OLCUM (3 Kasim): "Allergodil burun spreyi" aramasi COMED'de sonuc
+           vermiyor, "allergod" veriyor. */
+        const searchText = query.split(/\s+/)[0] || query;
+        setTypingValue(search, searchText);
         // Puanlama da aranan metinle ayni olmali: "Parol (tablet)" aranirken
         // "parol" ile puanlanmazsa marka eslesmesi hic tutmaz.
         let option = await pickDrugOption(query, dose);
@@ -2670,7 +2680,7 @@
             const again = drugSearchInput();
             if (again) {
               await clearDrugSearch(again);
-              setTypingValue(again, query);
+              setTypingValue(again, searchText);
               option = await pickDrugOption(query, dose);
             }
           }

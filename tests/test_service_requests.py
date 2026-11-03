@@ -33,7 +33,7 @@ class ServiceRequestNormalizationTests(unittest.TestCase):
 
     def test_accepts_plain_strings(self):
         result = self._normalize(["Ekokardiyografi"])
-        self.assertEqual(result[0]["name"], "3D ekokardiyografi")
+        self.assertEqual(result[0]["name"], "Transözofageal ekokardiografi")
         self.assertIsNone(result[0]["reason"])
 
     def test_drops_empty_and_duplicates(self):
@@ -80,7 +80,7 @@ class ServiceRequestNormalizationTests(unittest.TestCase):
         self.assertEqual(len(istem), 1)
         self.assertEqual(
             [item["name"] for item in istem[0]["records"]],
-            ["Elektrokardiogram (EKG)", "3D ekokardiyografi"],
+            ["Elektrokardiogram (EKG)", "Transözofageal ekokardiografi"],
         )
         # İmza her durumda doktorda kalır.
         self.assertFalse(bundle["auto_sign"])
