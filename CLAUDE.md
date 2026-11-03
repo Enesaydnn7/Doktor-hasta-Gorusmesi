@@ -123,7 +123,7 @@ Doktor: `Kullanici.kayadr;Kullanici.aydin1|tracer` / `1`
 
 | Dal | Commit | Sürüm |
 |---|---|---|
-| `main` | v2.37.0 | **v2.37.0** ← güncel |
+| `main` | v2.37.1 | **v2.37.1** ← güncel |
 | `mvp` | `2d6b671` | **v2.32.0** ← "bizim MVP sürümümüz" |
 | `mvp-v2.10.3` (etiket) | `7660ef4` | eski demo |
 
@@ -186,7 +186,7 @@ EKG ve EKO → **Hizmet İstem**; akciğer grafisi ve bütün laboratuvar/radyol
 **Tetkik İstem**. Bir istem iki ekranda denenmez. Model `screen` alanını yazar,
 `comed_integration._service_screen` EKG/EKO/grafi kuralını sabitler.
 Hizmet İstem alt listesi tetkikleri de gösterir — bu çift istem değildir.
-Düz "EKO" → **Transözofageal ekokardiografi** (COMED'deki tek EKO, kullanıcı kuralı v2.36.1).
+Düz "EKO" → **3D ekokardiyografi** (kullanıcı kuralı v2.37.1; önce Transözofageal idi).
 Hizmet İstem'de her hizmet önce ARANIR sonra tıklanır; aramasız tıklama 2. istemde pencereyi kapatıyor (v2.37.0).
 İstem penceresinde Açıklama yok — `byPlaceholder("Açıklama")` kartın Psikolojik Durum alanını bulur, KULLANMA.
 

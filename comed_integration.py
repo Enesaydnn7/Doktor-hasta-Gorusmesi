@@ -250,13 +250,13 @@ _HIZMET_FIXED = re.compile(r"\b(ekg|eko|echo)\b|elektrokardiyo|elektrokardiog|ek
 _TETKIK_FIXED = re.compile(r"\bgrafi(si|leri)?\b|rontgen")
 
 
-# Kullanici kurali (26 Ekim): doktor duz "EKO" derse COMED'deki tek EKO
-# kalemi eklenir. CANLI OLCUM: Hizmet Istem'de "eko" aramasi yalniz
+# Kullanici kurali (3 Kasim, 26 Ekim'deki Transozofageal yerine): doktor duz
+# "EKO" derse COMED'deki "3D ekokardiyografi" eklenir. CANLI OLCUM: Hizmet Istem'de "eko" aramasi yalniz
 # "Transözofageal ekokardiografi" (kod 10782, SUT 700610) donduruyor; duz
 # "Ekokardiyografi" katalogda yok. Stres/3D/fetal gibi nitelikli EKO'lar
 # oldugu gibi kalir.
 _PLAIN_EKO = re.compile(r"^(eko|echo|ekokardiyografi|ekokardiografi)( \((eko|echo)\))?$")
-COMED_EKO_NAME = "Transözofageal ekokardiografi"
+COMED_EKO_NAME = "3D ekokardiyografi"
 
 
 def _comed_service_name(name: str) -> str:

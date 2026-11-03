@@ -34,7 +34,7 @@ class ServiceScreenNormalizationTests(unittest.TestCase):
             {"name": "Akciğer Grafisi (İki Yön)", "screen": "hizmet"},
         )
         self.assertEqual(got["Elektrokardiogram (EKG)"], "hizmet")
-        self.assertEqual(got["Transözofageal ekokardiografi"], "hizmet")
+        self.assertEqual(got["3D ekokardiyografi"], "hizmet")
         self.assertEqual(got["Akciğer Grafisi (İki Yön)"], "tetkik")
 
     def test_model_label_is_used_otherwise(self):
@@ -53,7 +53,7 @@ class ServiceScreenNormalizationTests(unittest.TestCase):
             with self.subTest(ad=ad):
                 self.assertEqual(
                     screens({"name": ad}),
-                    {"Transözofageal ekokardiografi": "hizmet"},
+                    {"3D ekokardiyografi": "hizmet"},
                 )
 
     def test_qualified_eko_is_left_alone(self):

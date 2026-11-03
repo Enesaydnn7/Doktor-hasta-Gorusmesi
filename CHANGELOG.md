@@ -1,3 +1,9 @@
+## v2.37.1 — 3 Kasım 2026
+
+Doktorun isteği: düz "EKO" → COMED'deki **3D ekokardiyografi** (önceden
+Transözofageal ekokardiografi). Yalnız sunucu değişti
+(`comed_integration.COMED_EKO_NAME`); eklenti aynı.
+
 ## v2.37.0 — 26 Ekim 2026
 
 ### Hizmet İstem: EKG'den sonra EKO hep düşüyordu (canlıda bulundu)
