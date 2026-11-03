@@ -2533,8 +2533,13 @@
   const DRUG_SCORE_THRESHOLD = 120;
   const DRUG_LOCAL_FORMS = ["sprey", "damla", "krem", "pomad", "jel", "şurup", "inhaler", "fitil"];
 
-  function scoreDrugOption(text, wanted, dose) {
-    const lower = text.toLocaleLowerCase("tr-TR");
+  function scoreDrugOption(text, wantedRaw, dose) {
+    /* CANLI OLCUM (3 Kasim): COMED "ALLERGODIL" yaziyor; tr-TR kucultme
+       "allergodıl" (noktasiz ı) veriyor, "allergodil" ile hic eslesmiyordu.
+       Iki taraf da ı -> i ile katlanir. */
+    const fold = (value) => String(value || "").toLocaleLowerCase("tr-TR").replace(/ı/g, "i");
+    const lower = fold(text);
+    const wanted = fold(wantedRaw);
     /* VETO: doktorun soylemedigi marka eki tasiyan urun BASKA bir ilactir.
        "Parol" denince PAROL COLD secilmesi (sempatomimetik iceriyor, yasli
        hipertansifte kontrendike) bu vetoyla engelleniyor. Puanla telafi

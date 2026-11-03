@@ -1,3 +1,15 @@
+## v2.38.1 — 3 Kasım 2026
+
+### Allergodil eklenmiyordu: Türkçe noktasız ı
+
+Doktorun aktarımında "Allergodil burun spreyi: birden çok form var" diye
+atlandı. Sebep: COMED ürünü "ALLERGODIL" yazıyor; `toLocaleLowerCase("tr-TR")`
+bunu "allergodıl" (noktasız ı) yapıyor, "allergodil" ile hiç eşleşmiyordu.
+İlaç puanlamasında iki taraf da ı → i ile katlanıyor.
+
+Canlı test (hasta 22207362, 09:26): ALLERGODIL Burun Spreyi, Günde 2 kez —
+COMED İlaç İstem listesine düştü.
+
 ## v2.38.0 — 3 Kasım 2026
 
 - **EKO → Transözofageal ekokardiografi** (kesin kullanıcı kuralı; v2.37.1'deki

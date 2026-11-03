@@ -128,3 +128,10 @@ class DrugNameTests(unittest.TestCase):
         self.assertIn(r"const searchText = query.split(/\s+/)[0] || query;", content)
         self.assertIn("DRUG_LOCAL_FORMS", content)
         self.assertIn("lower.startsWith(`${wanted},`)", content)
+
+
+class DrugCaseFoldTests(unittest.TestCase):
+    def test_dotless_i_is_folded(self):
+        """CANLI: "ALLERGODIL" -> tr-TR "allergodıl"; "allergodil" ile eşleşmiyordu."""
+        content = (ROOT / "comed_bridge_extension" / "content.js").read_text(encoding="utf-8")
+        self.assertIn('.replace(/ı/g, "i")', content)
