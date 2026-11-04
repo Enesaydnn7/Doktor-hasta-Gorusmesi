@@ -123,7 +123,7 @@ Doktor: `Kullanici.kayadr;Kullanici.aydin1|tracer` / `1`
 
 | Dal | Commit | Sürüm |
 |---|---|---|
-| `main` | v2.38.3 | **v2.38.3** ← güncel |
+| `main` | v2.38.4 | **v2.38.4** ← güncel |
 | `mvp` | `2d6b671` | **v2.32.0** ← "bizim MVP sürümümüz" |
 | `mvp-v2.10.3` (etiket) | `7660ef4` | eski demo |
 

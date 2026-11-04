@@ -2893,7 +2893,6 @@
     }
 
     await fillOrders(fields, record);
-    await showProtocolDiagnoses();
 
     return {filled, fieldResults, systemSaved: systemResult.saved};
   }
@@ -2902,17 +2901,28 @@
      kaliyor; hastanin eski protokollerinin onlarca tanisi gorunuyor ve doktor
      "bir suru ICD kodu yazmis" saniyordu. Sonda "Protokol" sekmesine basilir,
      yalniz bu muayenenin tanilari gorunur. Sekme bulunamazsa dokunulmaz. */
+  /* CANLI OLCUM (4 Kasim): sekme ".switch-toggle" icinde gizli <input> +
+     <label class="switch-toggle-label"> ciftleri. Ilk surum <span>'a basiyordu,
+     tutmadi. LABEL'a click() calisiyor (Tümü 14 satir -> Protokol 3 satir).
+     Secili oldugu input.checked ile dogrulanir, olmazsa bir kez daha basilir. */
   async function showProtocolDiagnoses() {
-    const tab = [...document.querySelectorAll("button,div,span,.toggle-button__item")]
-      .filter((node) => node.offsetParent !== null && textOf(node) === "Protokol")
-      .find((node) => {
-        const group = textOf(node.parentElement);
-        return /Tıbbi Bölüm/.test(group) && /Tümü/.test(group);
-      });
-    if (!tab) return false;
-    pressNode(tab);
-    await waitForDomQuiet(document.body, 260, 2500);
-    return true;
+    const group = [...document.querySelectorAll(".switch-toggle")]
+      .find((node) => /Protokol/.test(node.textContent)
+        && /Tıbbi Bölüm/.test(node.textContent) && /Tümü/.test(node.textContent));
+    if (!group) return false;
+    const label = [...group.querySelectorAll("label")]
+      .find((item) => item.textContent.trim() === "Protokol");
+    if (!label) return false;
+    const selected = () => {
+      const input = label.previousElementSibling;
+      return Boolean(input && input.tagName === "INPUT" && input.checked);
+    };
+    for (let deneme = 0; deneme < 2 && !selected(); deneme += 1) {
+      label.click();
+      await waitFor(selected, 2500);
+      await waitForDomQuiet(document.body, 260, 2500);
+    }
+    return selected();
   }
 
   /** Istemleri sabit sirayla gir: Hizmet -> Ilac -> Tetkik.
@@ -3054,6 +3064,8 @@
       }
       bridgeStatus("Son alanlar doğrulanıyor");
       await waitForDomQuiet(document.body, 400, 3500);
+      // En son adim: Tanilar listesini bu protokole al, sonra "Aktarım bitti".
+      await showProtocolDiagnoses();
       const unresolved = formResult.fieldResults.filter(
         (item) => !["filled", "saved", "reused"].includes(item.status),
       );

@@ -142,5 +142,10 @@ class ProtocolDiagnosesTests(unittest.TestCase):
         """İstek: bitince Tanılar "Protokol"de olsun, "Tümü"de eski tanılar karışıyor."""
         content = (ROOT / "comed_bridge_extension" / "content.js").read_text(encoding="utf-8")
         self.assertIn("async function showProtocolDiagnoses(", content)
-        self.assertLess(content.index("await fillOrders(fields, record);"),
+        self.assertLess(content.index('bridgeStatus("Son alanlar doğrulanıyor")'),
                         content.index("await showProtocolDiagnoses();"))
+        self.assertLess(content.index("await showProtocolDiagnoses();"),
+                        content.index('await updateStatus(transfer.id, "ready_for_review"'))
+        # CANLI: span'a basmak tutmadi, label + input.checked
+        self.assertIn('item.textContent.trim() === "Protokol"', content)
+        self.assertIn("input.checked", content)

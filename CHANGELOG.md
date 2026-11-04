@@ -1,3 +1,11 @@
+## v2.38.4 — 4 Kasım 2026
+
+v2.38.3'teki "Protokol" sekmesi tıklaması tutmuyordu: sekme `.switch-toggle`
+içinde gizli `<input>` + `<label class="switch-toggle-label">` çifti; ilk sürüm
+`<span>`'a basıyordu. Artık LABEL'a basılıyor ve `input.checked` ile
+doğrulanıyor. Adım aktarımın EN SONUNA ("Son alanlar doğrulanıyor"dan sonra,
+"Aktarım bitti"den önce) taşındı. Canlı: Tümü 14 satır → Protokol 3 satır.
+
 ## v2.38.3 — 4 Kasım 2026
 
 Aktarım bitince Tanılar (ICD-10) listesinde **Protokol** sekmesine basılıyor
