@@ -2893,8 +2893,26 @@
     }
 
     await fillOrders(fields, record);
+    await showProtocolDiagnoses();
 
     return {filled, fieldResults, systemSaved: systemResult.saved};
+  }
+
+  /* Istek (4 Kasim): aktarim bitince Tanilar (ICD-10) listesi "Tümü"de
+     kaliyor; hastanin eski protokollerinin onlarca tanisi gorunuyor ve doktor
+     "bir suru ICD kodu yazmis" saniyordu. Sonda "Protokol" sekmesine basilir,
+     yalniz bu muayenenin tanilari gorunur. Sekme bulunamazsa dokunulmaz. */
+  async function showProtocolDiagnoses() {
+    const tab = [...document.querySelectorAll("button,div,span,.toggle-button__item")]
+      .filter((node) => node.offsetParent !== null && textOf(node) === "Protokol")
+      .find((node) => {
+        const group = textOf(node.parentElement);
+        return /Tıbbi Bölüm/.test(group) && /Tümü/.test(group);
+      });
+    if (!tab) return false;
+    pressNode(tab);
+    await waitForDomQuiet(document.body, 260, 2500);
+    return true;
   }
 
   /** Istemleri sabit sirayla gir: Hizmet -> Ilac -> Tetkik.

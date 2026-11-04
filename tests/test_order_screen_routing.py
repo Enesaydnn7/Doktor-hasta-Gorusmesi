@@ -135,3 +135,12 @@ class DrugCaseFoldTests(unittest.TestCase):
         """CANLI: "ALLERGODIL" -> tr-TR "allergodıl"; "allergodil" ile eşleşmiyordu."""
         content = (ROOT / "comed_bridge_extension" / "content.js").read_text(encoding="utf-8")
         self.assertIn('.replace(/ı/g, "i")', content)
+
+
+class ProtocolDiagnosesTests(unittest.TestCase):
+    def test_ends_on_protocol_diagnoses_tab(self):
+        """İstek: bitince Tanılar "Protokol"de olsun, "Tümü"de eski tanılar karışıyor."""
+        content = (ROOT / "comed_bridge_extension" / "content.js").read_text(encoding="utf-8")
+        self.assertIn("async function showProtocolDiagnoses(", content)
+        self.assertLess(content.index("await fillOrders(fields, record);"),
+                        content.index("await showProtocolDiagnoses();"))

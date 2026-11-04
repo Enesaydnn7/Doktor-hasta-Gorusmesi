@@ -1,3 +1,10 @@
+## v2.38.3 — 4 Kasım 2026
+
+Aktarım bitince Tanılar (ICD-10) listesinde **Protokol** sekmesine basılıyor
+(`showProtocolDiagnoses`). "Tümü"de hastanın eski protokollerinin onlarca
+tanısı görünüyor, doktor "çok fazla ICD kodu yazılmış" sanıyordu. Sekme
+bulunamazsa dokunulmaz. Canlı test bu sürümde yapılamadı.
+
 ## v2.38.2 — 4 Kasım 2026
 
 Eklenti açılır penceresinin başlığına sürüm rozeti eklendi
