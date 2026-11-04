@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="popup.css">
+  <title>Klinot</title>
+</head>
+<body>
+  <header><img class="logo" src="icons/icon48.png" alt=""><div><b>Klinot</b><small>Klinik görüşme asistanı</small></div><em id="ext-version" class="version"></em></header>
+  <main>
+    <!-- Bagli durum: hesap bir kez baglandiktan sonra giris alanlari gizlenir. -->
+    <section id="connected-view" class="hidden">
+      <div class="connected-card">
+        <span class="connected-dot"></span>
+        <div>
+          <b id="connected-name">Doktor</b>
+          <small id="connected-user"></small>
+        </div>
+      </div>
+      <p id="status" class="ok">Bağlı. HBYS iş listesi eşitleniyor.</p>
+      <button id="clear-draft" class="danger" type="button">Bu karttaki Klinot taslağını temizle</button>
+      <div class="note clear-note">Yalnızca son Klinot aktarımının kaydedilmemiş form değişikliklerini geri alır; doktorun daha önce kaydettiği verileri silmez.</div>
+      <!-- Doldurma temposu: doktor adimlari izlerken yavaslatabilir. -->
+      <div class="speed-row">
+        <div class="speed-head">
+          <b>Form doldurma hızı</b>
+          <span id="speed-value" class="speed-value">1×</span>
+        </div>
+        <input id="speed-slider" class="speed-slider" type="range"
+               min="0" max="4" step="1" value="2"
+               aria-label="Form doldurma hızı"
+               aria-valuetext="1× · Normal (varsayılan)">
+        <div class="speed-scale" aria-hidden="true">
+          <span>Yavaş</span><span>Normal</span><span>Hızlı</span>
+        </div>
+        <small id="speed-note">Normal (varsayılan)</small>
+      </div>
+      <div class="note">Değişiklik anında geçerli olur; aktarım sürerken bile kaydırabilirsiniz.</div>
+      <label class="trace-toggle">
+        <input id="trace-enabled" type="checkbox" checked>
+        <span><b>Test isteği izleme</b><small>GET/POST gövdesini yakalar; parola, çerez ve oturum başlıklarını kaydetmez.</small></span>
+      </label>
+      <button id="switch-account" class="link-button" type="button">Başka hesapla bağlan</button>
+    </section>
+
+    <!-- Giris durumu: yalnizca hic baglanilmamissa ya da oturum dustuyse gorunur. -->
+    <section id="login-view" class="hidden">
+      <div class="note"><b>1. HBYS:</b> Hastane bilgi sistemine normal kullanıcı bilgilerinizle ayrı sekmede giriş yapın. HBYS parolanızı bu eklentiye yazmayın.</div>
+      <div class="note"><b>2. Klinot:</b> Aşağıya mobil uygulamada kullandığınız Klinot hesabını yazıp köprüyü bağlayın.</div>
+      <label>API adresi<input id="api" value="https://doktor-hasta-gorusmesi.onrender.com"></label>
+      <label>Klinot kullanıcı adı<input id="user" autocomplete="username"></label>
+      <label>Klinot şifresi<input id="password" type="password" autocomplete="current-password"></label>
+      <button id="connect">Köprüyü bağla</button>
+      <p id="login-status">Bağlantı bekleniyor.</p>
+      <button id="cancel-switch" class="link-button hidden" type="button">Vazgeç</button>
+    </section>
+
+    <div class="note">Bağlandıktan sonra HBYS iş listesi sayfasını bir kez yenileyin. Klinot açık oturumdaki doktorun satırlarını eşitler; HBYS oturum anahtarı ve parolası okunmaz.</div>
+  </main>
+  <script src="popup.js"></script>
+</body>
+</html>

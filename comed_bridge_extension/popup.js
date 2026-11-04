@@ -149,7 +149,7 @@ button.addEventListener("click", async () => {
     password.value = "";
     connected = saved;
     paint();
-    show(`${saved.displayName} bağlandı. HBYS sekmesini yenileyebilirsiniz.`, true);
+    show(`${saved.displayName} bağlandı. COMED sekmesini yenileyebilirsiniz.`, true);
   } catch (error) {
     connected = null;
     paint();
@@ -165,7 +165,7 @@ clearDraft.addEventListener("click", async () => {
   try {
     const [tab] = await chrome.tabs.query({active: true, currentWindow: true});
     if (!tab?.id || !COMED_CARD_RE.test(tab.url || "")) {
-      throw new Error("Önce temizlenecek HBYS hasta kartını açın");
+      throw new Error("Önce temizlenecek COMED hasta kartını açın");
     }
     const response = await chrome.tabs.sendMessage(tab.id, {type: "klinot-clear-last-transfer"});
     if (!response?.ok) throw new Error(response?.error || "Taslak temizlenemedi");

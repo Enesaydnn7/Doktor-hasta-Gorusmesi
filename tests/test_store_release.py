@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 import main
 
 ROOT = Path(__file__).resolve().parents[1]
-EXT = ROOT / "comed_bridge_extension"
+EXT = ROOT / "store_assets" / "chrome_magaza_paketi"  # magaza paketi; gunluk eklenti onaya kadar eski haliyle
 
 
 class StoreManifestTests(unittest.TestCase):
