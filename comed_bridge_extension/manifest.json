@@ -1,36 +1,53 @@
 {
   "manifest_version": 3,
-  "name": "Klinot COMED Köprüsü",
-  "version": "2.38.4",
-  "description": "Klinot taslaklarını doğrulanmış POST veya güvenli form doldurma ile COMED test kartına aktarır.",
-  "permissions": ["storage", "tabs"],
+  "name": "Klinot",
+  "version": "2.39.0",
+  "description": "Klinot klinik görüşme taslaklarını hekimin açık hastane bilgi sistemi oturumuna aktarır; kayıt ve imza hekimdedir.",
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "permissions": [
+    "storage",
+    "tabs"
+  ],
   "host_permissions": [
     "https://goztepetest.comed.mlpcare.com/*",
     "https://goztepetestapi.comed.mlpcare.com/*",
-    "https://doktor-hasta-gorusmesi.onrender.com/*",
-    "http://127.0.0.1:8000/*",
-    "http://localhost:8000/*"
+    "https://doktor-hasta-gorusmesi.onrender.com/*"
   ],
-  "background": {"service_worker": "background.js"},
+  "background": {
+    "service_worker": "background.js"
+  },
   "action": {
-    "default_title": "Klinot COMED Köprüsü",
-    "default_popup": "popup.html"
+    "default_title": "Klinot",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
   },
   "content_scripts": [
     {
       "matches": [
-        "https://doktor-hasta-gorusmesi.onrender.com/*",
-        "http://127.0.0.1:8000/*",
-        "http://localhost:8000/*"
+        "https://doktor-hasta-gorusmesi.onrender.com/*"
       ],
-      "js": ["doctor_bridge.js"],
+      "js": [
+        "doctor_bridge.js"
+      ],
       "run_at": "document_start"
     },
     {
       "matches": [
         "https://goztepetest.comed.mlpcare.com/tr-tr/medical/*"
       ],
-      "js": ["page_trace.js"],
+      "js": [
+        "page_trace.js"
+      ],
       "run_at": "document_start",
       "world": "MAIN"
     },
@@ -38,7 +55,9 @@
       "matches": [
         "https://goztepetest.comed.mlpcare.com/tr-tr/medical/*"
       ],
-      "js": ["content.js"],
+      "js": [
+        "content.js"
+      ],
       "run_at": "document_idle"
     }
   ]

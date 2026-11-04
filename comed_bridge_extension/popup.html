@@ -4,10 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <link rel="stylesheet" href="popup.css">
-  <title>Klinot COMED Köprüsü</title>
+  <title>Klinot</title>
 </head>
 <body>
-  <header><span>↗</span><div><b>Klinot</b><small>COMED Köprüsü</small></div><em id="ext-version" class="version"></em></header>
+  <header><img class="logo" src="icons/icon48.png" alt=""><div><b>Klinot</b><small>Klinik görüşme asistanı</small></div><em id="ext-version" class="version"></em></header>
   <main>
     <!-- Bagli durum: hesap bir kez baglandiktan sonra giris alanlari gizlenir. -->
     <section id="connected-view" class="hidden">
@@ -18,7 +18,7 @@
           <small id="connected-user"></small>
         </div>
       </div>
-      <p id="status" class="ok">Köprü bağlı. COMED iş listesi eşitleniyor.</p>
+      <p id="status" class="ok">Bağlı. HBYS iş listesi eşitleniyor.</p>
       <button id="clear-draft" class="danger" type="button">Bu karttaki Klinot taslağını temizle</button>
       <div class="note clear-note">Yalnızca son Klinot aktarımının kaydedilmemiş form değişikliklerini geri alır; doktorun daha önce kaydettiği verileri silmez.</div>
       <!-- Doldurma temposu: doktor adimlari izlerken yavaslatabilir. -->
@@ -39,14 +39,14 @@
       <div class="note">Değişiklik anında geçerli olur; aktarım sürerken bile kaydırabilirsiniz.</div>
       <label class="trace-toggle">
         <input id="trace-enabled" type="checkbox" checked>
-        <span><b>COMED test isteği izleme</b><small>GET/POST gövdesini yakalar; parola, çerez ve oturum başlıklarını kaydetmez.</small></span>
+        <span><b>Test isteği izleme</b><small>GET/POST gövdesini yakalar; parola, çerez ve oturum başlıklarını kaydetmez.</small></span>
       </label>
       <button id="switch-account" class="link-button" type="button">Başka hesapla bağlan</button>
     </section>
 
     <!-- Giris durumu: yalnizca hic baglanilmamissa ya da oturum dustuyse gorunur. -->
     <section id="login-view" class="hidden">
-      <div class="note"><b>1. COMED:</b> Göztepe COMED'e normal kullanıcı bilgilerinizle ayrı sekmede giriş yapın. COMED parolanızı bu eklentiye yazmayın.</div>
+      <div class="note"><b>1. HBYS:</b> Hastane bilgi sistemine normal kullanıcı bilgilerinizle ayrı sekmede giriş yapın. HBYS parolanızı bu eklentiye yazmayın.</div>
       <div class="note"><b>2. Klinot:</b> Aşağıya mobil uygulamada kullandığınız Klinot hesabını yazıp köprüyü bağlayın.</div>
       <label>API adresi<input id="api" value="https://doktor-hasta-gorusmesi.onrender.com"></label>
       <label>Klinot kullanıcı adı<input id="user" autocomplete="username"></label>
@@ -56,7 +56,7 @@
       <button id="cancel-switch" class="link-button hidden" type="button">Vazgeç</button>
     </section>
 
-    <div class="note">Bağlandıktan sonra COMED iş listesi sayfasını bir kez yenileyin. Köprü açık oturumdaki doktorun satırlarını Klinot'a yollar; COMED oturum anahtarı ve parolası okunmaz.</div>
+    <div class="note">Bağlandıktan sonra HBYS iş listesi sayfasını bir kez yenileyin. Klinot açık oturumdaki doktorun satırlarını eşitler; HBYS oturum anahtarı ve parolası okunmaz.</div>
   </main>
   <script src="popup.js"></script>
 </body>

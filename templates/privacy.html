@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Klinot · Gizlilik Politikası</title>
+  <style>
+    :root{--teal:#027f7e;--ink:#102b3c;--mut:#526b73;--bg:#f4f7f8}
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.65 system-ui,-apple-system,"Segoe UI",sans-serif}
+    header{background:linear-gradient(135deg,#064a50,#046064);color:#fff;padding:36px 16px}
+    header div,main{max-width:760px;margin:0 auto}
+    header h1{margin:0;font-size:30px}
+    header p{margin:6px 0 0;color:#c8e8e5}
+    main{padding:28px 16px 48px}
+    section{background:#fff;border:1px solid #d5e0e3;border-radius:14px;padding:18px 22px;margin:0 0 16px}
+    h2{margin:0 0 8px;font-size:19px;color:var(--teal)}
+    p,li{color:var(--mut)}
+    ul{padding-left:20px;margin:0}
+    small{color:var(--mut)}
+  </style>
+</head>
+<body>
+  <header><div><h1>Klinot</h1><p>Gizlilik Politikası · Son güncelleme: 4 Kasım 2026</p></div></header>
+  <main>
+    <section>
+      <h2>Klinot nedir?</h2>
+      <p>Klinot, hekim ile hasta arasındaki muayene görüşmesinden klinik bir taslak hazırlayan
+      ve bu taslağı hekimin kendi açık oturumundaki hastane bilgi yönetim sistemi (HBYS)
+      ekranına aktaran bir yardımcıdır. Yalnızca yetkilendirilmiş sağlık kurumu
+      kullanıcıları içindir.</p>
+    </section>
+    <section>
+      <h2>Hangi verileri işler?</h2>
+      <ul>
+        <li>Hekimin başlattığı görüşmenin ses kaydı ve yazıya dökümü.</li>
+        <li>Bu dökümden hazırlanan klinik taslak (şikâyet, öykü, muayene, tanı, istem, ilaç).</li>
+        <li>Taslağın aktarılacağı hastayı doğru eşleştirmek için HBYS ekranındaki hasta adı,
+        hasta numarası ve protokol numarası.</li>
+        <li>Eklentinin Klinot sunucusuna bağlanması için kullanılan Klinot hesap bilgisi.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Neleri işlemez?</h2>
+      <ul>
+        <li>HBYS kullanıcı adı, parolası, çerezleri veya oturum anahtarları okunmaz ve saklanmaz.</li>
+        <li>Tarama geçmişi, başka siteler veya kişisel dosyalar okunmaz.</li>
+        <li>Veriler reklam, profilleme veya satış amacıyla kullanılmaz; üçüncü kişilere satılmaz.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Veriler nereye gider?</h2>
+      <p>Ses kaydı ve döküm, yazıya çevirme ve taslak hazırlama için Klinot sunucusuna ve
+      yalnızca bu işi yapan hizmet sağlayıcılara (konuşma tanıma ve dil modeli servisleri)
+      güvenli bağlantı (HTTPS) üzerinden gönderilir. Taslak, hekimin açık HBYS ekranına
+      tarayıcı içinde aktarılır.</p>
+    </section>
+    <section>
+      <h2>Hekim kontrolü</h2>
+      <p>Klinot hiçbir kaydı kendisi kaydetmez veya imzalamaz. Aktarılan taslak hekim tarafından
+      kontrol edilir; kaydetme ve imza her zaman hekimin kararıdır.</p>
+    </section>
+    <section>
+      <h2>Saklama ve haklarınız</h2>
+      <p>Kayıtlar, hizmetin sunulduğu süre boyunca ve ilgili mevzuatın (6698 sayılı KVKK dahil)
+      öngördüğü ölçüde saklanır. Kişisel verilerinizle ilgili erişim, düzeltme ve silme
+      talepleriniz için kurumunuzun veri sorumlusuna başvurabilirsiniz.</p>
+    </section>
+    <small>Klinot · v{{ version }}</small>
+  </main>
+</body>
+</html>

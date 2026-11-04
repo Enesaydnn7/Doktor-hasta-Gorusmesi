@@ -995,6 +995,14 @@ async def mobile_record_delete(kid: int, _user: dict = Depends(mobile_admin)):
 
 
 # ============================== DOCTOR ==============================
+# Chrome Web Store eklenti sayfasi herkese acik bir gizlilik politikasi linki istiyor.
+@app.get("/gizlilik", response_class=HTMLResponse)
+async def privacy_page(request: Request):
+    return templates.TemplateResponse(
+        request, "privacy.html", {"version": config.APP_VERSION.lstrip("v")}
+    )
+
+
 @app.get("/doctor/login", response_class=HTMLResponse)
 async def doctor_login_page(request: Request):
     session = web_session(request)

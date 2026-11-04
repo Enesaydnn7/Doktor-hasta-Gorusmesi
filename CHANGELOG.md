@@ -1,3 +1,16 @@
+## v2.39.0 — 4 Kasım 2026
+
+### Chrome Web Store'a hazırlık (liste dışı yayın)
+
+- Eklentinin adı **Klinot**; açıklama ve açılır pencerede kurum/sistem adı
+  geçmiyor (HBYS deniyor).
+- Klinot logosundan simgeler (`icons/16-128`), açılır pencere başlığında logo.
+- Paketten yerel geliştirme adresleri (localhost, 127.0.0.1) çıkarıldı.
+- Sunucuda herkese açık **/gizlilik** sayfası (mağazanın istediği gizlilik
+  politikası linki).
+- `store_assets/`: mağaza simgesi, ekran görüntüsü (1280×800), küçük tanıtım
+  görseli (440×280), mağaza ve izin metinleri (`MAGAZA_METINLERI.md`).
+
 ## v2.38.4 — 4 Kasım 2026
 
 v2.38.3'teki "Protokol" sekmesi tıklaması tutmuyordu: sekme `.switch-toggle`
