@@ -1,3 +1,5 @@
+// Surum rozeti: hangi eklentinin yuklu oldugu popup'tan gorulsun.
+document.getElementById("ext-version").textContent = `v${chrome.runtime.getManifest().version}`;
 const api = document.getElementById("api");
 const user = document.getElementById("user");
 const password = document.getElementById("password");

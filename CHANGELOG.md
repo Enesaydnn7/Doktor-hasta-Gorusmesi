@@ -1,3 +1,9 @@
+## v2.38.2 — 4 Kasım 2026
+
+Eklenti açılır penceresinin başlığına sürüm rozeti eklendi
+(`chrome.runtime.getManifest().version`), hangi eklentinin yüklü olduğu
+görülsün.
+
 ## v2.38.1 — 3 Kasım 2026
 
 ### Allergodil eklenmiyordu: Türkçe noktasız ı
