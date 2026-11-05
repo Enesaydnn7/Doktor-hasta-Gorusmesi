@@ -282,6 +282,23 @@ def _comed_drug_name(name: str) -> str:
     return name
 
 
+# CANLI OLCUM (5 Kasim): Ozgecmis "Ameliyat" katalogu tibbi terimle arar.
+# "Apandisit" / "Apandisit Ameliyati" sonuc vermiyor, "Apendektomi" veriyor.
+_OPERATION_ALIASES = (
+    (re.compile(r"^apand?is?it|^apendisit"), "Apendektomi"),
+    (re.compile(r"^(safra kesesi|kolesist)"), "Kolesistektomi"),
+    (re.compile(r"^(bademcik|tonsil)"), "Tonsillektomi"),
+)
+
+
+def _comed_operation_name(name: str) -> str:
+    folded = _fold_text(name).strip()
+    for pattern, comed in _OPERATION_ALIASES:
+        if pattern.match(folded):
+            return comed
+    return name
+
+
 def _service_screen(name: str, screen: Any) -> str:
     """İstemin COMED ekranı: "hizmet", "tetkik" ya da "" (belirsiz).
 
@@ -518,6 +535,8 @@ def normalize_draft(draft: dict[str, Any] | None) -> dict[str, Any]:
 
     for field in PROFILE_LIST_FIELDS:
         data["profile"][field] = _named_items(data["profile"].get(field))
+    for item in data["profile"]["operations"]:
+        item["name"] = _comed_operation_name(item["name"])
     data["profile"]["family_history"] = _family_items(
         data["profile"].get("family_history")
     )

@@ -1109,7 +1109,28 @@
     return true;
   }
 
-  async function fillProfileLookup(history, placeholder, items = []) {
+  /* CANLI OLCUM (5 Kasim): Agri niteligi ve psikolojik durum aç/kapa
+     dugmesi. Tekrar aktarimda secili "Bastırıcı"ya yeniden basilinca secim
+     kalkiyordu. Zaten seciliyse dokunulmaz. */
+  function clickToggleOn(text, root = document) {
+    const item = [...root.querySelectorAll(".toggle-button__item")]
+      .find((element) => textOf(element) === text && element.offsetParent !== null);
+    if (item?.classList.contains("active")) return true;
+    return item ? activateNode(item) : clickText(text, root);
+  }
+
+  /* CANLI OLCUM (5 Kasim): Ozgecmis katalogunda karsiligi olmayan kayit
+     (test ortaminda isitme cihazi, fizik tedavi, tuzsuz diyet; ilaclar yalniz
+     marka adiyla) sessizce kayboluyordu. Bulunamayanlar Öykü'nün sonuna
+     yazilir ki doktor gorsun. */
+  const PROFILE_MISSING_LABELS = {
+    "İlaç": "Kullandığı ilaç", "Ameliyat": "Ameliyat", "Özel Durumlar": "Özel durum",
+    "Aşı": "Aşı", "Cihaz (Vücuda Takılan)": "Cihaz", "Engellilik Durumu": "Engellilik",
+    "Kan Transfüzyon": "Kan nakli", "Terapi": "Terapi", "Kronik Hastalık": "Kronik hastalık",
+    "Alerji": "Alerji",
+  };
+
+  async function fillProfileLookup(history, placeholder, items = [], missing = []) {
     let added = 0;
     for (const item of items) {
       const {name, description} = itemParts(item);
@@ -1122,7 +1143,13 @@
         continue;
       }
       const input = byPlaceholder(placeholder, history);
-      if (!input || !await chooseAutocomplete(input, name)) continue;
+      // Ilk kelimeyle yeniden arama YOK: CANLI "Kan Nakli" -> "Kan" -> "Tam Kan"
+      // seciyordu; hasta urun soylemedi, uydurma kayit olur.
+      if (!input || !await chooseAutocomplete(input, name)) {
+        if (input) setTypingValue(input, "");
+        missing.push(`${PROFILE_MISSING_LABELS[placeholder] || placeholder}: ${[name, description].filter(Boolean).join(" ")}`);
+        continue;
+      }
       const row = smallestFieldRow(input, history);
       setValue(byPlaceholder("Açıklama", row), description);
       const commit = [...row.querySelectorAll("button")]
@@ -1163,7 +1190,9 @@
     if (typeof value !== "object") return markCardOption("Düşme Riski", ["Yok"]);
     const normalized = {...value};
     if (!["65_plus", "under_65"].includes(normalized.age_group)) {
-      const age = Number(textOf(document.body).match(/\b(\d{1,3})\s*y[ıi]l\b/i)?.[1]);
+      // CANLI: baslikta "E29yıl22.10.1997" bitisik; \b ile yas hic okunmuyor,
+      // dusme riski hep "Yok"a dusuyordu.
+      const age = Number(textOf(document.body).match(/(?:^|\D)(\d{1,3})\s*y[ıi]l/i)?.[1]);
       if (age > 0) normalized.age_group = age >= 65 ? "65_plus" : "under_65";
     }
     const detailKeys = ["history", "medications", "addiction", "gait_balance_disorder",
@@ -1235,8 +1264,8 @@
     const scoreFilled = await fillPainScore(card, pain.score);
     setValue(byPlaceholder("Bölge", card), pain.location);
     setValue(byPlaceholder("Açıklama", card), pain.description);
-    (pain.qualities || []).forEach((quality) => clickText(quality, card));
-    if (pain.rhythm) clickText(pain.rhythm, card);
+    (pain.qualities || []).forEach((quality) => clickToggleOn(quality, card));
+    if (pain.rhythm) clickToggleOn(pain.rhythm, card);
     // COMED'in Ağrı Başlangıcı bileşeni yalnızca gün cinsini kabul ediyor.
     // Saat bilgisini "2 gün" diye yanlış yazmak yerine ana yakınma süresinde koru.
     if (pain.start_date?.unit === "day") {
@@ -1303,7 +1332,7 @@
     if (!states.length && !value.description) return false;
     const card = cardByTitle("Psikolojik Durum");
     if (!card) return false;
-    states.forEach((state) => clickText(state, card));
+    states.forEach((state) => clickToggleOn(state, card));
     setValue(byPlaceholder("Açıklama", card), value.description);
     return true;
   }
@@ -1345,16 +1374,31 @@
       ["Engellilik Durumu", profile.disabilities],
       ["Kan Transfüzyon", profile.transfusions], ["Terapi", profile.therapies],
     ];
+    const missing = [];
     for (const [placeholder, items] of lookupMap) {
-      filled += await fillProfileLookup(history, placeholder, items || []);
+      filled += await fillProfileLookup(history, placeholder, items || [], missing);
     }
-    if (profile.marital_status && clickText(profile.marital_status, history)) filled += 1;
-    if (profile.occupation && await chooseAutocomplete(byPlaceholder("Meslek", history), profile.occupation)) filled += 1;
+    if (profile.marital_status && clickToggleOn(profile.marital_status, history)) filled += 1;
+    if (profile.occupation) {
+      if (await chooseAutocomplete(byPlaceholder("Meslek", history), profile.occupation)) filled += 1;
+      else missing.push(`Meslek: ${profile.occupation}`);
+    }
     if (profile.education) {
       const education = byPlaceholder("Eğitim", history);
       education?.click();
       await sleep(80);
-      if (clickText(profile.education)) filled += 1;
+      // CANLI: secenekler .co-select__item DIV'i; clickText bunlari kapsamiyor.
+      const option = await waitFor(() => [...document.querySelectorAll(".co-select__dropdown .co-select__item")]
+        .find((item) => item.offsetParent !== null && textOf(item) === profile.education), 2500);
+      if (option && activateNode(option)) filled += 1;
+      else missing.push(`Eğitim: ${profile.education}`);
+    }
+    if (missing.length) {
+      const story = byPlaceholder("Öykü", cardByTitle("Yakınması") || document);
+      const extra = `Özgeçmiş (HBYS listesinde yok): ${missing.join("; ")}.`;
+      if (story && !String(story.value || "").includes("Özgeçmiş (HBYS listesinde yok)")) {
+        setValue(story, [story.value, extra].filter(Boolean).join("\n"));
+      }
     }
     bridgeStatus("Özgeçmiş son kontrolleri yapılıyor");
     await waitForDomQuiet(history, 240, 1800);
@@ -2857,7 +2901,15 @@
       });
 
     const planCard = cardByTitle("İzlem ve Plan") || document;
-    const treatmentText = [fields.treatment_note_v2,
+    // Istek (5 Kasim): tedavi notu verilen ilaclari da soylemeli.
+    const note = String(fields.treatment_note_v2 || "");
+    const drugLines = (fields.requested_drugs || [])
+      .filter((drug) => drug?.name && !note.toLocaleLowerCase("tr-TR")
+        .includes(String(drug.name).split(/\s+/)[0].toLocaleLowerCase("tr-TR")))
+      .map((drug) => [drug.name, drug.dose,
+        drug.frequency_per_day ? `günde ${drug.frequency_per_day} kez` : null].filter(Boolean).join(" "));
+    const treatmentText = [note || null,
+      drugLines.length ? `Verilen ilaçlar: ${drugLines.join("; ")}.` : null,
       fields.control_note ? `Kontrol notu: ${fields.control_note}` : null]
       .filter(Boolean).join("\n");
     write("treatment_note_v2", byPlaceholder("Tedavi Notu", planCard), treatmentText);

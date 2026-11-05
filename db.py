@@ -31,6 +31,12 @@ LEG_PAIN_DEMO_AUDIO_PATH = DEMO_DIR / "bacak_agrisi_demo_kayit_2_2026-09-09.m4a"
 CHEST_PAIN_DEMO_RECORD_KEY = "manager-chest-pain-demo-2026-09-24"
 CHEST_PAIN_DEMO_JSON_PATH = DEMO_DIR / "gogus_agrisi_demo_kayit_3_2026-09-24.json"
 CHEST_PAIN_DEMO_AUDIO_PATH = DEMO_DIR / "gogus_agrisi_demo_kayit_3_2026-09-24.m4a"
+# Istek (5 Kasim): uzun COMED test gorusmesi (EKG/EKO/Parol/Allergodil, tum
+# ozgecmis alanlari) doktor panelinde kalici dursun; her deploy'da yeniden ses
+# kaydi almadan "Tekrar aktar" ile test edilsin.
+COMED_FULL_DEMO_RECORD_KEY = "doctor-comed-full-test-2026-11-05"
+COMED_FULL_DEMO_JSON_PATH = DEMO_DIR / "comed_tam_test_kayit_4_2026-11-05.json"
+COMED_FULL_DEMO_AUDIO_PATH = DEMO_DIR / "comed_tam_test_kayit_4_2026-11-05.m4a"
 _lock = threading.Lock()
 
 
@@ -310,8 +316,8 @@ def _ensure_demo_record(c):
             """INSERT INTO kayitlar
                (olusturma, transkript, hasta, doktor, yonetim, comed, usage,
                 ses, ses_mime, ses_ad, ozet, demo_key,
-                source, client_version, metadata)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                source, client_version, metadata, owner_user, assigned_doctor_user)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (
                 record["olusturma"], record["transkript"],
                 encode(record.get("hasta")), encode(record.get("doktor")),
@@ -322,6 +328,7 @@ def _ensure_demo_record(c):
                 record.get("ozet") or spec["summary"], demo_key,
                 record.get("source") or "demo",
                 record.get("client_version"), encode(record.get("metadata")),
+                record.get("owner_user"), record.get("assigned_doctor_user"),
             ),
         )
         transfer = record.get("comed_transfer")
@@ -368,6 +375,13 @@ def _demo_record_specs():
             "audio_path": CHEST_PAIN_DEMO_AUDIO_PATH,
             "audio_mime": "audio/mp4",
             "summary": "Yönetici demosu · Göğüs ağrısı COMED aktarımı",
+        },
+        {
+            "key": COMED_FULL_DEMO_RECORD_KEY,
+            "json_path": COMED_FULL_DEMO_JSON_PATH,
+            "audio_path": COMED_FULL_DEMO_AUDIO_PATH,
+            "audio_mime": "audio/mp4",
+            "summary": "COMED tam test · Göğüs ağrısı + rinit",
         },
     )
 

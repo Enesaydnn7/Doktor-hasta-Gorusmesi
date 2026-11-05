@@ -76,13 +76,14 @@ class DemoRecordSeedTests(unittest.TestCase):
                 )
                 seeded = db.getir(chest_record["id"])
 
-            self.assertEqual(len(records), 3)
+            self.assertEqual(len(records), 4)
             self.assertEqual(
                 {record["ozet"] for record in records},
                 {
                     "Yönetici demosu · Gastrit (mide iltihabı)",
                     "Yönetici demosu · Bacak ağrısı",
                     "Yönetici demosu · Göğüs ağrısı COMED aktarımı",
+                    "COMED tam test · Göğüs ağrısı + rinit",
                 },
             )
             self.assertTrue(all(record["ses_var"] for record in records))

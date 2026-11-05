@@ -1,3 +1,20 @@
+## v2.38.5 — 5 Kasım 2026
+
+### COMED aktarımında eksik kalan alanlar
+
+- Düşme riski: başlıktaki bitişik yaş ("29yıl22.10.1997") okunuyor; artık
+  yanlışlıkla "Yok" seçilmiyor.
+- Ağrı niteliği, ritim, psikolojik durum ve medeni hal: tekrar aktarımda
+  seçim kalkmıyor (aç/kapa düğmesine ikinci kez basılmıyor).
+- Eğitim seçeneği doğru listeden seçiliyor.
+- Ameliyat adları COMED karşılığına çevriliyor (Apandisit → Apendektomi vb.).
+- Özgeçmişte HBYS listesinde bulunmayan kalemler (ilaç, cihaz, terapi, diyet,
+  kan nakli…) Öykü'nün sonuna "Özgeçmiş (HBYS listesinde yok)" diye yazılıyor;
+  ilk kelimeyle yanlış kalem seçme kaldırıldı.
+- Tedavi notuna verilen ilaçlar ve kontrol notu ekleniyor.
+- Doktor panelinde kalıcı test kaydı: "COMED tam test · Göğüs ağrısı + rinit"
+  (ses kaydıyla, `demo_records/`).
+
 ## v2.39.0 — 4 Kasım 2026
 
 ### Chrome Web Store'a hazırlık (liste dışı yayın)
