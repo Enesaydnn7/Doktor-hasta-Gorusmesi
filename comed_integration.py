@@ -282,6 +282,14 @@ def _comed_drug_name(name: str) -> str:
     return name
 
 
+# CANLI OLCUM (5 Kasim): Ozgecmis "Alerji" katalogu etken maddeyle arar.
+# "Aspirin" yalniz "Capraz bagli hemoglobin diaspirin" donduruyor (yanlis),
+# "Asetilsalisilik asit" dogru kalemi veriyor.
+_ALLERGY_ALIASES = (
+    (re.compile(r"^aspirin"), "Asetilsalisilik asit"),
+)
+
+
 # CANLI OLCUM (5 Kasim): Ozgecmis "Ameliyat" katalogu tibbi terimle arar.
 # "Apandisit" / "Apandisit Ameliyati" sonuc vermiyor, "Apendektomi" veriyor.
 _OPERATION_ALIASES = (
@@ -291,12 +299,16 @@ _OPERATION_ALIASES = (
 )
 
 
-def _comed_operation_name(name: str) -> str:
+def _comed_alias(name: str, aliases) -> str:
     folded = _fold_text(name).strip()
-    for pattern, comed in _OPERATION_ALIASES:
+    for pattern, comed in aliases:
         if pattern.match(folded):
             return comed
     return name
+
+
+def _comed_operation_name(name: str) -> str:
+    return _comed_alias(name, _OPERATION_ALIASES)
 
 
 def _service_screen(name: str, screen: Any) -> str:
@@ -537,6 +549,8 @@ def normalize_draft(draft: dict[str, Any] | None) -> dict[str, Any]:
         data["profile"][field] = _named_items(data["profile"].get(field))
     for item in data["profile"]["operations"]:
         item["name"] = _comed_operation_name(item["name"])
+    for item in data["profile"]["allergies"]:
+        item["name"] = _comed_alias(item["name"], _ALLERGY_ALIASES)
     data["profile"]["family_history"] = _family_items(
         data["profile"].get("family_history")
     )

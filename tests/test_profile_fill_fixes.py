@@ -65,3 +65,17 @@ def test_pain_qualities_are_verified_after_click():
     assert "async function ensureTogglesOn" in js
     assert "await ensureTogglesOn(card, pain.qualities);" in js
     assert 'await ensureTogglesOn(cardByTitle("Ağrı"), fields.pain.qualities);' in js
+
+
+def test_aspirin_allergy_maps_to_catalogue_name():
+    import comed_integration as ci
+    assert ci._comed_alias("Aspirin", ci._ALLERGY_ALIASES) == "Asetilsalisilik asit"
+    assert ci._comed_alias("Penisilin", ci._ALLERGY_ALIASES) == "Penisilin"
+
+
+def test_autocomplete_does_not_pick_mid_word_match():
+    from pathlib import Path
+    js = (Path(__file__).resolve().parents[1] / "comed_bridge_extension" / "content.js").read_text(encoding="utf-8")
+    body = js[js.index("async function chooseAutocomplete"):js.index("async function ensureTogglesOn")]
+    assert "text.includes(normalized)" not in body
+    assert "rank(a) - rank(b)" in body

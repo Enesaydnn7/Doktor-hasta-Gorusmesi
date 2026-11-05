@@ -1097,12 +1097,23 @@
     if (!input || !query) return false;
     setTypingValue(input, query);
     const normalized = query.toLocaleLowerCase("tr-TR");
-    const result = await waitFor(() => [...document.querySelectorAll(".autocomplete__item")]
-      .filter((item) => item.offsetParent !== null)
-      .find((item) => {
-        const text = textOf(item).toLocaleLowerCase("tr-TR");
-        return text === normalized || text.startsWith(`${normalized} |`) || text.includes(normalized);
-      }), 6500);
+    /* CANLI OLCUM (5 Kasim): "Penisilin" aramasinda ilk satir "Benzilpenisilin",
+       "Aspirin"de tek satir "Capraz bagli hemoglobin diaspirin" geliyordu; ilk
+       "iceren" satir seciliyordu. Artik once birebir, sonra basi eslesen, sonra
+       kelime basi eslesen satir secilir. Kelime ortasi eslesme SECILMEZ;
+       bulunamayan kalem Öykü'ye yazilir. */
+    const rank = (item) => {
+      const text = textOf(item).toLocaleLowerCase("tr-TR");
+      if (text === normalized || text.startsWith(`${normalized} |`)) return 0;
+      if (text.startsWith(normalized)) return 1;
+      if (text.includes(` ${normalized}`) || text.includes(`(${normalized}`)) return 2;
+      return -1;
+    };
+    const result = await waitFor(() => {
+      const items = [...document.querySelectorAll(".autocomplete__item")]
+        .filter((item) => item.offsetParent !== null && rank(item) >= 0);
+      return items.sort((a, b) => rank(a) - rank(b))[0];
+    }, 6500);
     if (!result) return false;
     result.click();
     await sleep(120);
