@@ -123,8 +123,12 @@ Doktor: `Kullanici.kayadr;Kullanici.aydin1|tracer` / `1`
 
 | Dal | Commit | Sürüm |
 |---|---|---|
-| `main` | v2.39.0 | **v2.39.0** ← güncel |
-| `mvp` | `2d6b671` | **v2.32.0** ← "bizim MVP sürümümüz" |
+| `main` | v3.0.0 | **v3.0.0** ← güncel (5 Kasım) |
+| `mvp` | = main | **v3.0.0** ← kullanıcı 5 Kasım'da "mvp de bu olsun" dedi |
+
+v3.0.0'dan itibaren günlük eklenti (`comed_bridge_extension`) ile mağaza paketi
+(`store_assets/chrome_magaza_paketi`) AYNI: ad "Klinot", simgeler, localhost yok.
+Chrome Web Store'a v3.0.0 gönderilecek (2.39.0 incelemesi iptal edilip).
 | `mvp-v2.10.3` (etiket) | `7660ef4` | eski demo |
 
 **mvp dalına kullanıcı AÇIKÇA söylemeden dokunma.** Geçmişte izinsiz 3 kez

@@ -1,3 +1,17 @@
+## v3.0.0 — 5 Kasım 2026
+
+### Mağazaya çıkacak sürüm; main ve mvp aynı
+
+- Günlük eklenti ile Chrome Web Store paketi birleşti: ad **Klinot**, simgeler,
+  açılır pencerede "HBYS" dili, manifestte localhost yok.
+- `store_assets/chrome_magaza_paketi` ve `store_assets/klinot-magaza-v3.0.0.zip`
+  bugünkü kodla (v2.38.5–v2.38.6 COMED düzeltmeleri) yeniden üretildi.
+- Canlı doğrulama (kayıt #4, uzun diyalog): düşme riski Var, Bastırıcı,
+  Kaygılı, Penisilin, Apendektomi, meslek/eğitim, Öykü eki, tedavi notu;
+  istemler EKG, EKO, akciğer grafisi, 7 tetkik, Parol, Allergodil — her biri
+  bir kez. Soğuk algınlığı diyaloğu (#5): konuşulmayan alanlar boş kaldı,
+  Aspirin → Asetilsalisilik asit.
+
 ## v2.38.6 — 5 Kasım 2026
 
 ### COMED aktarımı: yanlış katalog eşleşmesi

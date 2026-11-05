@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Klinot",
-  "version": "2.39.0",
+  "version": "3.0.0",
   "description": "Klinot klinik görüşme taslaklarını hekimin açık hastane bilgi sistemi oturumuna aktarır; kayıt ve imza hekimdedir.",
   "icons": {
     "16": "icons/icon16.png",

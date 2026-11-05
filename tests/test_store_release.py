@@ -9,7 +9,8 @@ from fastapi.testclient import TestClient
 import main
 
 ROOT = Path(__file__).resolve().parents[1]
-EXT = ROOT / "store_assets" / "chrome_magaza_paketi"  # magaza paketi; gunluk eklenti onaya kadar eski haliyle
+EXT = ROOT / "store_assets" / "chrome_magaza_paketi"  # magaza paketi; v3.0.0dan beri gunluk eklentiyle ayni
+DAILY = ROOT / "comed_bridge_extension"
 
 
 class StoreManifestTests(unittest.TestCase):
@@ -29,6 +30,14 @@ class StoreManifestTests(unittest.TestCase):
         text = json.dumps(self.manifest)
         self.assertNotIn("localhost", text)
         self.assertNotIn("127.0.0.1", text)
+
+
+class StorePackageMatchesDailyTests(unittest.TestCase):
+    def test_store_package_is_the_daily_extension(self):
+        for path in DAILY.rglob("*"):
+            if path.is_file():
+                with self.subTest(path=path.name):
+                    self.assertEqual(path.read_bytes(), (EXT / path.relative_to(DAILY)).read_bytes())
 
 
 class PrivacyPageTests(unittest.TestCase):
