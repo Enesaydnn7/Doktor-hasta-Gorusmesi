@@ -57,3 +57,11 @@ class OperationAliasTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_pain_qualities_are_verified_after_click():
+    from pathlib import Path
+    js = (Path(__file__).resolve().parents[1] / "comed_bridge_extension" / "content.js").read_text(encoding="utf-8")
+    assert "async function ensureTogglesOn" in js
+    assert "await ensureTogglesOn(card, pain.qualities);" in js
+    assert 'await ensureTogglesOn(cardByTitle("Ağrı"), fields.pain.qualities);' in js

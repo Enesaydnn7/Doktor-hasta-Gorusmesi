@@ -1112,6 +1112,18 @@
   /* CANLI OLCUM (5 Kasim): Agri niteligi ve psikolojik durum aç/kapa
      dugmesi. Tekrar aktarimda secili "Bastırıcı"ya yeniden basilinca secim
      kalkiyordu. Zaten seciliyse dokunulmaz. */
+  /* CANLI (5 Kasim): tam aktarimda "Bastirici" tiklaniyor ama sonunda secili
+     kalmiyordu; tek basina tiklayinca tutuyor. Kisa bekleyip kontrol edilir,
+     secili degilse bir kez daha basilir. Aktarimin sonunda da tekrar bakilir. */
+  async function ensureTogglesOn(root, texts = []) {
+    for (const text of texts || []) {
+      await sleep(150);
+      const item = [...(root || document).querySelectorAll(".toggle-button__item")]
+        .find((element) => textOf(element) === text && element.offsetParent !== null);
+      if (item && !item.classList.contains("active")) activateNode(item);
+    }
+  }
+
   function clickToggleOn(text, root = document) {
     const item = [...root.querySelectorAll(".toggle-button__item")]
       .find((element) => textOf(element) === text && element.offsetParent !== null);
@@ -1266,6 +1278,7 @@
     setValue(byPlaceholder("Açıklama", card), pain.description);
     (pain.qualities || []).forEach((quality) => clickToggleOn(quality, card));
     if (pain.rhythm) clickToggleOn(pain.rhythm, card);
+    await ensureTogglesOn(card, pain.qualities);
     // COMED'in Ağrı Başlangıcı bileşeni yalnızca gün cinsini kabul ediyor.
     // Saat bilgisini "2 gün" diye yanlış yazmak yerine ana yakınma süresinde koru.
     if (pain.start_date?.unit === "day") {
@@ -2945,6 +2958,9 @@
     }
 
     await fillOrders(fields, record);
+    if (fields.pain?.exists === true) {
+      await ensureTogglesOn(cardByTitle("Ağrı"), fields.pain.qualities);
+    }
 
     return {filled, fieldResults, systemSaved: systemResult.saved};
   }
