@@ -1,3 +1,16 @@
+## v2.38.6 — 5 Kasım 2026
+
+### COMED aktarımı: yanlış katalog eşleşmesi
+
+- Özgeçmiş aramalarında ilk "içeren" satır seçilmiyor; önce birebir, sonra
+  başı eşleşen, sonra kelime başı eşleşen satır seçiliyor. Canlıda "Aspirin"
+  → "Çapraz bağlı hemoglobin diaspirin", "Penisilin" → "Benzilpenisilin"
+  seçiliyordu. Eşleşme yoksa kalem Öykü'ye yazılıyor.
+- "Aspirin" alerjisi katalogdaki "Asetilsalisilik asit" adıyla aranıyor.
+- Ağrı niteliği seçimleri aktarım sonunda yeniden kontrol ediliyor
+  ("Bastırıcı" seçili kalmıyordu).
+- Mağaza paketi (`store_assets/chrome_magaza_paketi`) değişmedi.
+
 ## v2.38.5 — 5 Kasım 2026
 
 ### COMED aktarımında eksik kalan alanlar
