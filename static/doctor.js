@@ -76,6 +76,7 @@ function clearFilters() {
   renderWorklist();
   renderRecords();
   applySearch();
+  if (typeof renderRecorder === "function") renderRecorder();
 }
 
 /* ---------- alt serit ---------- */
@@ -161,6 +162,7 @@ function renderWorklist() {
     selectedPatient = patientKey(picked) === patientKey(selectedPatient) ? null : picked;
     renderWorklist();
     renderRecords();
+    if (typeof renderRecorder === "function") renderRecorder();
   });
 }
 
@@ -171,7 +173,7 @@ function renderRecords() {
   // yeniden cizilince (drawDetail → restoreLiveAudio) yerine geri doner.
   parkLiveAudio(list);
   if (!overview.records.length) {
-    list.innerHTML = '<div class="empty-box"><i class="bi bi-inbox"></i><p>Size atanmış görüşme kaydı yok. Mobil uygulamadan bir görüşme analiz edildiğinde burada listelenir.</p></div>';
+    list.innerHTML = '<div class="empty-box"><i class="bi bi-inbox"></i><p>Size atanmış görüşme kaydı yok. İş listesinden hastayı seçip görüşmeyi buradan ya da mobil uygulamadan kaydedin.</p></div>';
     return;
   }
   // Hasta kartina tiklamak listeyi suzsun: o hastanin kayitlari + henuz
@@ -197,7 +199,7 @@ function renderRecords() {
        <button class="mini-btn" id="filtre-temizle"><i class="bi bi-x-lg"></i> Tümünü göster</button></div>`
     : "";
   if (!shown.length) {
-    list.innerHTML = banner + '<div class="empty-box"><i class="bi bi-inbox"></i><p>Bu hastaya bağlı kayıt yok. Mobil uygulamadan görüşmeyi kaydedip analiz edin.</p></div>';
+    list.innerHTML = banner + '<div class="empty-box"><i class="bi bi-inbox"></i><p>Bu hastaya bağlı kayıt yok. Yukarıdaki “Kaydı başlat” ile ya da mobil uygulamadan görüşmeyi kaydedin.</p></div>';
     const clear = $("filtre-temizle");
     if (clear) clear.onclick = clearFilters;
     return;
@@ -244,7 +246,11 @@ function renderRecords() {
   if (clear) clear.onclick = clearFilters;
 }
 
-function render() { renderStats(); renderWorklist(); renderRecords(); applySearch(); }
+function render() {
+  renderStats(); renderWorklist(); renderRecords(); applySearch();
+  // Kayit cubugu (doctor_recorder.js) secili hastayi gostersin.
+  if (typeof renderRecorder === "function") renderRecorder();
+}
 
 /* ---------- detay (yonetici panelindeki ayni govde) ---------- */
 document.addEventListener("click", (e) => {

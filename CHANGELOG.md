@@ -1,3 +1,15 @@
+## Doktor paneli ses kaydı — 10 Kasım 2026 (v3.0.0 üstü, eklenti/APK değişmedi)
+
+- Doktor paneline mobil uygulamadaki akışın aynısı eklendi: iş listesinden
+  hasta seç → **Kaydı başlat** → **Durdur ve analiz et**. Ses aynı arka plan
+  STT işine (`/doctor/api/transcriptions`), analiz aynı akışa
+  (`/doctor/api/analyze/stream`) gider; kayıt doktora ve seçili COMED
+  hastasına bağlanır, rapor açılır, "COMED'e aktar" aynı düğmedir.
+- Mobil ve panel aynı `_start_transcription` / `_transcription_status`
+  çekirdeğini kullanıyor. Kayıt kaynağı `doctor_web`.
+- Çubuk kendi dosyalarında (`doctor_recorder.js/.css`), önbellekteki eski
+  `doctor.css` ile stilsiz kalmasın diye.
+
 ## v3.0.0 — 5 Kasım 2026
 
 ### Mağazaya çıkacak sürüm; main ve mvp aynı

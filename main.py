@@ -620,6 +620,11 @@ async def mobile_transcription_start(
     user: dict = Depends(mobile_clinical_user),
 ):
     """Sesi hızla teslim al; uzun STT işini bağlantıdan bağımsız yürüt."""
+    return await _start_transcription(file, user["user"], "klinot-kayit.m4a")
+
+
+async def _start_transcription(file: UploadFile, username: str, default_name: str):
+    """Mobil ve doktor paneli aynı STT işini kullanır."""
     data = await file.read()
     if not data:
         return JSONResponse({"error": "Ses dosyası boş."}, status_code=400)
@@ -636,7 +641,7 @@ async def mobile_transcription_start(
 
     # Aynı kullanıcının aynı ses dosyasını tekrar göndermesi tek bir işe bağlanır.
     digest = hashlib.sha256()
-    digest.update(user["user"].encode("utf-8"))
+    digest.update(username.encode("utf-8"))
     digest.update(b"\0")
     digest.update(data)
     job_id = digest.hexdigest()
@@ -644,8 +649,8 @@ async def mobile_transcription_start(
         job_id,
         data,
         file.content_type or "audio/mpeg",
-        file.filename or "klinot-kayit.m4a",
-        requested_by=user["user"],
+        file.filename or default_name,
+        requested_by=username,
         limit=_PENDING_MAX,
     )
     if job["status"] != "completed":
@@ -662,8 +667,12 @@ async def mobile_transcription_status(
     job_id: str,
     user: dict = Depends(mobile_clinical_user),
 ):
+    return _transcription_status(job_id, user["user"])
+
+
+def _transcription_status(job_id: str, username: str) -> dict:
     job = db.transcription_job_get(job_id)
-    if not job or job.get("requested_by") != user["user"]:
+    if not job or job.get("requested_by") != username:
         raise HTTPException(status_code=404, detail="Ses işleme kaydı bulunamadı")
     if job["status"] in {"queued", "processing"}:
         # Sunucu yeniden başladıysa veritabanındaki bekleyen işi kaldığı yerden başlat.
@@ -1101,6 +1110,32 @@ async def doctor_record(kid: int, request: Request):
     if not record:
         raise HTTPException(status_code=404, detail="Kayıt bulunamadı")
     return record
+
+
+@app.post("/doctor/api/transcriptions")
+async def doctor_transcription_start(request: Request, file: UploadFile = File(...)):
+    """Doktor paneli kaydı: mobildeki gibi ses arka planda metne dökülür."""
+    session = doctor_auth(request)
+    return await _start_transcription(file, session["user"], "klinot-kayit.webm")
+
+
+@app.get("/doctor/api/transcriptions/{job_id}")
+async def doctor_transcription_status(job_id: str, request: Request):
+    session = doctor_auth(request)
+    return _transcription_status(job_id, session["user"])
+
+
+@app.post("/doctor/api/analyze/stream")
+async def doctor_analyze_stream(body: AnalyzeIn, request: Request):
+    """Kayıt doktorun kendisine yazılır; COMED hastası metadata'da gelir."""
+    session = doctor_auth(request)
+    metadata = {
+        **(body.metadata or {}),
+        "api_user": session["user"],
+        "api_role": "doctor",
+    }
+    doctor_body = body.model_copy(update={"source": "doctor_web", "metadata": metadata})
+    return await analyze_stream(doctor_body)
 
 
 @app.post("/doctor/api/comed/transfers")

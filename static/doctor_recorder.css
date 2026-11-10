@@ -1,0 +1,39 @@
+/* Doktor paneli gorusme kaydi cubugu (doctor_recorder.js).
+   Ayri dosya: doctor.css tarayici onbelleginde eski kalsa da cubuk
+   stilsiz gorunmesin. Renk degiskenleri doctor.css :root'tan gelir. */
+.recorder{margin:-8px 0 22px}
+.rc-bar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:14px 18px;background:#fff;border:1px solid var(--line);border-radius:14px}
+.rc-bar.rc-ready{border-color:#bfe3de;background:var(--mint)}
+.rc-bar.rc-live{border-color:#f0b8bd;background:#fff6f6}
+.rc-bar.rc-error{border-color:#f0c9b5;background:#fff8f2}
+.rc-icon{flex:0 0 38px;width:38px;height:38px;border-radius:12px;display:grid;place-items:center;background:#f0f4f5;color:var(--teal);font-size:18px}
+.rc-ready .rc-icon{background:#fff}
+.rc-icon.live{background:#c8323c;color:#fff;animation:rc-pulse 1.4s ease-in-out infinite}
+.rc-icon.err{background:#fde6d6;color:#a24b12}
+@keyframes rc-pulse{0%,100%{box-shadow:0 0 0 0 #c8323c55}50%{box-shadow:0 0 0 8px #c8323c00}}
+.rc-copy{flex:1 1 220px;min-width:0;display:flex;flex-direction:column;line-height:1.3}
+.rc-copy b{font-size:14px;color:var(--ink)}
+.rc-copy small{color:var(--muted);font-size:12px}
+.rc-idle .rc-copy small{font-size:12.5px}
+.rc-clock{font-size:20px;font-weight:800;color:#a62c33;font-variant-numeric:tabular-nums;min-width:62px}
+.rc-meter{flex:0 0 120px;height:8px;border-radius:99px;background:#f1dede;overflow:hidden}
+.rc-meter span{display:block;height:100%;width:0;background:#d9a3a7;transition:width .08s linear}
+.rc-meter span.on{background:#1d9a6c}
+.rc-btn{display:inline-flex;align-items:center;gap:7px;border:0;border-radius:11px;padding:10px 16px;font:inherit;font-size:13.5px;font-weight:750;cursor:pointer;white-space:nowrap}
+.rc-btn.start{background:#c8323c;color:#fff}
+.rc-btn.start:hover{background:#ad2731}
+.rc-btn.start:disabled{background:#e4eaec;color:#93a5ab;cursor:not-allowed}
+.rc-btn.stop{background:var(--teal);color:#fff}
+.rc-btn.stop:hover{filter:brightness(.94)}
+.rc-btn.ghost{background:transparent;color:var(--muted);border:1px solid var(--line)}
+.rc-btn.ghost:hover{background:#fff;color:var(--ink)}
+.rc-steps{display:flex;gap:8px;flex-wrap:wrap}
+.rc-step{display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:999px;background:#f1f5f6;color:#8a9ca2;font-size:12px;font-weight:700}
+.rc-step.active{background:#e9f1fd;color:#2f5fb8}
+.rc-step.done{background:#e6f5ec;color:#1d7a46}
+.rc-spin{width:18px;height:18px;border-radius:50%;border:2.5px solid #cfe3e1;border-top-color:var(--teal);animation:rc-rot .8s linear infinite}
+@keyframes rc-rot{to{transform:rotate(360deg)}}
+@media(max-width:760px){
+  .rc-meter{flex:1 1 100%}
+  .rc-btn{flex:1 1 auto;justify-content:center}
+}

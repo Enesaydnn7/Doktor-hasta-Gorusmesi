@@ -57,10 +57,8 @@ class DoctorPanelLayoutTests(unittest.TestCase):
     def test_search_survives_background_refresh(self):
         """15 saniyelik yenileme süzgeci silmemeli: render sonrası yeniden uygula."""
         self.assertIn("applySearch();", self.js)
-        self.assertIn(
-            "function render() { renderStats(); renderWorklist(); renderRecords(); applySearch(); }",
-            self.js,
-        )
+        body = self.js.split("function render() {", 1)[1].split("\n}", 1)[0]
+        self.assertIn("renderStats(); renderWorklist(); renderRecords(); applySearch();", body)
 
     def test_clear_button_resets_patient_and_dates(self):
         self.assertIn("function clearFilters(", self.js)

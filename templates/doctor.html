@@ -9,6 +9,7 @@
   <link href="/static/style.css" rel="stylesheet">
   <link href="/static/admin.css?v={{ version }}" rel="stylesheet">
   <link href="/static/doctor.css?v={{ version }}" rel="stylesheet">
+  <link href="/static/doctor_recorder.css?v={{ version }}" rel="stylesheet">
 </head>
 <body>
 
@@ -55,6 +56,10 @@
       <div id="bos-worklist" class="empty-box hidden">Aramaya uyan hasta yok.</div>
     </section>
 
+    <!-- Mobildeki gibi: is listesinden hasta secilir, gorusme buradan
+         kaydedilir, analiz edilir ve kayit o hastaya baglanir. -->
+    <section class="recorder" id="recorder" data-version="{{ version }}" aria-live="polite"></section>
+
     <div class="rec-head rec-head-doctor">
       <span>No</span><span>Hasta bilgileri</span><span>Tarih / Saat</span>
       <span>Özet (tanı / şikayet)</span><span>Ses</span><span class="ta-r">İşlem</span>
@@ -79,5 +84,6 @@
   <div id="toast" role="status"></div>
   <script src="/static/report_view.js?v={{ version }}"></script>
   <script src="/static/doctor.js?v={{ version }}"></script>
+  <script src="/static/doctor_recorder.js?v={{ version }}"></script>
 </body>
 </html>
