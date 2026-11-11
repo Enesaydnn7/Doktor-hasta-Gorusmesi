@@ -716,6 +716,13 @@ def plan_next(bundle: dict, results: dict, *, now: datetime | None = None) -> di
     if calls:
         return {"calls": calls, "done": False, "message": "COMED katalogları okunuyor", "report": {}}
 
+    # Çift kayıt koruması bu üç okumaya dayanıyor. Biri başarısızsa "hiç yok"
+    # sanıp yazmak, var olan tanı/istem/belgeyi ikinci kez eklemek demektir.
+    for key, label in (("documents", "belgeler"), ("visit_diagnoses", "tanılar"), ("plans", "istemler")):
+        if not _result_ok(results, key):
+            return finish(f"COMED'deki mevcut {label} okunamadı ({_error_text(results, key)}); "
+                          "çift kayıt olmasın diye hiçbir şey yazılmadı", failed=True)
+
     existing_titles = {fold(p.get("title")) for p in _rows(_payload(results, "plans")) if isinstance(p, dict)}
 
     # ---- 3. tur: kararlar + ön kontroller ----

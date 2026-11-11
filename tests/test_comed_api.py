@@ -281,6 +281,20 @@ class PlannerSafetyTests(unittest.TestCase):
         muayene = [r for r in step["report"]["items"] if r["section"] == "Muayene"][0]
         self.assertIn("tanı", muayene["detail"])
 
+    def test_failed_existing_state_read_blocks_every_write(self):
+        class BrokenPlans(FakeComed):
+            def __call__(self, call):
+                if call["path"] == "shared/order/getPlans":
+                    self.calls.append(call)
+                    return {"ok": False, "status": 500, "data": None, "error": "zaman aşımı"}
+                return super().__call__(call)
+        comed = BrokenPlans()
+        step = run(demo_bundle(), comed)
+        self.assertTrue(step["failed"])
+        self.assertIn("hiçbir şey yazılmadı", step["message"])
+        writes = [c for c in comed.calls if "save" in c["path"].lower() or "Inquiry" in c["path"]]
+        self.assertEqual(writes, [])
+
     def test_no_sign_or_delete_endpoint_ever(self):
         comed = FakeComed()
         run(demo_bundle(), comed)

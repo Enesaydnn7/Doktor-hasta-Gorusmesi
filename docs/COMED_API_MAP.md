@@ -144,3 +144,20 @@ Doğrudan API ile, ekrana tıklamadan, test hastası Enes Aydın'da:
 
 Uygulama: `comed_api.py` (planlayıcı), `page_trace.js` (yürütücü),
 `content.js` → `runApiTransfer` (kurye), testler `tests/test_comed_api.py`.
+
+## 11 Kasım 20:47 — v4 ilk canlı aktarım (yerel sunucu + "Klinot v4 API (test)")
+
+Demo kaydı #4, test hastası Enes Aydın (V-22207362), doktor panelinden
+"Tekrar aktar". COMED'deki iş ~4 sn (20:47:16 → 20:47:19), 54 çağrı, 6 tur.
+Eski ekran-doldurma yolu aynı kaydı 107 sn'de yapıyor ve EKO'yu ekleyemiyordu.
+
+- ✅ Muayene belgesi 25266476 + Sistem Sorgulama (F5 sonrası ekranda tam)
+- ✅ Tanı I20.9, J30.4
+- ✅ Laboratuvar 8 (CRP, Troponin I, CK-MB, Hemogram, Kreatinin, ALT, AST, AKŞ)
+- ✅ Radyoloji: Akciğer Grafisi (İki Yön) · ✅ Hizmet: EKG, Transözofageal EKO
+- ✅ İlaç: PAROL Tablet 500 mg (InteractionInquiry temiz) · ⏸ Allergodil: doz yok, doktora
+- İstem Tarihçesi: 12 yeni istem Aktif; 18:39'daki eski istemler Durduruldu, çift yok.
+  `shared/order/getPlans` (isOnline=true) durdurulmuş istemleri DÖNMÜYOR.
+
+Açık konu: şikayet başlangıç tarihi COMED'de doğru saklanıyor (geri okuma
+`{"before": 2, "type": 2}`) ama ekranda "Başlangıç Tarihi" kutusu boş görünüyor.

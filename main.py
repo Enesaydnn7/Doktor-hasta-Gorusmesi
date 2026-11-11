@@ -1199,6 +1199,17 @@ async def dev_extension_version():
     return {"hash": digest.hexdigest()}
 
 
+@app.post("/dev/log")
+async def dev_log(request: Request):
+    """Yerel geliştirmede eklenti arka plan hatalarını sunucu günlüğüne yazar."""
+    if os.getenv("KLINOT_DEV") != "1":
+        raise HTTPException(status_code=404, detail="Bulunamadı")
+    text = (await request.body()).decode("utf-8", errors="replace")[:2000]
+    logger.warning("[eklenti] %s", text)
+    print(f"[eklenti] {text}", flush=True)
+    return {"ok": True}
+
+
 @app.get("/doctor/api/records/{kid}")
 async def doctor_record(kid: int, request: Request):
     session = doctor_auth(request)

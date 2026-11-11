@@ -183,6 +183,17 @@ async function klinotFetch(path, options = {}) {
    Yalnız API adresi localhost iken çalışır; canlıda hiçbir etkisi yoktur. */
 let devCheckRunning = false;
 
+/** Yalnız yerel geliştirmede: arka plan hatasını yerel sunucu günlüğüne yaz. */
+async function devLog(message) {
+  try {
+    const {apiBase} = await settings();
+    if (!/^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(apiBase)) return;
+    await fetch(`${apiBase}/dev/log`, {method: "POST", body: String(message).slice(0, 2000)});
+  } catch (_) {
+    // Günlük yazılamazsa sessiz geç.
+  }
+}
+
 async function devReloadCheck() {
   if (devCheckRunning) return;
   devCheckRunning = true;
@@ -215,9 +226,11 @@ async function ensureComedScripts() {
   let tabs = [];
   try {
     tabs = await chrome.tabs.query({url: COMED_MEDICAL_PAGES});
-  } catch (_) {
+  } catch (error) {
+    devLog(`COMED sekmeleri sorgulanamadı: ${error?.message || error}`);
     return;
   }
+  if (!tabs.length) devLog("Açık COMED sekmesi bulunamadı");
   for (const tab of tabs) {
     const alive = await chrome.tabs
       .sendMessage(tab.id, {type: "klinot-ping"})
@@ -229,8 +242,10 @@ async function ensureComedScripts() {
         target: {tabId: tab.id}, files: ["page_trace.js"], world: "MAIN",
       });
       await chrome.scripting.executeScript({target: {tabId: tab.id}, files: ["content.js"]});
-    } catch (_) {
+      devLog(`COMED sekmesine betikler enjekte edildi (sekme ${tab.id})`);
+    } catch (error) {
       // Sekme o an erişilemezse bir sonraki denetimde tekrar denenir.
+      devLog(`COMED sekmesine enjekte edilemedi (sekme ${tab.id}): ${error?.message || error}`);
     }
   }
 }
