@@ -1,0 +1,114 @@
+{
+ "data": [
+  {
+   "baseProduct": true,
+   "category": 0,
+   "id": 3647,
+   "inStock": true,
+   "isFavorite": false,
+   "isPatientStock": false,
+   "orderCount": 0,
+   "title": "PAROL COLD Kapsül 325 mg/12.5 mg 20 kapsüllük ambalaj",
+   "title2": "Parasetamol,Fenilpropanolamin HCl"
+  },
+  {
+   "baseProduct": true,
+   "category": 0,
+   "id": 5684,
+   "inStock": true,
+   "isFavorite": false,
+   "isPatientStock": false,
+   "orderCount": 0,
+   "title": "PAROL HOT Granül 12 posetlik ambalaj",
+   "title2": "Klorfeniramin maleat,Parasetamol,Psödoefedrin HCl"
+  },
+  {
+   "baseProduct": true,
+   "category": 0,
+   "id": 5683,
+   "inStock": true,
+   "isFavorite": false,
+   "isPatientStock": false,
+   "orderCount": 0,
+   "title": "PAROL HOT Pediatrik Granül 12 posetlik ambalaj",
+   "title2": "Klorfeniramin maleat,Parasetamol,Psödoefedrin HCl"
+  },
+  {
+   "baseProduct": true,
+   "category": 0,
+   "id": 10597,
+   "inStock": true,
+   "isFavorite": false,
+   "isPatientStock": true,
+   "orderCount": 0,
+   "title": "PAROL IV Flakon 10 mg/ml 12x100 ml'lik flakon",
+   "title2": "Parasetamol"
+  },
+  {
+   "baseProduct": true,
+   "category": 0,
+   "id": 21113,
+   "inStock": true,
+   "isFavorite": false,
+   "isPatientStock": false,
+   "orderCount": 0,
+   "title": "PAROL IV Flakon 10 mg/ml 1x100 ml'lik flakon",
+   "title2": "Parasetamol"
+  },
+  {
+   "baseProduct": true,
+   "category": 0,
+   "id": 5700,
+   "inStock": true,
+   "isFavorite": false,
+   "isPatientStock": false,
+   "orderCount": 0,
+   "title": "PAROL Plus Süspansiyon 250 mg/5 ml 150 ml'lik sise",
+   "title2": "Parasetamol"
+  },
+  {
+   "baseProduct": true,
+   "category": 0,
+   "id": 11090,
+   "inStock": true,
+   "isFavorite": false,
+   "isPatientStock": false,
+   "orderCount": 0,
+   "title": "PAROL PLUS Tablet 30 tabletlik ambalaj",
+   "title2": "Kafein,Parasetamol,Propifenazon"
+  },
+  {
+   "baseProduct": true,
+   "category": 0,
+   "id": 5699,
+   "inStock": true,
+   "isFavorite": false,
+   "isPatientStock": true,
+   "orderCount": 0,
+   "title": "PAROL Süspansiyon 120 mg/5 ml 150 ml'lik sise",
+   "title2": "Parasetamol"
+  },
+  {
+   "baseProduct": true,
+   "category": 0,
+   "id": 3640,
+   "inStock": true,
+   "isFavorite": false,
+   "isPatientStock": false,
+   "orderCount": 0,
+   "title": "PAROL Tablet 500 mg 20 tabletlik ambalaj",
+   "title2": "Parasetamol"
+  },
+  {
+   "baseProduct": true,
+   "category": 0,
+   "id": 3641,
+   "inStock": true,
+   "isFavorite": false,
+   "isPatientStock": false,
+   "orderCount": 0,
+   "title": "PAROL Tablet 500 mg 30 tabletlik ambalaj",
+   "title2": "Parasetamol"
+  }
+ ]
+}

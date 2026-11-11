@@ -1,0 +1,621 @@
+{
+ "data": [
+  {
+   "allowHistory": false,
+   "allowTemplate": false,
+   "attributes": {
+    "isLabelHidden": "true",
+    "isFullWidth": "true",
+    "itemAligning": "rowWrap",
+    "itemAligningColumnNumber": "4"
+   },
+   "category": "documents",
+   "children": [],
+   "class": 1,
+   "code": "ss_solunum_sistemi",
+   "defaultValueMode": 1,
+   "defaultValueSource": 1,
+   "id": 520,
+   "isOffline": false,
+   "isSealed": false,
+   "items": [
+    {
+     "item": "Nefes darlığı",
+     "score": 0.0,
+     "value": "ne"
+    },
+    {
+     "item": "Öksürük",
+     "score": 0.0,
+     "value": "ö"
+    },
+    {
+     "item": "Yan ağrısı",
+     "score": 0.0,
+     "value": "y"
+    },
+    {
+     "item": "Balgam",
+     "score": 0.0,
+     "value": "b"
+    }
+   ],
+   "itemType": 6,
+   "name": "Solunum Sistemi",
+   "reusable": true,
+   "rulesOnSave": {},
+   "showAtEpicrisis": true,
+   "streamable": false,
+   "type": 5,
+   "uiElementType": 13
+  },
+  {
+   "allowHistory": false,
+   "allowTemplate": false,
+   "attributes": {
+    "isLabelHidden": "true",
+    "isFullWidth": "true",
+    "itemAligning": "rowWrap",
+    "hasTextFieldForOther": "true",
+    "itemAligningColumnNumber": "3"
+   },
+   "category": "documents",
+   "children": [],
+   "class": 1,
+   "code": "ss_kas_iskelet",
+   "defaultValueMode": 1,
+   "defaultValueSource": 1,
+   "id": 524,
+   "isOffline": false,
+   "isSealed": false,
+   "items": [
+    {
+     "item": "Kas ağrısı",
+     "score": 0.0,
+     "value": "k"
+    },
+    {
+     "item": "Hareket kısıtlılığı",
+     "score": 0.0,
+     "value": "h"
+    },
+    {
+     "item": "Hareket ile ağrı",
+     "score": 0.0,
+     "value": "ha"
+    },
+    {
+     "item": "Eklemlerde şişlik",
+     "score": 0.0,
+     "value": "e"
+    },
+    {
+     "item": "Protez",
+     "score": 0.0,
+     "value": "p"
+    }
+   ],
+   "itemType": 6,
+   "name": "Kas - İskelet Sistemi",
+   "reusable": true,
+   "rulesOnSave": {},
+   "showAtEpicrisis": true,
+   "streamable": false,
+   "type": 5,
+   "uiElementType": 13
+  },
+  {
+   "allowHistory": false,
+   "allowTemplate": false,
+   "attributes": {
+    "isLabelHidden": "true",
+    "isFullWidth": "true",
+    "itemAligning": "rowWrap",
+    "hasTextFieldForOther": "true",
+    "itemAligningColumnNumber": "6"
+   },
+   "category": "documents",
+   "children": [],
+   "class": 1,
+   "code": "ss_gastrointestinal_sistem",
+   "defaultValueMode": 1,
+   "defaultValueSource": 1,
+   "id": 526,
+   "isOffline": false,
+   "isSealed": false,
+   "items": [
+    {
+     "item": "Yutma güçlüğü",
+     "score": 0.0,
+     "value": "y"
+    },
+    {
+     "item": "Bulantı",
+     "score": 0.0,
+     "value": "b"
+    },
+    {
+     "item": "Kusma",
+     "score": 0.0,
+     "value": "k"
+    },
+    {
+     "item": "Karında ağrı",
+     "score": 0.0,
+     "value": "ka"
+    },
+    {
+     "item": "Karında şişlik",
+     "score": 0.0,
+     "value": "kş"
+    },
+    {
+     "item": "Midede yanma",
+     "score": 0.0,
+     "value": "m"
+    },
+    {
+     "item": "Kabızlık",
+     "score": 0.0,
+     "value": "kb"
+    },
+    {
+     "item": "İshal",
+     "score": 0.0,
+     "value": "is"
+    },
+    {
+     "item": "Makatta ağrı",
+     "score": 0.0,
+     "value": "mak"
+    },
+    {
+     "item": "Makatta yanma",
+     "score": 0.0,
+     "value": "my"
+    },
+    {
+     "item": "Makatta kaşıntı",
+     "score": 0.0,
+     "value": "kşn"
+    }
+   ],
+   "itemType": 6,
+   "name": "Gastrointestinal Sistem",
+   "reusable": true,
+   "rulesOnSave": {},
+   "showAtEpicrisis": true,
+   "streamable": false,
+   "type": 5,
+   "uiElementType": 13
+  },
+  {
+   "allowHistory": false,
+   "allowTemplate": false,
+   "attributes": {
+    "isLabelHidden": true,
+    "isFullWidth": true,
+    "itemAligning": "rowWrap",
+    "hasTextFieldForOther": true,
+    "itemAligningColumnNumber": "4"
+   },
+   "category": "documents",
+   "children": [],
+   "class": 1,
+   "code": "ss_genel_sistem_sorgusu",
+   "defaultValueMode": 1,
+   "defaultValueSource": 1,
+   "id": 589,
+   "isOffline": false,
+   "isSealed": false,
+   "items": [
+    {
+     "item": "Kilo kaybı",
+     "score": 0.0,
+     "value": "kk"
+    },
+    {
+     "item": "İştahsızlık",
+     "score": 0.0,
+     "value": "iş"
+    },
+    {
+     "item": "Halsizlik",
+     "score": 0.0,
+     "value": "hl"
+    },
+    {
+     "item": "Uyku bozukluğu",
+     "score": 0.0,
+     "value": "ub"
+    },
+    {
+     "item": "Ateş",
+     "score": 0.0,
+     "value": "a"
+    },
+    {
+     "item": "Gece terlemesi",
+     "score": 0.0,
+     "value": "gt"
+    },
+    {
+     "item": "Çok susama",
+     "score": 0.0,
+     "value": "çs"
+    },
+    {
+     "item": "Çok acıkma",
+     "score": 0.0,
+     "value": "ac"
+    },
+    {
+     "item": "Kanama bozukluğu",
+     "score": 0.0,
+     "value": "kn"
+    },
+    {
+     "item": "LAP",
+     "score": 0.0,
+     "value": "lp"
+    }
+   ],
+   "itemType": 6,
+   "name": "Genel Sistem Sorgusu",
+   "reusable": true,
+   "rulesOnSave": {
+    "required": "true"
+   },
+   "rulesOnSign": {},
+   "showAtEpicrisis": true,
+   "showAtPrint": true,
+   "showAtSummary": true,
+   "streamable": false,
+   "type": 5,
+   "uiElementType": 13,
+   "unitType": 0
+  },
+  {
+   "allowHistory": false,
+   "allowTemplate": false,
+   "attributes": {
+    "isLabelHidden": "true",
+    "isFullWidth": "true",
+    "itemAligning": "rowWrap",
+    "hasTextFieldForOther": "true",
+    "itemAligningColumnNumber": "4"
+   },
+   "category": "documents",
+   "children": [],
+   "class": 1,
+   "code": "ss_deri",
+   "defaultValueMode": 1,
+   "defaultValueSource": 1,
+   "id": 590,
+   "isOffline": false,
+   "isSealed": false,
+   "items": [
+    {
+     "item": "Renk değişikliği",
+     "score": 0.0,
+     "value": "r"
+    },
+    {
+     "item": "Morarma",
+     "score": 0.0,
+     "value": "m"
+    },
+    {
+     "item": "Kaşıntı",
+     "score": 0.0,
+     "value": "k"
+    },
+    {
+     "item": "Kabarma",
+     "score": 0.0,
+     "value": "ka"
+    },
+    {
+     "item": "Kuruluk",
+     "score": 0.0,
+     "value": "ku"
+    },
+    {
+     "item": "Tüylenme artışı",
+     "score": 0.0,
+     "value": "ar"
+    },
+    {
+     "item": "Saç dökülmesi",
+     "score": 0.0,
+     "value": "sd"
+    },
+    {
+     "item": "Tırnakarda değişiklik",
+     "score": 0.0,
+     "value": "de"
+    },
+    {
+     "item": "Verniksli",
+     "score": 0.0,
+     "value": "vr"
+    },
+    {
+     "item": "Soyulma",
+     "score": 0.0,
+     "value": "sy"
+    }
+   ],
+   "itemType": 6,
+   "name": "Deri",
+   "reusable": true,
+   "rulesOnSave": {},
+   "showAtEpicrisis": true,
+   "streamable": false,
+   "type": 5,
+   "uiElementType": 13
+  },
+  {
+   "allowHistory": false,
+   "allowTemplate": false,
+   "attributes": {
+    "isLabelHidden": "true",
+    "isFullWidth": "true",
+    "itemAligning": "rowWrap",
+    "hasTextFieldForOther": "true",
+    "itemAligningColumnNumber": "4"
+   },
+   "category": "documents",
+   "children": [],
+   "class": 1,
+   "code": "ss_sinir_sistemi",
+   "defaultValueMode": 1,
+   "defaultValueSource": 1,
+   "id": 591,
+   "isOffline": false,
+   "isSealed": false,
+   "items": [
+    {
+     "item": "Hafıza bozukluğu",
+     "score": 0.0,
+     "value": "hb"
+    },
+    {
+     "item": "Konuşma bozukluğu",
+     "score": 0.0,
+     "value": "kn"
+    },
+    {
+     "item": "Yutma bozukluğu",
+     "score": 0.0,
+     "value": "yu"
+    },
+    {
+     "item": "Denge bozukluğu",
+     "score": 0.0,
+     "value": "db"
+    },
+    {
+     "item": "Yürüme bozukluğu",
+     "score": 0.0,
+     "value": "yü"
+    },
+    {
+     "item": "Duyu bozukluğu",
+     "score": 0.0,
+     "value": "dbo"
+    },
+    {
+     "item": "Titreme",
+     "score": 0.0,
+     "value": "t"
+    },
+    {
+     "item": "Güçsüzlük",
+     "score": 0.0,
+     "value": "g"
+    }
+   ],
+   "itemType": 6,
+   "name": "Sinir Sistemi",
+   "reusable": true,
+   "rulesOnSave": {},
+   "showAtEpicrisis": true,
+   "streamable": false,
+   "type": 5,
+   "uiElementType": 13
+  },
+  {
+   "allowHistory": false,
+   "allowTemplate": false,
+   "attributes": {
+    "isLabelHidden": "true",
+    "isFullWidth": "true",
+    "itemAligning": "rowWrap",
+    "hasTextFieldForOther": "true",
+    "itemAligningColumnNumber": "3"
+   },
+   "category": "documents",
+   "children": [],
+   "class": 1,
+   "code": "ss_dolasim_sistemi",
+   "defaultValueMode": 1,
+   "defaultValueSource": 1,
+   "id": 592,
+   "isOffline": false,
+   "isSealed": false,
+   "items": [
+    {
+     "item": "Göğüs ağrısı",
+     "score": 0.0,
+     "value": "g"
+    },
+    {
+     "item": "Çarpıntı",
+     "score": 0.0,
+     "value": "ç"
+    },
+    {
+     "item": "Nefes darlığı",
+     "score": 0.0,
+     "value": "nf"
+    },
+    {
+     "item": "Çabuk yorulma",
+     "score": 0.0,
+     "value": "çb"
+    },
+    {
+     "item": "Varis",
+     "score": 0.0,
+     "value": "v"
+    },
+    {
+     "item": "Ekstremitelerde ödem",
+     "score": 0.0,
+     "value": "ek"
+    }
+   ],
+   "itemType": 6,
+   "name": "Dolaşım Sistemi",
+   "reusable": true,
+   "rulesOnSave": {},
+   "showAtEpicrisis": true,
+   "streamable": false,
+   "type": 5,
+   "uiElementType": 13
+  },
+  {
+   "allowHistory": false,
+   "allowTemplate": false,
+   "attributes": {
+    "isLabelHidden": "true",
+    "isFullWidth": "true",
+    "itemAligning": "rowWrap",
+    "hasTextFieldForOther": "true",
+    "itemAligningColumnNumber": "4"
+   },
+   "category": "documents.physical_examination_notes",
+   "children": [],
+   "class": 1,
+   "code": "review_of_system_gus",
+   "defaultValueMode": 1,
+   "defaultValueSource": 1,
+   "id": 6256,
+   "isOffline": false,
+   "isSealed": false,
+   "items": [
+    {
+     "item": "Sık idrara çıkma",
+     "score": 0.0,
+     "value": "s"
+    },
+    {
+     "item": "Zor idrar yapma",
+     "score": 0.0,
+     "value": "z"
+    },
+    {
+     "item": "İdrar renginde değişiklik",
+     "score": 0.0,
+     "value": "id"
+    },
+    {
+     "item": "Gece idrara kalkma",
+     "score": 0.0,
+     "value": "g"
+    },
+    {
+     "item": "İdrar akımında azalma",
+     "score": 0.0,
+     "value": "ak"
+    },
+    {
+     "item": "İdrar kaçırma",
+     "score": 0.0,
+     "value": "ka"
+    },
+    {
+     "item": "Ağrı",
+     "score": 0.0,
+     "value": "ağ"
+    },
+    {
+     "item": "Hematüri",
+     "score": 0.0,
+     "value": "p"
+    },
+    {
+     "item": "Dribbling",
+     "score": 0.0,
+     "value": "drb"
+    },
+    {
+     "item": "Poliüri",
+     "score": 0.0,
+     "value": "pl"
+    },
+    {
+     "item": "Dizüri",
+     "score": 0.0,
+     "value": "dz"
+    }
+   ],
+   "itemType": 6,
+   "name": "Genitoüriner Sistem",
+   "reusable": true,
+   "rulesOnSave": {},
+   "showAtEpicrisis": true,
+   "showAtPrint": true,
+   "showAtSummary": false,
+   "streamable": false,
+   "type": 5,
+   "uiElementType": 13
+  },
+  {
+   "allowHistory": false,
+   "allowTemplate": false,
+   "attributes": {
+    "itemAligning": "column"
+   },
+   "category": "",
+   "children": [],
+   "class": 1,
+   "code": "basic_parameter_cf8ee45a-acc2-4d9c-aa4c-8ed789dbec98",
+   "defaultValueMode": 1,
+   "defaultValueSource": 1,
+   "id": 8526,
+   "isOffline": false,
+   "isSealed": false,
+   "items": [
+    {
+     "item": "Komplikasyon Var",
+     "score": 1.0,
+     "value": "1"
+    },
+    {
+     "item": "Komplikasyon Yok",
+     "score": 2.0,
+     "value": "2"
+    },
+    {
+     "item": "Komplikasyon Sonrası Ex",
+     "score": 3.0,
+     "value": "3"
+    }
+   ],
+   "itemType": 6,
+   "name": "",
+   "reusable": false,
+   "rulesOnSave": {},
+   "rulesOnSign": {},
+   "showAtEpicrisis": true,
+   "showAtPrint": true,
+   "showAtSummary": false,
+   "streamable": false,
+   "type": 5,
+   "uiElementType": 13,
+   "unitType": 0
+  }
+ ]
+}

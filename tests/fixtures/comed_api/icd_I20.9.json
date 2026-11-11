@@ -1,0 +1,65 @@
+{
+ "data": [
+  {
+   "code": "I20.9",
+   "icdDocuments": [],
+   "icdProperties": [
+    {
+     "icd": {
+      "code": "I20.9",
+      "icdDocuments": [],
+      "icdProperties": [
+       {
+        "icd": {
+         "code": "I20.9",
+         "icdDocuments": [],
+         "icdProperties": [
+          {
+           "icd": {
+            "code": "I20.9",
+            "icdDocuments": [],
+            "icdProperties": [
+             {
+              "icd": {
+               "code": "I20.9",
+               "icdDocuments": [],
+               "icdProperties": [
+                null
+               ],
+               "id": 5409,
+               "name": "Angina pectoris, tanımlanmamış"
+              },
+              "icdId": 5409,
+              "icdPropertyType": 41,
+              "id": 628
+             }
+            ],
+            "id": 5409,
+            "name": "Angina pectoris, tanımlanmamış"
+           },
+           "icdId": 5409,
+           "icdPropertyType": 41,
+           "id": 628
+          }
+         ],
+         "id": 5409,
+         "name": "Angina pectoris, tanımlanmamış"
+        },
+        "icdId": 5409,
+        "icdPropertyType": 41,
+        "id": 628
+       }
+      ],
+      "id": 5409,
+      "name": "Angina pectoris, tanımlanmamış"
+     },
+     "icdId": 5409,
+     "icdPropertyType": 41,
+     "id": 628
+    }
+   ],
+   "id": 5409,
+   "name": "Angina pectoris, tanımlanmamış"
+  }
+ ]
+}

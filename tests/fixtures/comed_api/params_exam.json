@@ -1,0 +1,1941 @@
+{
+ "data": [
+  {
+   "allowHistory": false,
+   "allowTemplate": false,
+   "attributes": {
+    "placeholder": "Kontrol Tarihi",
+    "isLabelHidden": "true"
+   },
+   "category": "documents.examination",
+   "children": [],
+   "class": 1,
+   "code": "control_date",
+   "conditions": [
+    {
+     "action": 1,
+     "actionDelay": 0,
+     "groups": [
+      {
+       "filterType": 1,
+       "items": [
+        {
+         "leftValueParameter": "is_control_suggested",
+         "leftValueSourceId": 2,
+         "operator": 1,
+         "rightValue": true,
+         "rightValueSourceId": 0
+        }
+       ],
+       "joinType": 1
+      }
+     ],
+     "repeatPeriod": 0,
+     "scheme": 0,
+     "value": "",
+     "valueParameter": ""
+    }
+   ],
+   "defaultValueMode": 1,
+   "defaultValueSource": 1,
+   "id": 8,
+   "isOffline": false,
+   "isSealed": false,
+   "items": [],
+   "name": "Kontrol Tarihi",
+   "reusable": true,
+   "rulesOnSave": {},
+   "showAtEpicrisis": true,
+   "showAtPrint": true,
+   "showAtSummary": true,
+   "streamable": false,
+   "type": 3,
+   "uiElementType": 4
+  },
+  {
+   "allowHistory": false,
+   "allowTemplate": false,
+   "attributes": {
+    "isLabelHidden": "true",
+    "labelTrue": "Kontrol Önerildi",
+    "labelFalse": "Kontrol Belirtilmedi"
+   },
+   "category": "documents.examination",
+   "children": [
+    "control_date",
+    "is_online_control"
+   ],
+   "class": 1,
+   "code": "is_control_suggested",
+   "defaultValueMode": 1,
+   "defaultValueSource": 1,
+   "id": 9,
+   "isOffline": false,
+   "isSealed": false,
+   "items": [],
+   "name": "Kontrol Önerilme Durumu",
+   "reusable": true,
+   "rulesOnSave": {},
+   "showAtEpicrisis": true,
+   "showAtPrint": true,
+   "showAtSummary": true,
+   "streamable": false,
+   "type": 1,
+   "uiElementType": 11
+  },
+  {
+   "allowHistory": true,
+   "allowTemplate": true,
+   "attributes": {
+    "isFullWidth": true,
+    "rows": "5"
+   },
+   "category": "documents.examination",
+   "children": [],
+   "class": 1,
+   "code": "patient_story",
+   "defaultValueMode": 1,
+   "defaultValueSource": 1,
+   "id": 13,
+   "isOffline": false,
+   "isSealed": false,
+   "items": [],
+   "itemType": 0,
+   "name": "Öykü",
+   "reusable": true,
+   "rulesOnSave": {},
+   "rulesOnSign": {},
+   "showAtEpicrisis": true,
+   "showAtPrint": true,
+   "showAtSummary": false,
+   "streamable": false,
+   "type": 8,
+   "uiElementType": 2,
+   "unitType": 0
+  },
+  {
+   "allowHistory": false,
+   "allowTemplate": false,
+   "attributes": {
+    "isFullWidth": true,
+    "childParameterAligning": "column"
+   },
+   "category": "documents.examination",
+   "children": [
+    "complaint_start_date"
+   ],
+   "class": 1,
+   "code": "patient_complaint",
+   "defaultValueMode": 1,
+   "defaultValueSource": 1,
+   "id": 14,
+   "isOffline": false,
+   "isSealed": false,
+   "items": [],
+   "itemType": 6,
+   "lookupType": "patientComplaint",
+   "name": "Şikayet",
+   "reusable": true,
+   "rulesOnSave": {},
+   "rulesOnSign": {},
+   "showAtEpicrisis": true,
+   "showAtPrint": true,
+   "showAtSummary": false,
+   "streamable": false,
+   "type": 5,
+   "uiElementType": 10,
+   "unitType": 0
+  },
+  {
+   "allowHistory": false,
+   "allowTemplate": false,
+   "attributes": {
+    "hasTime": true
+   },
+   "category": "documents.examination",
+   "children": [],
+   "class": 1,
+   "code": "complaint_start_date",
+   "defaultValue": "{\"value\":\"\",\"before\":1,\"type\":0}",
+   "defaultValueMode": 1,
+   "defaultValueSource": 1,
+   "id": 15,
+   "isOffline": false,
+   "isSealed": false,
+   "items": [],
+   "itemType": 0,
+   "name": "Başlangıç Tarihi",
+   "reusable": true,
+   "rulesOnSave": {
+    "required": "true"
+   },
+   "rulesOnSign": {},
+   "showAtEpicrisis": true,
+   "showAtPrint": true,
+   "showAtSummary": true,
+   "streamable": false,
+   "type": 3,
+   "uiElementType": 32,
+   "unitType": 0
+  },
+  {
+   "allowHistory": false,
+   "allowTemplate": false,
+   "attributes": {},
+   "category": "documents.vitals",
+   "children": [],
+   "class": 1,
+   "code": "weight",
+   "defaultValueMode": 1,
+   "defaultValueSource": 1,
+   "id": 16,
+   "isOffline": false,
+   "isSealed": false,
+   "items": [],
+   "itemType": 0,
+   "name": "Kilo",
+   "reusable": true,
+   "rulesOnSave": {},
+   "rulesOnSign": {},
+   "showAtEpicrisis": true,
+   "showAtPrint": true,
+   "showAtSummary": true,
+   "streamable": true,
+   "type": 7,
+   "uiElementType": 15,
+   "unit": "kg",
+   "units": [
+    "kg",
+    "gr"
+   ],
+   "unitType": 4
+  },
+  {
+   "allowHistory": false,
+   "allowTemplate": false,
+   "attributes": {},
+   "category": "documents.vitals",
+   "children": [],
+   "class": 1,
+   "code": "height",
+   "conditions": [],
+   "defaultValueMode": 3,
+   "defaultValueSource": 1,
+   "id": 17,
+   "isOffline": false,
+   "isSealed": false,
+   "items": [],
+   "itemType": 0,
+   "name": "Boy",
+   "reusable": true,
+   "rulesOnSave": {},
+   "rulesOnSign": {},
+   "showAtEpicrisis": true,
+   "showAtFollowUp": true,
+   "showAtPrint": true,
+   "showAtSummary": true,
+   "streamable": true,
+   "type": 7,
+   "uiElementType": 15,
+   "unit": "cm",
+   "units": [
+    "cm",
+    "m"
+   ],
+   "unitType": 5
+  },
+  {
+   "allowHistory": false,
+   "allowTemplate": false,
+   "attributes": {},
+   "category": "documents.vitals",
+   "children": [],
+   "class": 1,
+   "code": "spo2",
+   "defaultValueMode": 1,
+   "defaultValueSource": 1,
+   "id": 22,
+   "isOffline": false,
+   "isSealed": true,
+   "items": [],
+   "name": "SpO2",
+   "reusable": true,
+   "rulesOnSave": {},
+   "showAtEpicrisis": true,
+   "streamable": true,
+   "type": 7,
+   "uiElementType": 15
+  },
+  {
+   "allowHistory": false,
+   "allowTemplate": false,
+   "attributes": {},
+   "category": "documents.vitals",
+   "children": [],
+   "class": 1,
+   "code": "pulse",
+   "defaultValueMode": 1,
+   "defaultValueSource": 1,
+   "id": 45,
+   "isOffline": false,
+   "isSealed": true,
+   "items": [],
+   "name": "Nabız (Dk)",
+   "reusable": true,
+   "rulesOnSave": {},
+   "showAtEpicrisis": true,
+   "streamable": true,
+   "type": 7,
+   "uiElementType": 15
+  },
+  {
+   "allowHistory": false,
+   "allowTemplate": false,
+   "attributes": {},
+   "category": "documents.vitals",
+   "children": [],
+   "class": 2,
+   "code": "pressure_systolic",
+   "defaultValueMode": 1,
+   "defaultValueSource": 1,
+   "id": 74,
+   "isOffline": false,
+   "isSealed": true,
+   "items": [],
+   "name": "KB-S (mmHg)",
+   "reusable": true,
+   "rulesOnSave": {},
+   "showAtEpicrisis": true,
+   "streamable": true,
+   "type": 7,
+   "uiElementType": 15
+  },
+  {
+   "allowHistory": false,
+   "allowTemplate": false,
+   "attributes": {},
+   "category": "documents.vitals",
+   "children": [],
+   "class": 2,
+   "code": "pressure_diastolic",
+   "defaultValueMode": 1,
+   "defaultValueSource": 1,
+   "id": 75,
+   "isOffline": false,
+   "isSealed": true,
+   "items": [],
+   "name": "KB-D (mmHg)",
+   "reusable": true,
+   "rulesOnSave": {},
+   "showAtEpicrisis": true,
+   "streamable": true,
+   "type": 7,
+   "uiElementType": 15
+  },
+  {
+   "allowHistory": false,
+   "allowTemplate": false,
+   "attributes": {},
+   "category": "documents.pain_questionnaire",
+   "children": [],
+   "class": 1,
+   "code": "pain_score",
+   "conditions": [],
+   "defaultValueMode": 1,
+   "defaultValueSource": 1,
+   "id": 76,
+   "isOffline": false,
+   "isSealed": true,
+   "items": [],
+   "itemType": 0,
+   "name": "Ağrının Skoru",
+   "reusable": true,
+   "rulesOnSave": {
+    "minValue": "0",
+    "maxValue": "10"
+   },
+   "showAtEpicrisis": true,
+   "showAtPrint": true,
+   "showAtSummary": true,
+   "streamable": false,
+   "type": 9,
+   "uiElementType": 15,
+   "unitType": 0
+  },
+  {
+   "allowHistory": false,
+   "allowTemplate": false,
+   "attributes": {},
+   "category": "documents.pain_questionnaire",
+   "children": [],
+   "class": 1,
+   "code": "pain_frequency",
+   "defaultValueMode": 1,
+   "defaultValueSource": 1,
+   "id": 81,
+   "isOffline": false,
+   "isSealed": true,
+   "items": [],
+   "lookupType": "pain_frequency",
+   "name": "Ağrının Sıklığı",
+   "reusable": true,
+   "rulesOnSave": {},
+   "showAtEpicrisis": true,
+   "streamable": false,
+   "type": 6,
+   "uiElementType": 8
+  },
+  {
+   "allowHistory": false,
+   "allowTemplate": false,
+   "attributes": {},
+   "category": "documents.pain_questionnaire",
+   "children": [],
+   "class": 1,
+   "code": "pain_startdate",
+   "defaultValueMode": 1,
+   "defaultValueSource": 1,
+   "id": 82,
+   "isOffline": false,
+   "isSealed": true,
+   "items": [],
+   "name": "Ağrı Başlangıcı",
+   "reusable": true,
+   "rulesOnSave": {},
+   "showAtEpicrisis": true,
+   "streamable": false,
+   "type": 3,
+   "uiElementType": 26
+  },
+  {
+   "allowHistory": false,
+   "allowTemplate": false,
+   "attributes": {},
+   "category": "documents.pain_questionnaire",
+   "children": [],
+   "class": 1,
+   "code": "pain_location",
+   "defaultValueMode": 1,
+   "defaultValueSource": 1,
+   "id": 83,
+   "isOffline": false,
+   "isSealed": true,
+   "items": [],
+   "name": "Ağrı Bölgesi",
+   "reusable": true,
+   "rulesOnSave": {},
+   "showAtEpicrisis": true,
+   "streamable": false,
+   "type": 8,
+   "uiElementType": 1
+  },
+  {
+   "allowHistory": false,
+   "allowTemplate": false,
+   "attributes": {
+    "hasTextFieldForOther": "true"
+   },
+   "category": "documents.pain_questionnaire",
+   "children": [],
+   "class": 1,
+   "code": "pain_speciality",
+   "defaultValue": "[]",
+   "defaultValueMode": 1,
+   "defaultValueSource": 1,
+   "id": 91,
+   "isOffline": false,
+   "isSealed": true,
+   "items": [],
+   "itemType": 6,
+   "lookupType": "pain_speciality",
+   "name": "Ağrının Özelliği",
+   "reusable": true,
+   "rulesOnSave": {},
+   "showAtEpicrisis": true,
+   "streamable": false,
+   "type": 5,
+   "uiElementType": 8
+  },
+  {
+   "allowHistory": false,
+   "allowTemplate": false,
+   "attributes": {},
+   "category": "documents.pain_questionnaire",
+   "children": [],
+   "class": 1,
+   "code": "pain_review_type",
+   "defaultValueMode": 1,
+   "defaultValueSource": 1,
+   "id": 95,
+   "isOffline": false,
+   "isSealed": true,
+   "items": [],
+   "lookupType": "pain_review_type",
+   "name": "Değerlendirme Tipi",
+   "reusable": true,
+   "rulesOnSave": {},
+   "showAtEpicrisis": true,
+   "streamable": false,
+   "type": 6,
+   "uiElementType": 8
+  },
+  {
+   "allowHistory": false,
+   "allowTemplate": false,
+   "attributes": {},
+   "category": "documents.pain_questionnaire",
+   "children": [
+    "pain_description"
+   ],
+   "class": 1,
+   "code": "pain_existence",
+   "defaultValueMode": 1,
+   "defaultValueSource": 1,
+   "id": 96,
+   "isOffline": false,
+   "isSealed": true,
+   "items": [],
+   "name": "Ağrı",
+   "reusable": true,
+   "rulesOnSave": {},
+   "showAtEpicrisis": true,
+   "streamable": false,
+   "type": 1,
+   "uiElementType": 11
+  },
+  {
+   "allowHistory": false,
+   "allowTemplate": false,
+   "attributes": {},
+   "category": "documents.vitals",
+   "children": [],
+   "class": 1,
+   "code": "pain_description",
+   "conditions": [],
+   "defaultValueMode": 1,
+   "defaultValueSource": 1,
+   "id": 97,
+   "isOffline": false,
+   "isSealed": true,
+   "items": [],
+   "itemType": 0,
+   "name": "Ağrı Açıklaması",
+   "reusable": true,
+   "rulesOnSave": {},
+   "rulesOnSign": {},
+   "showAtEpicrisis": true,
+   "showAtPrint": true,
+   "showAtSummary": true,
+   "streamable": false,
+   "type": 8,
+   "uiElementType": 1,
+   "unitType": 0
+  },
+  {
+   "allowHistory": false,
+   "allowTemplate": false,
+   "attributes": {},
+   "category": "documents.vitals",
+   "children": [],
+   "class": 1,
+   "code": "body_mass_index",
+   "defaultValueMode": 1,
+   "defaultValueSource": 1,
+   "id": 2961,
+   "isOffline": false,
+   "isSealed": false,
+   "items": [],
+   "name": "Vücut Kitle İndeksi",
+   "reusable": true,
+   "rulesOnSave": {},
+   "showAtEpicrisis": true,
+   "showAtSummary": true,
+   "streamable": true,
+   "type": 7,
+   "uiElementType": 15
+  },
+  {
+   "allowHistory": false,
+   "allowTemplate": false,
+   "attributes": {},
+   "category": "documents.vitals",
+   "children": [],
+   "class": 1,
+   "code": "body_surface_area",
+   "defaultValueMode": 1,
+   "defaultValueSource": 1,
+   "id": 2962,
+   "isOffline": false,
+   "isSealed": false,
+   "items": [],
+   "name": "VYA",
+   "reusable": true,
+   "rulesOnSave": {},
+   "showAtEpicrisis": true,
+   "showAtSummary": true,
+   "streamable": true,
+   "type": 7,
+   "uiElementType": 15
+  },
+  {
+   "allowHistory": false,
+   "allowTemplate": false,
+   "attributes": {},
+   "category": "documents.pain_questionnaire",
+   "children": [],
+   "class": 1,
+   "code": "pain_review_das",
+   "defaultValueMode": 1,
+   "defaultValueSource": 1,
+   "id": 3060,
+   "isOffline": false,
+   "isSealed": true,
+   "items": [
+    {
+     "description": "Uyumlu, sakin",
+     "item": "Avutabilme_0",
+     "score": 0.0,
+     "value": "Avutabilme"
+    },
+    {
+     "description": "Dokunma ya da konuşma ile sakinleştirme. İlgisi başka yöne çekilebilir",
+     "item": "Avutabilme_1",
+     "score": 1.0,
+     "value": "Avutabilme"
+    },
+    {
+     "description": "Konuşma ya da kodunma ile sakinleştirmede zorluk",
+     "item": "Avutabilme_2",
+     "score": 2.0,
+     "value": "Avutabilme"
+    }
+   ],
+   "itemType": 6,
+   "name": "Değerlendirme DAS",
+   "reusable": true,
+   "rulesOnSave": {},
+   "rulesOnSign": {},
+   "showAtEpicrisis": true,
+   "showAtPrint": true,
+   "showAtSummary": true,
+   "streamable": false,
+   "type": 5,
+   "uiElementType": 28,
+   "unitType": 0
+  },
+  {
+   "allowHistory": false,
+   "allowTemplate": false,
+   "attributes": {},
+   "category": "documents.pain_questionnaire",
+   "children": [],
+   "class": 1,
+   "code": "pain_review_nips",
+   "defaultValueMode": 1,
+   "defaultValueSource": 1,
+   "id": 3061,
+   "isOffline": false,
+   "isSealed": true,
+   "items": [
+    {
+     "description": "Yok",
+     "item": "Ağlama_0",
+     "score": 0.0,
+     "value": "Ağlama"
+    },
+    {
+     "description": "Hafif inilti, Aralıklı Ağlama",
+     "item": "Ağlama_1",
+     "score": 1.0,
+     "value": "Ağlama"
+    },
+    {
+     "description": "Çığlık, feryat, Yüksek sesli ağlama",
+     "item": "Ağlama_2",
+     "score": 2.0,
+     "value": "Ağlama"
+    },
+    {
+     "description": "Kas rijidetesi yok, Gergin, düz bacaklar. Sıklıkla gelişigüzel bacak hareketler",
+     "item": "Bacaklar_0",
+     "score": 0.0,
+     "value": "Bacaklar"
+    },
+    {
+     "description": "Gergin, düz bacaklar, sert ve / veya hızlı Extansiyon / Flexiyon",
+     "item": "Bacaklar_1",
+     "score": 1.0,
+     "value": "Bacaklar"
+    },
+    {
+     "description": "Kas Rijiditesi Yok, Sıklıkla, Gelişi Güzel Kol Hareketleri",
+     "item": "Kollar_0",
+     "score": 0.0,
+     "value": "Kollar"
+    },
+    {
+     "description": "Gergin, düz kollar, sert ve / veya hızlı Extansiyon / Flexiyon",
+     "item": "Kollar_1",
+     "score": 1.0,
+     "value": "Kollar"
+    },
+    {
+     "description": "Her zamanki alışılmış solunum",
+     "item": "Solunum Şekli_0",
+     "score": 0.0,
+     "value": "Solunum Şekli"
+    },
+    {
+     "description": "Değişken, düzensiz, her zamankinden hızlı solunum, iç çekme",
+     "item": "Solunum Şekli_1",
+     "score": 1.0,
+     "value": "Solunum Şekli"
+    },
+    {
+     "description": "Sessiz, huzurlu, uyuyor ve / veya sakin",
+     "item": "Uyanıklık Hali_0",
+     "score": 0.0,
+     "value": "Uyanıklık Hali"
+    },
+    {
+     "description": "Canlı, huzursuz ve sakinleştirlemiyor",
+     "item": "Uyanıklık Hali_1",
+     "score": 1.0,
+     "value": "Uyanıklık Hali"
+    },
+    {
+     "description": "Sakin Yüz",
+     "item": "YüzIfadeis_0",
+     "score": 0.0,
+     "value": "Yüz İfadesi"
+    },
+    {
+     "description": "Gergin Yüz Kasları",
+     "item": "YüzIfadeis_1",
+     "score": 1.0,
+     "value": "Yüz İfadesi"
+    },
+    {
+     "description": "Oksijen ihtiyacı yok ya da verilen oksijen miktarını arttırmaya gerek yok",
+     "item": "Yeterli_renk_ve_satürasyon_için_oksijen_gereksinimi_0",
+     "score": 0.0,
+     "value": "Yeterli renk ve satürasyon için oksijen gereksinimi"
+    }
+   ],
+   "itemType": 6,
+   "name": "Değerlendirme NIPS",
+   "reusable": true,
+   "rulesOnSave": {},
+   "rulesOnSign": {},
+   "showAtEpicrisis": true,
+   "showAtPrint": true,
+   "showAtSummary": true,
+   "streamable": false,
+   "type": 5,
+   "uiElementType": 28,
+   "unitType": 0
+  },
+  {
+   "allowHistory": false,
+   "allowTemplate": false,
+   "attributes": {},
+   "category": "documents.pain_questionnaire",
+   "children": [],
+   "class": 1,
+   "code": "pain_review_pas",
+   "defaultValueMode": 1,
+   "defaultValueSource": 1,
+   "id": 3062,
+   "isOffline": false,
+   "isSealed": true,
+   "items": [
+    {
+     "description": "Ağlamıyor",
+     "item": "Ağlama_0",
+     "score": 0.0,
+     "value": "Ağlama"
+    },
+    {
+     "description": "Ağlıyor ancak kucağa alma ya da dokunma ile susuyor",
+     "item": "Ağlama_1",
+     "score": 1.0,
+     "value": "Ağlama"
+    },
+    {
+     "description": "Ağlıyor ancak kucağa alma ya da dokunma ile susmuyor",
+     "item": "Ağlama_2",
+     "score": 2.0,
+     "value": "Ağlama"
+    },
+    {
+     "description": "Sakin ve uyuyor",
+     "item": "Ajitasyon_0",
+     "score": 0.0,
+     "value": "Ajitasyon"
+    },
+    {
+     "description": "Orta şiddette ajite",
+     "item": "Ajitasyon_1",
+     "score": 1.0,
+     "value": "Ajitasyon"
+    },
+    {
+     "description": "Histerik düzeyde ajite",
+     "item": "Ajitasyon_2",
+     "score": 2.0,
+     "value": "Ajitasyon"
+    },
+    {
+     "description": "Orta şiddet ve lokalize ağrı (konuşma öncesi dönem; ağrı bölgesini tutuyor)",
+     "item": "AjitasyonSözel Değerlendirme ya da Vücut Dili_2",
+     "score": 2.0,
+     "value": "Sözel Değerlendirme ya da Vücut Dili"
+    },
+    {
+     "description": "Hareket Normal",
+     "item": "Hareket_0",
+     "score": 0.0,
+     "value": "Hareket"
+    },
+    {
+     "description": "Husursuz",
+     "item": "Hareket_1",
+     "score": 1.0,
+     "value": "Hareket"
+    },
+    {
+     "description": "Çırpınıyor",
+     "item": "Hareket_2",
+     "score": 2.0,
+     "value": "Hareket"
+    },
+    {
+     "description": "%10 pre-op",
+     "item": "KanBasinci_0",
+     "score": 0.0,
+     "value": "Kan Basıncı (Sistolik)"
+    },
+    {
+     "description": "%11 - 30'dan küçük pre-op",
+     "item": "KanBasinci_1",
+     "score": 1.0,
+     "value": "Kan Basıncı (Sistolik)"
+    },
+    {
+     "description": "%30'dan büyük pre-op",
+     "item": "KanBasinci_2",
+     "score": 2.0,
+     "value": "Kan Basıncı (Sistolik)"
+    },
+    {
+     "description": "Uyuyor ya da ağrı durumu yok (konuşma öncesi dönem; özel bir ağrılı duruş göstermiyor)",
+     "item": "Sözel Değerlendirme ya da Vücut Dili_0",
+     "score": 0.0,
+     "value": "Sözel Değerlendirme ya da Vücut Dili"
+    },
+    {
+     "description": "Hafif şiddette ağrı ya da lokalize değil (konuşma öncesi dönem; ekstremitelerde fleksiyon)",
+     "item": "Sözel Değerlendirme ya da Vücut Dili_1",
+     "score": 1.0,
+     "value": "Sözel Değerlendirme ya da Vücut Dili"
+    }
+   ],
+   "itemType": 6,
+   "name": "Değerlendirme PAS",
+   "reusable": true,
+   "rulesOnSave": {},
+   "rulesOnSign": {},
+   "showAtEpicrisis": true,
+   "showAtPrint": true,
+   "showAtSummary": true,
+   "streamable": false,
+   "type": 5,
+   "uiElementType": 28,
+   "unitType": 0
+  },
+  {
+   "allowHistory": false,
+   "allowTemplate": false,
+   "attributes": {
+    "isFullWidth": "true",
+    "size": "md"
+   },
+   "category": "documents.folder4",
+   "children": [],
+   "class": 1,
+   "code": "treatment_plan",
+   "defaultValueMode": 1,
+   "defaultValueSource": 1,
+   "id": 5901,
+   "isOffline": false,
+   "isSealed": false,
+   "items": [
+    {
+     "item": "Ayaktan takip ve tedavi",
+     "value": "standing"
+    },
+    {
+     "item": "Yatarak takip ve tedavi",
+     "score": 0.0,
+     "value": "lying"
+    },
+    {
+     "item": "Ayaktan cerrahi girişim",
+     "score": 0.0,
+     "value": "standing_surgical"
+    },
+    {
+     "item": "Yatarak cerrahi girişim",
+     "score": 0.0,
+     "value": "lying_surgical"
+    },
+    {
+     "item": "Rehabilitasyon",
+     "score": 0.0,
+     "value": "rehabilitation"
+    },
+    {
+     "item": "Palyatif tedavi",
+     "score": 0.0,
+     "value": "paliatif"
+    },
+    {
+     "item": "Günübirlik Tedavi",
+     "score": 0.0,
+     "value": "gunubirlik_tedavi"
+    },
+    {
+     "item": "Allojenik Hasta",
+     "value": "allogeneic_patient"
+    },
+    {
+     "item": "Kemik İliği Nakli",
+     "value": "bone-marrow-transplantation"
+    }
+   ],
+   "name": "Tedavi Planı",
+   "reusable": true,
+   "rulesOnSave": {},
+   "showAtEpicrisis": true,
+   "showAtPrint": true,
+   "showAtSummary": true,
+   "streamable": false,
+   "type": 6,
+   "uiElementType": 9
+  },
+  {
+   "allowHistory": false,
+   "allowTemplate": false,
+   "attributes": {},
+   "category": "documents.physical_examination_notes",
+   "children": [],
+   "class": 1,
+   "code": "exam_panel_summary",
+   "defaultValueMode": 1,
+   "defaultValueSource": 1,
+   "description": "Özet",
+   "id": 5939,
+   "isOffline": false,
+   "isSealed": false,
+   "items": [],
+   "name": "Fizik Muayene Bulguları",
+   "reusable": true,
+   "rulesOnSave": {},
+   "showAtEpicrisis": true,
+   "showAtPrint": true,
+   "showAtSummary": true,
+   "streamable": false,
+   "type": 8,
+   "uiElementType": 29
+  },
+  {
+   "allowHistory": false,
+   "allowTemplate": false,
+   "attributes": {},
+   "category": "documents.physical_examination_notes",
+   "children": [],
+   "class": 1,
+   "code": "patient_complaint_panel_summary",
+   "defaultValue": "{\"raw\":\"\",\"html\":\"\"}",
+   "defaultValueMode": 1,
+   "defaultValueSource": 1,
+   "id": 6038,
+   "isOffline": false,
+   "isSealed": false,
+   "items": [],
+   "itemType": 0,
+   "name": "Şikayet",
+   "reusable": true,
+   "rulesOnSave": {},
+   "rulesOnSign": {},
+   "showAtEpicrisis": true,
+   "showAtPrint": true,
+   "showAtSummary": true,
+   "streamable": false,
+   "type": 8,
+   "uiElementType": 29,
+   "unitType": 0
+  },
+  {
+   "allowHistory": false,
+   "allowTemplate": false,
+   "attributes": {},
+   "category": "documents.physical_examination_notes",
+   "children": [],
+   "class": 1,
+   "code": "treatment_plan_panel_summary",
+   "defaultValue": "{\"raw\":\"\",\"html\":\"\"}",
+   "defaultValueMode": 1,
+   "defaultValueSource": 1,
+   "id": 6039,
+   "isOffline": false,
+   "isSealed": false,
+   "items": [],
+   "itemType": 0,
+   "name": "Taburculuk İzlem ve Planı",
+   "reusable": true,
+   "rulesOnSave": {},
+   "rulesOnSign": {},
+   "showAtEpicrisis": true,
+   "showAtPrint": true,
+   "showAtSummary": true,
+   "streamable": false,
+   "type": 8,
+   "uiElementType": 29,
+   "unitType": 0
+  },
+  {
+   "allowHistory": false,
+   "allowTemplate": false,
+   "attributes": {},
+   "category": "documents.physical_examination_notes",
+   "children": [],
+   "class": 1,
+   "code": "review_of_system_panel_summary",
+   "defaultValueMode": 1,
+   "defaultValueSource": 1,
+   "description": "Sistem sorgusu özeti",
+   "id": 6048,
+   "isOffline": false,
+   "isSealed": false,
+   "items": [],
+   "name": "Sistem Sorgusu",
+   "reusable": true,
+   "rulesOnSave": {},
+   "showAtEpicrisis": true,
+   "showAtPrint": true,
+   "showAtSummary": true,
+   "streamable": false,
+   "type": 8,
+   "uiElementType": 29
+  },
+  {
+   "allowHistory": true,
+   "allowTemplate": true,
+   "attributes": {
+    "isFullWidth": "true"
+   },
+   "category": "documents.examination",
+   "children": [],
+   "class": 1,
+   "code": "treatment_note_v2",
+   "defaultValueMode": 1,
+   "defaultValueSource": 1,
+   "id": 7267,
+   "isOffline": false,
+   "isSealed": false,
+   "items": [],
+   "itemType": 0,
+   "name": "Tedavi Notu",
+   "reusable": true,
+   "rulesOnSave": {},
+   "showAtEpicrisis": true,
+   "showAtPrint": true,
+   "showAtSummary": true,
+   "streamable": false,
+   "type": 8,
+   "uiElementType": 2,
+   "unitType": 0
+  },
+  {
+   "allowHistory": false,
+   "allowTemplate": false,
+   "attributes": {
+    "isFullWidth": "true",
+    "hideOverflowElements": "false",
+    "hasAutoComplete": "false",
+    "hasTextFieldForOther": "true"
+   },
+   "category": "documents.examination",
+   "children": [],
+   "class": 1,
+   "code": "patient_psychological_status_v2",
+   "defaultValueMode": 1,
+   "defaultValueSource": 1,
+   "id": 7268,
+   "isOffline": false,
+   "isSealed": false,
+   "items": [
+    {
+     "item": "Sakin",
+     "score": 0.0,
+     "value": "s"
+    },
+    {
+     "item": "Üzgün",
+     "score": 0.0,
+     "value": "ü"
+    },
+    {
+     "item": "Ajite",
+     "score": 0.0,
+     "value": "a"
+    },
+    {
+     "item": "Kaygılı",
+     "score": 0.0,
+     "value": "k"
+    },
+    {
+     "item": "Agresif",
+     "score": 0.0,
+     "value": "aa"
+    }
+   ],
+   "itemType": 0,
+   "name": "Psikolojik Durum",
+   "reusable": true,
+   "rulesOnSave": {},
+   "showAtEpicrisis": true,
+   "showAtPrint": true,
+   "showAtSummary": false,
+   "streamable": false,
+   "type": 6,
+   "uiElementType": 9,
+   "unitType": 0
+  },
+  {
+   "allowHistory": false,
+   "allowTemplate": false,
+   "attributes": {
+    "isFullWidth": "true"
+   },
+   "category": "documents.examination",
+   "children": [],
+   "class": 1,
+   "code": "patient_psychology_explanation",
+   "defaultValueMode": 1,
+   "defaultValueSource": 1,
+   "id": 7269,
+   "isOffline": false,
+   "isSealed": false,
+   "items": [],
+   "itemType": 0,
+   "name": "Piskoloji açıklaması",
+   "reusable": true,
+   "rulesOnSave": {},
+   "showAtEpicrisis": true,
+   "showAtPrint": true,
+   "showAtSummary": false,
+   "streamable": false,
+   "type": 8,
+   "uiElementType": 2,
+   "unitType": 0
+  },
+  {
+   "allowHistory": false,
+   "allowTemplate": false,
+   "attributes": {
+    "childParameterAligning": "row",
+    "isFullWidth": false,
+    "unit": "°C"
+   },
+   "category": "documents.vitals",
+   "children": [
+    "deneme1"
+   ],
+   "class": 1,
+   "code": "temperature_v2",
+   "defaultValue": "{\"value\":\"\",\"selectValue\":\"°C\"}",
+   "defaultValueMode": 1,
+   "defaultValueSource": 1,
+   "id": 7270,
+   "isOffline": false,
+   "isSealed": true,
+   "items": [],
+   "itemType": 0,
+   "name": "Ateş",
+   "reusable": true,
+   "rulesOnSave": {},
+   "rulesOnSign": {},
+   "showAtEpicrisis": true,
+   "showAtFollowUp": true,
+   "showAtPrint": true,
+   "showAtSummary": true,
+   "streamable": false,
+   "type": 7,
+   "uiElementType": 15,
+   "unitType": 0
+  },
+  {
+   "allowHistory": true,
+   "allowTemplate": true,
+   "attributes": {
+    "isFullWidth": true
+   },
+   "category": "documents.examination",
+   "children": [],
+   "class": 1,
+   "code": "exam_simple_textarea",
+   "defaultValueMode": 1,
+   "defaultValueSource": 1,
+   "id": 7271,
+   "isOffline": false,
+   "isSealed": false,
+   "items": [],
+   "itemType": 0,
+   "name": "Fizik Muayene Bulguları",
+   "reusable": true,
+   "rulesOnSave": {},
+   "rulesOnSign": {},
+   "showAtEpicrisis": true,
+   "showAtFollowUp": true,
+   "showAtPrint": true,
+   "showAtSummary": false,
+   "streamable": false,
+   "type": 8,
+   "uiElementType": 2,
+   "unitType": 0
+  },
+  {
+   "allowHistory": false,
+   "allowTemplate": false,
+   "attributes": {},
+   "category": "documents.examination",
+   "children": [],
+   "class": 1,
+   "code": "discharge_type",
+   "conditions": [],
+   "defaultValueMode": 1,
+   "defaultValueSource": 1,
+   "id": 7272,
+   "isOffline": false,
+   "isSealed": false,
+   "items": [
+    {
+     "item": "Aile hekimi bakımı altında eve gönderilme",
+     "score": 0.0,
+     "value": "8"
+    },
+    {
+     "item": "Aynı kapsamlı başka bir hastaneye sevk",
+     "score": 0.0,
+     "value": "5"
+    },
+    {
+     "item": "Daha kapsamlı başka bir hastaneye sevk",
+     "score": 0.0,
+     "value": "6"
+    },
+    {
+     "item": "Diğer ",
+     "score": 0.0,
+     "value": "11"
+    },
+    {
+     "item": "Eve gönderilme",
+     "score": 0.0,
+     "value": "4"
+    },
+    {
+     "item": "Haliyle taburcu",
+     "score": 0.0,
+     "value": "2"
+    },
+    {
+     "item": "Hastane içinde başka bir branşa sevk",
+     "score": 0.0,
+     "value": "9"
+    },
+    {
+     "item": "Orta dereceli başka bir bakım kuruluşuna sevk",
+     "score": 0.0,
+     "value": "7"
+    },
+    {
+     "item": "Reçete verildi",
+     "score": 0.0,
+     "value": "98"
+    },
+    {
+     "item": "Şifa ile taburcu",
+     "score": 0.0,
+     "value": "1"
+    },
+    {
+     "item": "Tedavi ile taburcu",
+     "score": 0.0,
+     "value": "99"
+    },
+    {
+     "item": "Tedaviden vazgeçme",
+     "score": 0.0,
+     "value": "3"
+    },
+    {
+     "item": "Uzayan yatış",
+     "score": 0.0,
+     "value": "13"
+    },
+    {
+     "item": "Vefat",
+     "score": 0.0,
+     "value": "10"
+    },
+    {
+     "item": "Yeşil kartlı sevk ile taburcu",
+     "score": 0.0,
+     "value": "12"
+    }
+   ],
+   "itemType": 0,
+   "lookupType": "enum.dischargeCode",
+   "name": "Taburculuk Tipi",
+   "reusable": true,
+   "rulesOnSave": {
+    "required": "true"
+   },
+   "rulesOnSign": {},
+   "showAtEpicrisis": true,
+   "showAtFollowUp": true,
+   "showAtPrint": true,
+   "showAtSummary": false,
+   "streamable": false,
+   "type": 6,
+   "uiElementType": 8,
+   "unitType": 0
+  },
+  {
+   "allowHistory": false,
+   "allowTemplate": true,
+   "attributes": {
+    "isFullWidth": true
+   },
+   "category": "documents.examination",
+   "children": [],
+   "class": 1,
+   "code": "discharge_note",
+   "defaultValueMode": 1,
+   "defaultValueSource": 1,
+   "id": 7273,
+   "isOffline": false,
+   "isSealed": false,
+   "items": [],
+   "itemType": 0,
+   "name": "Taburculuk Açıklaması",
+   "reusable": true,
+   "rulesOnSave": {
+    "required": "true"
+   },
+   "rulesOnSign": {},
+   "showAtEpicrisis": true,
+   "showAtFollowUp": true,
+   "showAtPrint": true,
+   "showAtSummary": false,
+   "streamable": false,
+   "type": 8,
+   "uiElementType": 2,
+   "unitType": 0
+  },
+  {
+   "allowHistory": true,
+   "allowTemplate": false,
+   "attributes": {
+    "isFullWidth": "true"
+   },
+   "category": "documents.examination",
+   "children": [],
+   "class": 1,
+   "code": "review_of_system_simple",
+   "defaultValueMode": 1,
+   "defaultValueSource": 1,
+   "id": 7274,
+   "isOffline": false,
+   "isSealed": false,
+   "items": [],
+   "itemType": 0,
+   "name": "Sistem Sorgusu",
+   "reusable": true,
+   "rulesOnSave": {},
+   "showAtEpicrisis": true,
+   "showAtPrint": true,
+   "showAtSummary": false,
+   "streamable": false,
+   "type": 8,
+   "uiElementType": 2,
+   "unitType": 0
+  },
+  {
+   "allowHistory": false,
+   "allowTemplate": false,
+   "attributes": {},
+   "category": "documents.pain_questionnaire",
+   "children": [],
+   "class": 1,
+   "code": "pain_review_pas_v2",
+   "defaultValueMode": 1,
+   "defaultValueSource": 1,
+   "id": 8220,
+   "isOffline": false,
+   "isSealed": true,
+   "items": [
+    {
+     "description": ">= 36 hafta",
+     "item": "Gebelik_yaşı_0",
+     "score": 0.0,
+     "value": "Gebelik yaşı"
+    },
+    {
+     "description": "32 hafta - 35 hafta 6 günlük",
+     "item": "Gebelik_yaşı_1",
+     "score": 1.0,
+     "value": "Gebelik yaşı"
+    },
+    {
+     "description": "28 hafta - 31 hafta 6 günlük",
+     "item": "Gebelik_yaşı_2",
+     "score": 2.0,
+     "value": "Gebelik yaşı"
+    },
+    {
+     "description": "< 28 hafta",
+     "item": "Gebelik_yaşı_3",
+     "score": 3.0,
+     "value": "Gebelik yaşı"
+    },
+    {
+     "description": "Aktif/ uyanık, gözler açık, yüz hareketleri var",
+     "item": "Davranışsal_durum_0",
+     "score": 0.0,
+     "value": "Davranışsal durum"
+    },
+    {
+     "description": "Sakin/ uyanık, gözler açık, yüz hareketleri var",
+     "item": "Davranışsal_durum_1",
+     "score": 1.0,
+     "value": "Davranışsal durum"
+    },
+    {
+     "description": "Sakin/ uyanık, gözler açık, yüz hareketleri var",
+     "item": "Davranışsal_durum_2",
+     "score": 2.0,
+     "value": "Davranışsal durum"
+    },
+    {
+     "description": "Sakin/ uyuyor, gözler kapalı, yüz hareketleri var",
+     "item": "Davranışsal_durum_3",
+     "score": 3.0,
+     "value": "Davranışsal durum"
+    },
+    {
+     "description": "Dakikada 0-4 atım artış",
+     "item": "Maksimum_kalp_atım hızı_0",
+     "score": 0.0,
+     "value": "Maksimum kalp atım hızı"
+    },
+    {
+     "description": "Dakikada 5-14 atım artış",
+     "item": "Maksimum_kalp_atım hızı_1",
+     "score": 1.0,
+     "value": "Maksimum kalp atım hızı"
+    },
+    {
+     "description": "Dakikada 15-24 atım artış",
+     "item": "Maksimum_kalp_atım hızı_2",
+     "score": 2.0,
+     "value": "Maksimum kalp atım hızı"
+    },
+    {
+     "description": "Dakikada atım artışı 25 ve üzeri",
+     "item": "Maksimum_kalp_atım hızı_3",
+     "score": 3.0,
+     "value": "Maksimum kalp atım hızı"
+    },
+    {
+     "description": "% 2.4 azalma",
+     "item": "Minimum_oksijen_saturasyonu_0",
+     "score": 0.0,
+     "value": "Minimum oksijen saturasyonu"
+    },
+    {
+     "description": "%2.5 - % 4.9 azalma",
+     "item": "Minimum_oksijen_saturasyonu_1",
+     "score": 1.0,
+     "value": "Minimum oksijen saturasyonu"
+    },
+    {
+     "description": "%5 - %7.4 azalma",
+     "item": "Minimum_oksijen_saturasyonu_2",
+     "score": 2.0,
+     "value": "Minimum oksijen saturasyonu"
+    },
+    {
+     "description": "%7.5 ve daha fazla azalma",
+     "item": "Minimum_oksijen_saturasyonu_3",
+     "score": 3.0,
+     "value": "Minimum oksijen saturasyonu"
+    },
+    {
+     "description": "Yok (Zamanın %9>='u)",
+     "item": "Alnını_karıştırma_0",
+     "score": 0.0,
+     "value": "Alnını karıştırma"
+    },
+    {
+     "description": "En az (Zamanın %10'u)",
+     "item": "Alnını_karıştırma_1",
+     "score": 1.0,
+     "value": "Alnını karıştırma"
+    },
+    {
+     "description": "Orta(Zamanın %40'ı)",
+     "item": "Alnını_karıştırma_2",
+     "score": 2.0,
+     "value": "Alnını karıştırma"
+    },
+    {
+     "description": "En çok (Zamanın %20 <=' ı)",
+     "item": "Alnını_karıştırma_3",
+     "score": 3.0,
+     "value": "Alnını karıştırma"
+    },
+    {
+     "description": "Yok (Zamanın %9>='u)",
+     "item": "Gözlerini_kısma_0",
+     "score": 0.0,
+     "value": "Gözlerini kısma"
+    },
+    {
+     "description": "En az (Zamanın %10'u)",
+     "item": "Gözlerini_kısma_1",
+     "score": 1.0,
+     "value": "Gözlerini kısma"
+    },
+    {
+     "description": "Orta(Zamanın %40'ı)",
+     "item": "Gözlerini_kısma_2",
+     "score": 2.0,
+     "value": "Gözlerini kısma"
+    },
+    {
+     "description": "En çok (Zamanın %20 <=' ı)",
+     "item": "Gözlerini_kısma_3",
+     "score": 3.0,
+     "value": "Gözlerini kısma"
+    },
+    {
+     "description": "Yok (Zamanın %9>='u)",
+     "item": "Burun_kanatlarında_genişleme_0",
+     "score": 0.0,
+     "value": "Burun kanatlarında genişleme"
+    },
+    {
+     "description": "En az (Zamanın %10'u)",
+     "item": "Burun_kanatlarında_genişleme_1",
+     "score": 1.0,
+     "value": "Burun kanatlarında genişleme"
+    },
+    {
+     "description": "Orta(Zamanın %40'ı)",
+     "item": "Burun_kanatlarında_genişleme_2",
+     "score": 2.0,
+     "value": "Burun kanatlarında genişleme"
+    },
+    {
+     "description": "En çok (Zamanın %20 <=' ı)",
+     "item": "Burun_kanatlarında_genişleme_3",
+     "score": 3.0,
+     "value": "Burun kanatlarında genişleme"
+    }
+   ],
+   "itemType": 6,
+   "name": "Değerlendirme PAS",
+   "reusable": true,
+   "rulesOnSave": {},
+   "rulesOnSign": {},
+   "showAtEpicrisis": true,
+   "showAtPrint": true,
+   "showAtSummary": true,
+   "streamable": false,
+   "type": 5,
+   "uiElementType": 28,
+   "unitType": 0
+  },
+  {
+   "allowHistory": false,
+   "allowTemplate": false,
+   "attributes": {},
+   "category": "documents.pain_questionnaire",
+   "children": [],
+   "class": 1,
+   "code": "pain_review_nips_v2",
+   "defaultValueMode": 1,
+   "defaultValueSource": 1,
+   "id": 8221,
+   "isOffline": false,
+   "isSealed": true,
+   "items": [
+    {
+     "description": "Yok",
+     "item": "Ağlama_0",
+     "score": 0.0,
+     "value": "Ağlama"
+    },
+    {
+     "description": "Yüksek sesle ağlama ya da teselli edilebilir sessiz ağlamaklı yüz ifadesi",
+     "item": "Ağlama_1",
+     "score": 1.0,
+     "value": "Ağlama"
+    },
+    {
+     "description": "Durdurulamayan yüksek sesle ağlama",
+     "item": "Ağlama_2",
+     "score": 2.0,
+     "value": "Ağlama"
+    },
+    {
+     "description": "Rahat",
+     "item": "YüzIfadeis_0",
+     "score": 0.0,
+     "value": "Yüz İfadesi"
+    },
+    {
+     "description": "Yüz buruşturma (ekşitme)",
+     "item": "YüzIfadeis_1",
+     "score": 1.0,
+     "value": "Yüz İfadesi"
+    },
+    {
+     "description": "Yüz buruşturma ve inleme",
+     "item": "YüzIfadeis_2",
+     "score": 2.0,
+     "value": "Yüz İfadesi"
+    },
+    {
+     "description": "Oksijen ihtiyacı yok ya da verilen oksijen miktarını arttırmaya gerek yok",
+     "item": "Yeterli_renk_ve_satürasyon_0",
+     "score": 0.0,
+     "value": "Yeterli renk ve satürasyon için oksijen gereksinimi"
+    },
+    {
+     "description": "Oksijen ihtiyacı < %30 ya da satürasyon ve rengi sürdürmek için verilen oksijeni <=%10 arttırmak gerekli",
+     "item": "Yeterli_renk_ve_satürasyon_1",
+     "score": 1.0,
+     "value": "Yeterli renk ve satürasyon için oksijen gereksinimi"
+    },
+    {
+     "description": "Oksijen ihtiyacı > %30 ya da satürasyon ve rengi sürdürmek için verilen oksijeni >=%10 arttırmak gerekli",
+     "item": "Yeterli_renk_ve_satürasyon_2",
+     "score": 2.0,
+     "value": "Yeterli renk ve satürasyon için oksijen gereksinimi"
+    },
+    {
+     "description": "Kalp hızı ve tansiyondaki artış ameliyat/uygulama öncesi değerin % 10'u kadar",
+     "item": "Vital_Bulgularda_artis",
+     "score": 0.0,
+     "value": "Vital bulgularda artış"
+    },
+    {
+     "description": "Kalp hızı ve tansiyondaki artış ameliyat/uygulama öncesi değerden %11-%20 fazla",
+     "item": "Vital_Bulgularda_artis_1",
+     "score": 1.0,
+     "value": "Vital bulgularda artış"
+    },
+    {
+     "description": "Kalp hızı ve tansiyondaki artış ameliyat/uygulama öncesi değerden %21'i ve fazla",
+     "item": "Vital_Bulgularda_artis_2",
+     "score": 2.0,
+     "value": "Vital bulgularda artış"
+    },
+    {
+     "description": "Bebek için normal",
+     "item": "Uyku/uyanıklık_0",
+     "score": 0.0,
+     "value": "Uyku/ uyanıklık davranışı"
+    },
+    {
+     "description": "Postop: Sık uyanır\nUygulama sonrası: Uyanık, son derece uyanık, teselli edilebilir",
+     "item": "Uyku/uyanıklık_1",
+     "score": 1.0,
+     "value": "Uyku/ uyanıklık davranışı"
+    },
+    {
+     "description": "Postop: Sık uyanır\nUygulama sonrası: Uyanık, son derece uyanık, teselli edilemez",
+     "item": "Uyku/uyanıklık_2",
+     "score": 2.0,
+     "value": "Uyku/ uyanıklık davranışı"
+    }
+   ],
+   "itemType": 6,
+   "name": "Değerlendirme NIPS",
+   "reusable": true,
+   "rulesOnSave": {},
+   "rulesOnSign": {},
+   "showAtEpicrisis": true,
+   "showAtFollowUp": true,
+   "showAtPrint": true,
+   "showAtSummary": true,
+   "streamable": false,
+   "type": 5,
+   "uiElementType": 28,
+   "unitType": 0
+  },
+  {
+   "allowHistory": false,
+   "allowTemplate": false,
+   "attributes": {},
+   "category": "documents.pain_questionnaire",
+   "children": [],
+   "class": 1,
+   "code": "pain_review_das_v2",
+   "defaultValueMode": 1,
+   "defaultValueSource": 1,
+   "id": 8222,
+   "isOffline": false,
+   "isSealed": true,
+   "items": [
+    {
+     "description": "Ağrı ifadesi yok/ Gülümsüyor",
+     "item": "Yüz_ifadeleri_0",
+     "score": 0.0,
+     "value": "Yüz ifadeleri"
+    },
+    {
+     "description": "Nadir yüz buruşturma, çatık kaş, ilgisiz",
+     "item": "Yüz_ifadeleri_1",
+     "score": 1.0,
+     "value": "Yüz ifadeleri"
+    },
+    {
+     "description": "Sık sık çenesini ve dişlerini sıkıyor",
+     "item": "Yüz_ifadeleri_2",
+     "score": 2.0,
+     "value": "Yüz ifadeleri"
+    },
+    {
+     "description": "Normal/ Rahat pozisyonda",
+     "item": "Bacak_hareketleri_0",
+     "score": 0.0,
+     "value": "Bacak hareketleri"
+    },
+    {
+     "description": "Huzursuz",
+     "item": "Bacak_hareketleri_1",
+     "score": 1.0,
+     "value": "Bacak hareketleri"
+    },
+    {
+     "description": "Tekmeleme, bacakları çekme",
+     "item": "Bacak_hareketleri_2",
+     "score": 2.0,
+     "value": "Bacak hareketleri"
+    },
+    {
+     "description": "Sakin yatış/ Normal pozisyon",
+     "item": "Aktivite_0",
+     "score": 0.0,
+     "value": "Aktivite"
+    },
+    {
+     "description": "Gergin, kıvranıyor",
+     "item": "Aktivite_1",
+     "score": 1.0,
+     "value": "Aktivite"
+    },
+    {
+     "description": "Hassas, gergin",
+     "item": "Aktivite_2",
+     "score": 2.0,
+     "value": "Aktivite"
+    },
+    {
+     "description": "Ağlama yok (Uyku/ Uyanıklık)",
+     "item": "Ağlama_0",
+     "score": 0.0,
+     "value": "Ağlama"
+    },
+    {
+     "description": "Ara sıra inleme, ağlama",
+     "item": "Ağlama_1",
+     "score": 1.0,
+     "value": "Ağlama"
+    },
+    {
+     "description": "Sürekli ağlama, bağırma",
+     "item": "Ağlama_2",
+     "score": 2.0,
+     "value": "Ağlama"
+    },
+    {
+     "description": "Memnun, rahat",
+     "item": "Avutulma_0",
+     "score": 0.0,
+     "value": "Avutulma"
+    },
+    {
+     "description": "Ara sıra çevreden rahatsız",
+     "item": "Avutulma_1",
+     "score": 1.0,
+     "value": "Avutulma"
+    },
+    {
+     "description": "Avutulması zor",
+     "item": "Avutulma_2",
+     "score": 2.0,
+     "value": "Avutulma"
+    }
+   ],
+   "itemType": 6,
+   "name": "Değerlendirme DAS",
+   "reusable": true,
+   "rulesOnSave": {},
+   "rulesOnSign": {},
+   "showAtEpicrisis": true,
+   "showAtPrint": true,
+   "showAtSummary": true,
+   "streamable": false,
+   "type": 5,
+   "uiElementType": 28,
+   "unitType": 0
+  },
+  {
+   "allowHistory": false,
+   "allowTemplate": false,
+   "attributes": {},
+   "category": "documents.examination",
+   "children": [],
+   "class": 1,
+   "code": "is_surgery_will_planned",
+   "conditions": [
+    {
+     "action": 15,
+     "actionDelay": 0,
+     "groups": [
+      {
+       "filterType": 1,
+       "items": [
+        {
+         "leftValueSourceId": 3,
+         "operator": 1,
+         "rightValue": 35,
+         "rightValueSourceId": 0
+        }
+       ],
+       "joinType": 1
+      }
+     ],
+     "repeatPeriod": 0,
+     "scheme": 0,
+     "value": "true",
+     "valueParameter": ""
+    }
+   ],
+   "defaultValue": "\"h\"",
+   "defaultValueMode": 1,
+   "defaultValueSource": 1,
+   "id": 8493,
+   "isOffline": false,
+   "isSealed": false,
+   "items": [
+    {
+     "item": "Evet",
+     "score": 1.0,
+     "value": "e"
+    },
+    {
+     "item": "Hayır",
+     "score": 2.0,
+     "value": "h"
+    }
+   ],
+   "itemType": 0,
+   "name": "Ameliyat Planlanacak mı",
+   "reusable": true,
+   "rulesOnSave": {},
+   "rulesOnSign": {},
+   "showAtEpicrisis": true,
+   "showAtFollowUp": true,
+   "showAtPrint": true,
+   "showAtSummary": false,
+   "streamable": false,
+   "type": 6,
+   "uiElementType": 12,
+   "unitType": 0
+  },
+  {
+   "allowHistory": false,
+   "allowTemplate": false,
+   "attributes": {
+    "displayType": 1
+   },
+   "category": "documents.examination",
+   "children": [],
+   "class": 1,
+   "code": "is_online_control",
+   "defaultValueMode": 1,
+   "defaultValueSource": 1,
+   "id": 8495,
+   "isOffline": false,
+   "isSealed": false,
+   "items": [],
+   "name": "Online Kontrol",
+   "reusable": true,
+   "rulesOnSave": {},
+   "rulesOnSign": {},
+   "showAtEpicrisis": true,
+   "showAtPrint": true,
+   "showAtSummary": false,
+   "streamable": false,
+   "type": 6,
+   "uiElementType": 12
+  },
+  {
+   "allowHistory": false,
+   "allowTemplate": false,
+   "attributes": {},
+   "category": "common.folder2",
+   "children": [],
+   "class": 1,
+   "code": "deneme1",
+   "defaultValueMode": 1,
+   "defaultValueSource": 1,
+   "id": 8762,
+   "isOffline": true,
+   "isSealed": false,
+   "items": [
+    {
+     "item": "ss",
+     "value": "1"
+    },
+    {
+     "item": "sss",
+     "score": 0.0,
+     "value": "2"
+    }
+   ],
+   "itemType": 0,
+   "name": "denemealt",
+   "reusable": true,
+   "rulesOnSave": {},
+   "rulesOnSign": {},
+   "showAtEpicrisis": true,
+   "showAtFollowUp": true,
+   "showAtPrint": true,
+   "showAtSummary": false,
+   "streamable": false,
+   "type": 6,
+   "uiElementType": 8,
+   "unitType": 0
+  }
+ ]
+}

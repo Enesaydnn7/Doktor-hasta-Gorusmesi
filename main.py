@@ -15,6 +15,7 @@ import os
 import re
 import uuid
 from contextlib import suppress
+from datetime import datetime
 from html import escape
 from typing import Any
 from urllib.parse import quote, urlsplit
@@ -35,6 +36,7 @@ import stt
 import pdf_report
 import db
 import auth
+import comed_api
 import comed_integration
 from api_resilience import public_error_message
 
@@ -194,6 +196,11 @@ class ComedTransferStatusIn(BaseModel):
     status: str
     error: str | None = None
     debug: dict | None = None
+
+
+class ComedApiStepIn(BaseModel):
+    # Çağrı kimliği -> {"ok", "status", "data", "error"}; yalnız bu turun sonuçları.
+    results: dict[str, Any] = {}
 
 
 class ComedTraceEventIn(BaseModel):
@@ -870,6 +877,8 @@ def _create_comed_transfer(
         patient,
         trace_templates=trace_templates,
     )
+    if config.COMED_TRANSFER_MODE == "api":
+        bundle["execution_mode"] = "comed_api"
     return db.comed_transfer_create(record_id, patient, bundle, requested_by)
 
 
@@ -926,6 +935,54 @@ async def mobile_comed_bridge_status(
     if not transfer:
         raise HTTPException(status_code=404, detail="COMED aktarımı bulunamadı")
     return transfer
+
+
+# API aktarımında turlar arası COMED yanıtları. Planlayıcı durumsuz olduğu
+# için sunucu yeniden başlarsa iş baştan okunur; yazmalar önce COMED'den
+# okunan durumla korunduğundan çift kayıt oluşmaz.
+_COMED_API_RESULTS: dict[int, dict] = {}
+
+
+@app.post("/api/v1/mobile/comed/bridge/transfers/{transfer_id}/api-step")
+async def mobile_comed_bridge_api_step(
+    transfer_id: int,
+    body: ComedApiStepIn,
+    user: dict = Depends(mobile_doctor),
+):
+    """COMED API aktarımının bir sonraki turu (bkz. comed_api.plan_next)."""
+    transfer = db.comed_transfer_get(transfer_id)
+    if not transfer or (
+        transfer.get("requested_by")
+        and transfer.get("requested_by") != user["user"]
+    ):
+        raise HTTPException(status_code=404, detail="COMED aktarımı bulunamadı")
+    if transfer.get("status") not in {"queued", "filling"}:
+        raise HTTPException(status_code=409, detail="Bu aktarım zaten bitti")
+    results = _COMED_API_RESULTS.setdefault(transfer_id, {})
+    results.update(body.results or {})
+    step = comed_api.plan_next(transfer.get("bundle") or {}, results)
+    if step["done"]:
+        _COMED_API_RESULTS.pop(transfer_id, None)
+        debug = {
+            "mode": "comed_api",
+            "finished_at": datetime.now().isoformat(timespec="seconds"),
+            "message": step["message"],
+            "report": step["report"],
+            "calls": len(results),
+            "auto_sign": False,
+        }
+        db.comed_transfer_update(
+            transfer_id,
+            "failed" if step["failed"] else "ready_for_review",
+            step["message"] if step["failed"] else None,
+            debug,
+        )
+    else:
+        # Uzun aktarım "takılmış" sayılmasın diye zaman damgası tazelenir.
+        db.comed_transfer_update(transfer_id, "filling", None, {
+            "mode": "comed_api", "stage": step["message"], "calls": len(results),
+        })
+    return step
 
 
 @app.post("/api/v1/mobile/comed/request-log")
@@ -1101,6 +1158,45 @@ async def doctor_overview(request: Request):
             for item in db.comed_worklist(limit=200, synced_by=username)
         ],
     }
+
+
+@app.get("/doctor/api/extension-token")
+async def doctor_extension_token(request: Request):
+    """Doktor paneli açıkken eklentiyi aynı doktora bağla.
+
+    Eklentiye ayrıca kullanıcı adı/şifre yazdırmamak için panelin içindeki
+    köprü betiği (doctor_bridge.js) bu ucu aynı kökenden çağırır ve dönen
+    API anahtarını eklentiye iletir.
+    """
+    session = doctor_auth(request)
+    user = session["user"]
+    return {
+        "access_token": auth.api_token_uret(user, "doctor"),
+        "username": user,
+        "display_name": auth.kullanici_adi(user, "doctor"),
+    }
+
+
+EXTENSION_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "comed_bridge_extension")
+
+
+@app.get("/dev/extension-version")
+async def dev_extension_version():
+    """Yerel geliştirmede eklenti dosyalarının parmak izi.
+
+    Paketlenmemiş eklenti bunu izler; değişince kendini diskten yeniden
+    yükler. Yalnız KLINOT_DEV=1 iken açıktır.
+    """
+    if os.getenv("KLINOT_DEV") != "1":
+        raise HTTPException(status_code=404, detail="Bulunamadı")
+    digest = hashlib.sha1()
+    for name in sorted(os.listdir(EXTENSION_DIR)):
+        path = os.path.join(EXTENSION_DIR, name)
+        if os.path.isfile(path) and name.endswith((".js", ".json", ".html", ".css")):
+            digest.update(name.encode())
+            with open(path, "rb") as handle:
+                digest.update(handle.read())
+    return {"hash": digest.hexdigest()}
 
 
 @app.get("/doctor/api/records/{kid}")

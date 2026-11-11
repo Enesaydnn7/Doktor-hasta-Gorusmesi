@@ -68,4 +68,32 @@
       message.request_id,
     );
   });
+
+  /* Panelde oturum açık doktoru eklentiye bağla: doktor eklentiye ayrıca
+     kullanıcı adı/şifre yazmasın. Uç aynı kökende olduğu için panel çerezi
+     gider; oturum yoksa 401 döner ve hiçbir şey yapılmaz. */
+  async function linkExtensionToPanelDoctor() {
+    if (!location.pathname.startsWith("/doctor") || location.pathname.startsWith("/doctor/login")) return;
+    try {
+      const response = await fetch("/doctor/api/extension-token", {credentials: "same-origin"});
+      if (!response.ok) return;
+      const payload = await response.json();
+      if (!payload?.access_token) return;
+      chrome.runtime.sendMessage({
+        type: "klinot-link-doctor",
+        apiBase: location.origin,
+        token: payload.access_token,
+        username: payload.username,
+        displayName: payload.display_name,
+      }, () => void chrome.runtime.lastError);
+    } catch (_) {
+      // Bağlanamazsa popup'tan elle bağlanma yolu zaten duruyor.
+    }
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", linkExtensionToPanelDoctor, {once: true});
+  } else {
+    linkExtensionToPanelDoctor();
+  }
 })();

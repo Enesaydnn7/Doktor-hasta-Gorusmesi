@@ -223,26 +223,31 @@ class ComedExtensionTests(unittest.TestCase):
         self.assertNotIn('textOf(button) === "Kaydet ve İmzala"', source)
         self.assertNotIn('textOf(button) === "Kaydet" && button.click', source)
 
-    def test_page_tracer_only_observes_and_never_posts(self):
-        """page_trace artik yalnizca gozlemci; COMED'e istek gondermez."""
+    def test_page_tracer_executes_only_allowlisted_unsigned_calls(self):
+        """v4: page_trace sunucunun hazırladığı COMED çağrılarını yürütür.
+
+        Eski şablon-oynatıcı (v2.8.2) kaldırılmıştı; yeni yürütücü yalnız
+        adı yazılı kayıt uçlarına ve okuma kalıplarına izin verir, imza/silme
+        uçlarını reddeder ve belge kaydında autoSign'ı false'a zorlar.
+        """
         source = (EXTENSION / "page_trace.js").read_text(encoding="utf-8")
         self.assertIn('"x-authentication-token"', source)
-        # POST calistirici tamamen kaldirildi.
-        for removed in (
-            "NATIVE_ENDPOINTS",
-            "executeNativePosts",
-            "klinot-comed-native-command-v1",
-            "nativeFetch",
-            "API_BASE",
-        ):
+        for removed in ("NATIVE_ENDPOINTS", "executeNativePosts", "klinot-comed-native-command-v1"):
             self.assertNotIn(removed, source)
+        self.assertIn("const WRITE_ENDPOINTS = new Set([", source)
+        self.assertIn("FORBIDDEN_ENDPOINT = /sign|delete|remove|stop|cancel|revert|reject|approve/i", source)
+        self.assertIn("item.autoSign = false", source)
+        self.assertIn("isOwner()", source)
+        self.assertNotIn("signDocumentProcess", source)
+        self.assertNotIn("saveAndSign", source)
         self.assertIn("klinot-comed-suppress-reload-prompt-once", source)
         self.assertIn('window.addEventListener("beforeunload"', source)
         self.assertIn("event.stopImmediatePropagation()", source)
-        self.assertIn('data-klinot-comed-trace-installed', source)
+        self.assertIn('data-klinot-comed-trace-v4', source)
         self.assertNotIn('window.__klinotComedTraceInstalled', source)
         self.assertNotIn('window.__klinotComedTraceEvents', source)
-        self.assertNotIn("saveAndSign", source)
+        # Oturum başlıkları sayfa kapanışının dışına çıkmaz.
+        self.assertNotIn("postMessage({source: EXEC_RESULT_SOURCE, id: message.id, headers", source)
 
     def test_manifest_declares_current_version(self):
         """Eklenti sürümü uygulama sürümüyle aynı kalmalı (elle senkron tutma)."""

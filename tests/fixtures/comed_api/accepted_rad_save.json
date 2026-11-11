@@ -1,0 +1,36 @@
+{
+ "orders": [
+  {
+   "plan": {
+    "executionType": 2,
+    "frequencyType": 0,
+    "dailyFrequencyType": 0,
+    "frequencyPeriod": 1,
+    "frequencyPeriodTimeScale": 3,
+    "treatmentPeriodTimeScale": 3,
+    "treatmentType": 0,
+    "treatmentPeriod": 1,
+    "treatmentTimes": 1,
+    "treatmentStartDate": "2026-11-11T18:39:00",
+    "treatmentTimeType": 0,
+    "orderType": 33,
+    "steps": [
+     {
+      "planDate": "2026-11-11T18:39:45"
+     }
+    ],
+    "materials": [],
+    "chemotherapyType": 0,
+    "frequencyPeriodType": 0,
+    "type": 1,
+    "visitId": 22207362,
+    "patientId": 1300013,
+    "executionNote": "Acil bir durum yoktur"
+   },
+   "testId": 1680,
+   "besidePatient": false,
+   "reportRequired": false,
+   "isSpecialApproved": false
+  }
+ ]
+}

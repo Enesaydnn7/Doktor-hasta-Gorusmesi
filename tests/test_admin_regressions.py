@@ -412,11 +412,12 @@ class BrowserStateRegressionTests(unittest.TestCase):
         self.assertNotIn('textOf(button) === "Kaydet ve İmzala"', content)
         self.assertNotIn("x-authentication-token", background.lower())
         self.assertIn('"world": "MAIN"', manifest)
-        self.assertIn("klinot-comed-trace-v1", trace)
-        # page_trace yalnizca gozlemcidir; COMED'e istek gondermez.
+        self.assertIn("klinot-comed-trace-v4", trace)
+        # v4: page_trace yalniz izin listesindeki imzasiz cagrilari yurutur
+        # (bkz. test_comed_extension); eski sablon oynatici yok.
         self.assertNotIn("klinot-comed-native-command-v1", trace)
         self.assertNotIn("NATIVE_ENDPOINTS", trace)
-        self.assertIn("data-klinot-comed-trace-installed", trace)
+        self.assertIn("data-klinot-comed-trace-v4", trace)
         self.assertNotIn("window.__klinotComedTrace", trace)
         self.assertNotIn("getAllCookieStores", trace)
         self.assertNotIn("document.cookie", trace)

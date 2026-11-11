@@ -1,0 +1,116 @@
+{
+ "data": [
+  {
+   "children": [
+    {
+     "children": [],
+     "id": 7094,
+     "name": "Muayene Hizmeti",
+     "parentId": 7118,
+     "type": 59
+    },
+    {
+     "children": [],
+     "id": 7095,
+     "name": "Laboratuar Hizmeti",
+     "parentId": 7118,
+     "type": 59
+    },
+    {
+     "children": [],
+     "id": 7096,
+     "name": "Radyoloji Hizmeti",
+     "parentId": 7118,
+     "type": 59
+    },
+    {
+     "children": [],
+     "id": 7098,
+     "name": "Müdahale Hizmeti",
+     "parentId": 7118,
+     "type": 59
+    },
+    {
+     "children": [],
+     "id": 7099,
+     "name": "Ameliyat Hizmeti",
+     "parentId": 7118,
+     "type": 59
+    },
+    {
+     "children": [],
+     "id": 7100,
+     "name": "Yatış Hizmeti",
+     "parentId": 7118,
+     "type": 59
+    },
+    {
+     "children": [],
+     "id": 7101,
+     "name": "Konsültasyon Hizmeti",
+     "parentId": 7118,
+     "type": 59
+    },
+    {
+     "children": [],
+     "id": 7102,
+     "name": "Yoğun Bakım Hizmeti",
+     "parentId": 7118,
+     "type": 59
+    },
+    {
+     "children": [],
+     "id": 7103,
+     "name": "Fizik Tedavi Hizmeti",
+     "parentId": 7118,
+     "type": 59
+    },
+    {
+     "children": [],
+     "id": 7104,
+     "name": "Diş",
+     "parentId": 7118,
+     "type": 59
+    },
+    {
+     "children": [],
+     "id": 7105,
+     "name": "Ameliyathane",
+     "parentId": 7118,
+     "type": 59
+    },
+    {
+     "children": [],
+     "id": 7106,
+     "name": "Diğer Hizmet",
+     "parentId": 7118,
+     "type": 59
+    },
+    {
+     "children": [],
+     "id": 7114,
+     "name": "CheckUp",
+     "parentId": 7118,
+     "type": 59
+    },
+    {
+     "children": [],
+     "id": 7115,
+     "name": "Kontrol Muayenesi",
+     "parentId": 7118,
+     "type": 59
+    },
+    {
+     "children": [],
+     "id": 7116,
+     "name": "Patoloji Hizmeti",
+     "parentId": 7118,
+     "type": 59
+    }
+   ],
+   "id": 7118,
+   "name": "TÜM HİZMETLER",
+   "type": 59
+  }
+ ]
+}

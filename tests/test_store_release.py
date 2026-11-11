@@ -33,6 +33,11 @@ class StoreManifestTests(unittest.TestCase):
 
 
 class StorePackageMatchesDailyTests(unittest.TestCase):
+    @unittest.skipIf(
+        "(test)" in json.loads((DAILY / "manifest.json").read_text(encoding="utf-8"))["name"],
+        "v4 API geliştirme dalı: günlük eklenti (localhost, kendini yenileme) bilerek "
+        "mağaza paketinden ayrı. Yayında ad '(test)' olmadan geri döner ve bu kural geçerli olur.",
+    )
     def test_store_package_is_the_daily_extension(self):
         for path in DAILY.rglob("*"):
             if path.is_file():

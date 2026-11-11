@@ -1,0 +1,98 @@
+{
+ "orders": [
+  {
+   "plan": {
+    "assignedBy": {
+     "fullName": "",
+     "id": 44524,
+     "personnelType": 0
+    },
+    "chemotherapyType": 0,
+    "createdAt": "0001-01-01T00:00:00",
+    "dailyFrequencyType": 0,
+    "executionType": 2,
+    "frequencyPeriod": 1,
+    "frequencyPeriodTimeScale": 3,
+    "frequencyType": 0,
+    "id": 0,
+    "orderType": 60,
+    "patientId": 1300013,
+    "referenceId": 22207362,
+    "referenceType": "Visit",
+    "state": 1,
+    "steps": [
+     {
+      "planDate": "2026-11-11T18:39:00"
+     }
+    ],
+    "title": "",
+    "treatmentPeriod": 1,
+    "treatmentPeriodTimeScale": 3,
+    "treatmentStartDate": "2026-11-11T18:39:00",
+    "treatmentTimeType": 0,
+    "type": 1,
+    "visitId": 22207362
+   },
+   "procedure": {
+    "code": "16384",
+    "createsTask": true,
+    "currentListType": 1,
+    "departments": [],
+    "disallowed": false,
+    "huvCode": "17.74498",
+    "id": 100122,
+    "inquiryMessage": "",
+    "name": "Elektrokardiogram (EKG)",
+    "personnelMandatoryType": 2,
+    "physicians": [],
+    "price": 0,
+    "serviceGroupId": 115,
+    "serviceLocations": [],
+    "serviceMaterialType": 13,
+    "serviceNotes": {},
+    "servicePathologyProperty": {
+     "id": 0,
+     "serviceId": 0
+    },
+    "serviceProperties": [
+     70,
+     71,
+     99
+    ],
+    "sourcePersonnel": 44524,
+    "sutCode": "530100",
+    "sutListType": 18,
+    "targetPersonnel": {},
+    "taskDocument": "ekg_report",
+    "taskPool": "taskPool1",
+    "taskTitle": "EKG Raporu",
+    "ttbUnit": 8
+   },
+   "processDate": "2026-11-11T18:39:00",
+   "sourceDepartment": {
+    "departmentType": 1,
+    "id": 37,
+    "name": "Kardiyoloji"
+   },
+   "sourcePersonnel": {
+    "fullName": "Prof.Dr. Personel Kaya",
+    "id": 44524,
+    "name": "Personel",
+    "personnelType": 1,
+    "surname": "Kaya",
+    "title": "Prof.Dr.",
+    "nameSurname": "Prof.Dr. Personel Kaya"
+   },
+   "taskPool": "taskPool1",
+   "count": 1,
+   "targetPersonnel": {
+    "id": 35165,
+    "nameSurname": "Pratisyen Hekim Personel Karaşal"
+   },
+   "targetDepartment": {
+    "id": 19,
+    "name": "Acil TIP"
+   }
+  }
+ ]
+}

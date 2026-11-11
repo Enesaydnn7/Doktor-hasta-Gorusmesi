@@ -1,0 +1,119 @@
+{
+ "data": [
+  {
+   "clientId": 701300013,
+   "companions": [],
+   "department": {
+    "branch": {
+     "code": "1100",
+     "id": 67,
+     "name": "Kardiyoloji",
+     "sutCode": "1100"
+    },
+    "branchId": 67,
+    "code": "37",
+    "departmentType": 1,
+    "id": 37,
+    "isWebAppointmentGiven": true,
+    "name": "Kardiyoloji",
+    "personnel": [],
+    "skrsCode": "163",
+    "tenantId": 131
+   },
+   "departmentId": 37,
+   "doctor": {
+    "cVs": [],
+    "department": {
+     "branch": {
+      "code": "1100",
+      "id": 67,
+      "name": "Kardiyoloji",
+      "sutCode": "1100"
+     },
+     "branchId": 67,
+     "code": "37",
+     "departmentType": 1,
+     "id": 37,
+     "isWebAppointmentGiven": true,
+     "name": "Kardiyoloji",
+     "personnel": [],
+     "skrsCode": "163",
+     "tenantId": 131
+    },
+    "departmentId": 37,
+    "departments": [],
+    "email": "***",
+    "fullName": "Personel Kaya",
+    "gsM1": "***",
+    "gsM2": "***",
+    "id": 44524,
+    "identityNumber": "***",
+    "isWebAppointmentGiven": true,
+    "name": "Personel",
+    "orclPersonnelId": 305167,
+    "personnelType": 1,
+    "surname": "Kaya",
+    "tags": [],
+    "titleId": 1
+   },
+   "doctorId": 44524,
+   "foundations": [
+    {
+     "foundationId": 0,
+     "foundationType": 0,
+     "id": 4067664,
+     "state": 1,
+     "visitId": 22207362
+    }
+   ],
+   "id": 22207362,
+   "openerPersonnelId": 47032,
+   "openingDate": "2026-10-31T10:03:00",
+   "patient": {
+    "birthDate": "1997-10-22T00:00:00",
+    "birthPlace": "***",
+    "contracts": [
+     0
+    ],
+    "doesNotWantEmail": true,
+    "doesNotWantSms": true,
+    "fatherName": "***",
+    "features": [],
+    "foreignPatientType": 1,
+    "gender": "E",
+    "hasDonor": false,
+    "homeAddress": "***",
+    "homeCityId": 6234,
+    "homeCountryId": 187,
+    "homeTownId": 427,
+    "id": 1300013,
+    "identityNumber": "***",
+    "isBlocked": false,
+    "isForeignNational": true,
+    "maritalStatus": 1,
+    "masterPatientId": 272910,
+    "mobilePhone": "***",
+    "mobilePhoneCountryCode": "***",
+    "motherName": "***",
+    "name": "TEST",
+    "nationalityId": 181,
+    "passportNumber": "***",
+    "patientSourceType": 1,
+    "patientState": 2,
+    "patientType": 3,
+    "personnel": [],
+    "phone": "***",
+    "searchKey": "***",
+    "surname": "HASTA"
+   },
+   "patientArrivalType": "A",
+   "patientId": 1300013,
+   "patientSpeciality": 1,
+   "tenantId": 131,
+   "tenantName": "TEST Göztepe Hastanesi",
+   "visitProcesses": [],
+   "visitState": 1,
+   "visitType": 1
+  }
+ ]
+}

@@ -1,0 +1,32 @@
+{
+ "visitDiagnoses": [
+  {
+   "diagnosisType": 1,
+   "isBaseDiagnosis": true,
+   "isPrimaryDiagnosis": true,
+   "icdId": 5409,
+   "sideType": 3,
+   "disabled": false,
+   "description": "Anjina Pektoris, Tanımlanmamış",
+   "firstDiagnosisDate": "",
+   "visitId": 22207362,
+   "doctorId": 44524,
+   "doctor": {
+    "class": 1,
+    "departmentId": 37,
+    "departmentName": "Kardiyoloji",
+    "emailAddress": "***",
+    "firstName": "Personel",
+    "id": 44524,
+    "identityNumber": "***",
+    "isOffline": false,
+    "lastName": "Kaya",
+    "referenceId": 44524,
+    "title": "Prof.Dr.",
+    "type": 1,
+    "nameSurname": "Prof.Dr. Personel Kaya"
+   }
+  }
+ ],
+ "setAutoDiagnosisTriage": true
+}

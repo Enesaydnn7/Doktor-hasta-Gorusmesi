@@ -1,6 +1,14 @@
-const DEFAULT_API = "https://doktor-hasta-gorusmesi.onrender.com";
+const DEFAULT_API = "http://localhost:8000";
 const COMED_HOST = "goztepetest.comed.mlpcare.com";
+const COMED_MEDICAL_PAGES = ["https://goztepetest.comed.mlpcare.com/tr-tr/medical/*"];
 const PENDING_COMED_KEY = "pendingComedNavigation";
+const DEV_HASH_KEY = "devExtensionHash";
+// Panelden gelen bağlantı isteği yalnız bu kökenlerden kabul edilir.
+const LINKABLE_ORIGINS = [
+  "https://doktor-hasta-gorusmesi.onrender.com",
+  "http://localhost:8000",
+  "http://127.0.0.1:8000",
+];
 
 /* Eklenti guncellendiginde acik sekmelerdeki content script'ler sahipsiz
    kalir. Doktora "sayfayi yenileyin" dedirtmemek icin KLINOT PANELI
@@ -167,7 +175,95 @@ async function klinotFetch(path, options = {}) {
   return payload;
 }
 
+/* ---- Yerel geliştirme: eklenti kendini diskten yeniler ----
+   Paketlenmemiş eklentinin kodu değişince doktorun chrome://extensions'a
+   gidip "yenile"ye basması gerekiyordu. Yerel sunucu (KLINOT_DEV=1)
+   dosyaların parmak izini verir; değişmişse eklenti kendini yeniden yükler,
+   açık COMED sekmelerine betikleri sayfa yenilenmeden yeniden enjekte eder.
+   Yalnız API adresi localhost iken çalışır; canlıda hiçbir etkisi yoktur. */
+let devCheckRunning = false;
+
+async function devReloadCheck() {
+  if (devCheckRunning) return;
+  devCheckRunning = true;
+  try {
+    const {apiBase} = await settings();
+    if (!/^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(apiBase)) return;
+    const response = await fetch(`${apiBase}/dev/extension-version`, {cache: "no-store"});
+    if (!response.ok) return;
+    const {hash} = await response.json();
+    const loaded = await sessionGet(DEV_HASH_KEY);
+    if (!loaded) {
+      await sessionSet(DEV_HASH_KEY, hash);
+    } else if (hash && hash !== loaded) {
+      chrome.runtime.reload();
+    }
+  } catch (_) {
+    // Yerel sunucu kapalıysa sessiz geç.
+  } finally {
+    devCheckRunning = false;
+  }
+}
+
+/** Açık COMED sekmelerinde canlı içerik betiği yoksa enjekte et.
+
+    Eklenti açılınca/yenilenince Chrome mevcut sekmelere içerik betiği
+    koymaz; sayfa yenilenene kadar köprü yoktur. COMED sekmesini yenilemek
+    doktorun doldurulmuş formunu riske attığı için betikleri burada koyuyoruz.
+    Canlı bir betik "klinot-ping"e cevap verir; veremeyen sekmeye konur. */
+async function ensureComedScripts() {
+  let tabs = [];
+  try {
+    tabs = await chrome.tabs.query({url: COMED_MEDICAL_PAGES});
+  } catch (_) {
+    return;
+  }
+  for (const tab of tabs) {
+    const alive = await chrome.tabs
+      .sendMessage(tab.id, {type: "klinot-ping"})
+      .then((response) => Boolean(response?.ok))
+      .catch(() => false);
+    if (alive) continue;
+    try {
+      await chrome.scripting.executeScript({
+        target: {tabId: tab.id}, files: ["page_trace.js"], world: "MAIN",
+      });
+      await chrome.scripting.executeScript({target: {tabId: tab.id}, files: ["content.js"]});
+    } catch (_) {
+      // Sekme o an erişilemezse bir sonraki denetimde tekrar denenir.
+    }
+  }
+}
+
+chrome.alarms?.create("klinot-dev-tick", {periodInMinutes: 0.5});
+chrome.alarms?.onAlarm.addListener((alarm) => {
+  if (alarm.name !== "klinot-dev-tick") return;
+  devReloadCheck();
+  ensureComedScripts();
+});
+ensureComedScripts();
+devReloadCheck();
+
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (message?.type === "klinot-dev-tick") {
+    devReloadCheck();
+    sendResponse({ok: true});
+    return false;
+  }
+  if (message?.type === "klinot-link-doctor") {
+    const origin = parsedUrl(_sender?.tab?.url || "")?.origin || "";
+    if (!LINKABLE_ORIGINS.includes(origin) || origin !== message.apiBase || !message.token) {
+      sendResponse({ok: false, error: "Bu sayfadan bağlanılamaz"});
+      return false;
+    }
+    chrome.storage.local.set({
+      apiBase: origin,
+      token: message.token,
+      username: message.username || "",
+      displayName: message.displayName || message.username || "",
+    }).then(() => sendResponse({ok: true}));
+    return true;
+  }
   if (message?.type === "klinot-open-comed") {
     openComedTarget(message.url, _sender)
       .then((data) => sendResponse({ok: true, ...data}))

@@ -2,12 +2,26 @@
   // COMED freezes the global Window object.  Adding ad-hoc properties to it
   // therefore throws before the tracer can install.  Keep the idempotency
   // marker on the DOM and all trace state inside this closure instead.
-  const TRACE_MARKER = "data-klinot-comed-trace-installed";
+  //
+  // Eklenti yenilenince bu betik açık sekmeye yeniden enjekte edilir; eski
+  // kopya sayfada (MAIN world) yaşamaya devam eder. Sürüm değişmediyse
+  // ikinci kez kurulmaz. Değiştiyse yenisi kurulur ve "sahip" işaretini
+  // alır: iz kaydı ve POST yürütücüsü yalnız sahip kopyada çalışır, eski
+  // kopyalar sessizce susar (aynı isteği iki kez göndermemek için).
+  const SCRIPT_VERSION = "4.0.0-api-1";
+  const TRACE_MARKER = "data-klinot-comed-trace-v4";
+  const OWNER_MARKER = "data-klinot-comed-exec-owner";
   const markerHost = document.documentElement || document;
-  if (markerHost.getAttribute?.(TRACE_MARKER) === "1") return;
-  markerHost.setAttribute?.(TRACE_MARKER, "1");
+  if (markerHost.getAttribute?.(TRACE_MARKER) === SCRIPT_VERSION) return;
+  markerHost.setAttribute?.(TRACE_MARKER, SCRIPT_VERSION);
+  const INSTALL_ID = `${SCRIPT_VERSION}:${Date.now()}:${Math.random().toString(36).slice(2)}`;
+  markerHost.setAttribute?.(OWNER_MARKER, INSTALL_ID);
+  const isOwner = () => markerHost.getAttribute?.(OWNER_MARKER) === INSTALL_ID;
 
-  const TRACE_SOURCE = "klinot-comed-trace-v1";
+  const TRACE_SOURCE = "klinot-comed-trace-v4";
+  const EXEC_SOURCE = "klinot-comed-exec-v4";
+  const EXEC_RESULT_SOURCE = "klinot-comed-exec-result-v4";
+  const API_PREFIX = "/tr-tr/api/json/";
   const SUPPRESS_RELOAD_PROMPT_KEY = "klinot-comed-suppress-reload-prompt-once";
   const API_HOST = "goztepetestapi.comed.mlpcare.com";
   const SECRET_KEY = /authorization|cookie|password|passwd|secret|token|session/i;
@@ -117,6 +131,7 @@
 
 
   function emit(event) {
+    if (!isOwner()) return;
     const url = safeUrl(event.url);
     try {
       if (!url || new URL(url).hostname !== API_HOST) return;
@@ -225,5 +240,106 @@
       return response;
     };
   }
+
+  /* ---- POST yürütücüsü (v4 API aktarımı) ----
+     Sunucu COMED paketlerini hazırlar; içerik betiği (content.js) burada
+     yalnız "şu ucu şu gövdeyle çağır" der. Çağrı, COMED ekranının kendi
+     isteklerinden yakalanan oturum başlıklarıyla bu sayfanın içinden yapılır.
+     Başlıklar bu kapanışın dışına hiç çıkmaz: içerik betiğine, eklenti
+     deposuna ya da Klinot sunucusuna gitmez.
+
+     Güvenlik:
+     - Yalnız aşağıdaki okuma kalıpları ve adı tek tek yazılmış kayıt uçları.
+     - İmza, imza geri alma, silme, durdurma, iptal hiçbir koşulda çağrılmaz.
+     - Belge kaydında autoSign her zaman false'a zorlanır. */
+  const WRITE_ENDPOINTS = new Set([
+    "forms/document/saveDocumentProcesses",
+    "medical/treatment/savevisitdiagnoses",
+    "medical/procedure/saveOrders",
+    "laboratory/saveOrders",
+    "radiology/saveOrders",
+    "pharmacy/medication/saveOrders",
+    "pharmacy/medication/InteractionInquiry",
+    "medical/examination/saveProfile",
+    "medical/examination/saveProfileDiseases",
+    "medical/examination/saveProfileAllergies",
+    "medical/examination/saveProfileOperations",
+    "medical/examination/saveProfileAddictions",
+    "medical/examination/saveProfileDevices",
+    "medical/examination/saveProfileVaccines",
+  ]);
+  const READ_ENDPOINT = /^(shared|medical|laboratory|radiology|pharmacy|forms|core\/public)\/[A-Za-z/]*\/?(get|search|orderInquiry|calculate)[A-Za-z]*$/;
+  const FORBIDDEN_ENDPOINT = /sign|delete|remove|stop|cancel|revert|reject|approve/i;
+  const EXEC_TIMEOUT_MS = 30000;
+
+  function forceUnsigned(processes) {
+    for (const item of processes || []) {
+      if (!item || typeof item !== "object") continue;
+      item.autoSign = false;
+      forceUnsigned(item.children);
+    }
+  }
+
+  async function waitForSessionHeaders(timeoutMs = 20000) {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      if (sessionHeaders.get("x-application-key") && sessionHeaders.get("x-authentication-token")) {
+        return true;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 400));
+    }
+    return false;
+  }
+
+  async function executeComedCall(path, body) {
+    const endpoint = String(path || "").replace(/^\/+/, "");
+    if (FORBIDDEN_ENDPOINT.test(endpoint)) {
+      throw new Error(`Yasaklı COMED ucu: ${endpoint}`);
+    }
+    if (!WRITE_ENDPOINTS.has(endpoint) && !READ_ENDPOINT.test(endpoint)) {
+      throw new Error(`İzin listesinde olmayan COMED ucu: ${endpoint}`);
+    }
+    const payload = body && typeof body === "object" ? JSON.parse(JSON.stringify(body)) : {};
+    if (endpoint === "forms/document/saveDocumentProcesses") {
+      forceUnsigned(payload.documentProcesses);
+    }
+    if (!await waitForSessionHeaders()) {
+      throw new Error("COMED oturumu henüz hazır değil; sayfada bir işlem yapıp tekrar deneyin");
+    }
+    const headers = {"Content-Type": "application/json;charset=UTF-8", Accept: "application/json"};
+    for (const [key, value] of sessionHeaders.entries()) headers[key] = value;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), EXEC_TIMEOUT_MS);
+    try {
+      const response = await window.fetch(`https://${API_HOST}${API_PREFIX}${endpoint}`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+        credentials: "include",
+      });
+      const text = await response.text();
+      let data = null;
+      try { data = JSON.parse(text.replace(/^\)\]\}',?\s*/, "")); } catch (_) { data = text.slice(0, 4000); }
+      return {status: response.status, ok: response.ok, data};
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  window.addEventListener("message", async (event) => {
+    if (event.source !== window || event.origin !== location.origin) return;
+    const message = event.data;
+    if (message?.source !== EXEC_SOURCE || !message.id || !isOwner()) return;
+    let reply;
+    try {
+      const result = await executeComedCall(message.path, message.body);
+      reply = {ok: result.ok, status: result.status, data: result.data};
+    } catch (error) {
+      reply = {ok: false, status: null, error: error?.name === "AbortError"
+        ? "COMED 30 saniyede yanıt vermedi" : (error?.message || String(error))};
+    }
+    window.postMessage({source: EXEC_RESULT_SOURCE, id: message.id, ...reply}, location.origin);
+  });
 
 })();

@@ -1,4 +1,9 @@
 (() => {
+  // Arka plan, canlı kopya yoksa bu betiği açık sekmeye yeniden enjekte eder;
+  // manifest de sayfa yüklenince koyar. Aynı eklenti ömründe iki kopya
+  // aynı aktarımı iki kez yürütmesin.
+  if (globalThis.__klinotContentLoaded) return;
+  globalThis.__klinotContentLoaded = true;
   // Some COMED cards are opened before a clinical-card id is assigned. Both
   // /patient-clinical-card/ and /patient-clinical-card/<id>/ are valid cards.
   const CARD_RE = /\/hasta-tibbi-karti\/(\d+)\/patient-clinical-card(?:\/(\d+))?\/?/;
@@ -7,7 +12,7 @@
   const ACTIVE_TRANSFER_KEY = "klinot-comed-active-transfer";
   const LAST_DRAFT_SNAPSHOT_KEY = "klinot-comed-last-draft-snapshot";
   const SUPPRESS_RELOAD_PROMPT_KEY = "klinot-comed-suppress-reload-prompt-once";
-  const TRACE_SOURCE = "klinot-comed-trace-v1";
+  const TRACE_SOURCE = "klinot-comed-trace-v4";
   const SYSTEM_REVIEW_DEFAULTS = {
     "Genel Sistem Sorgusu": "Özellik Yok",
     "Genitoüriner Sistem": "Özellik Yok",
@@ -3199,12 +3204,82 @@
     }
   }
 
+  /* ---- v4: COMED API ile aktarım (ekrana tıklama yok) ----
+     Sunucu her turda "şu COMED uçlarını şu gövdelerle çağır" listesini
+     verir. Çağrıyı page_trace.js'teki yürütücü, COMED sayfasının içinden
+     doktorun açık oturumuyla yapar; oturum başlıkları bu betiğe bile gelmez.
+     Bu betik yalnız kuryedir: kararların hepsi sunucuda (comed_api.py). */
+  const EXEC_SOURCE = "klinot-comed-exec-v4";
+  const EXEC_RESULT_SOURCE = "klinot-comed-exec-result-v4";
+  const API_MAX_ROUNDS = 15;
+
+  function comedCall(path, body) {
+    return new Promise((resolve) => {
+      const id = `x${Date.now()}${Math.random().toString(36).slice(2)}`;
+      const timer = setTimeout(() => {
+        window.removeEventListener("message", onResult);
+        resolve({ok: false, status: null, error: "COMED yürütücüsü 45 saniyede yanıt vermedi"});
+      }, 45000);
+      function onResult(event) {
+        if (event.source !== window || event.data?.source !== EXEC_RESULT_SOURCE
+          || event.data.id !== id) return;
+        window.removeEventListener("message", onResult);
+        clearTimeout(timer);
+        const {ok, status, data, error} = event.data;
+        resolve({ok: Boolean(ok), status: status ?? null, data: data ?? null, error: error || null});
+      }
+      window.addEventListener("message", onResult);
+      window.postMessage({source: EXEC_SOURCE, id, path, body}, location.origin);
+    });
+  }
+
+  async function runApiTransfer(transfer) {
+    if (busy) return;
+    busy = true;
+    const startedAt = Date.now();
+    try {
+      await updateStatus(transfer.id, "filling", null, {
+        started_at: new Date(startedAt).toISOString(), stage: "api", mode: "comed_api",
+      });
+      bridgeStatus("COMED'e API ile aktarılıyor");
+      let pending = {};
+      for (let round = 1; round <= API_MAX_ROUNDS; round += 1) {
+        const step = await request(`/api/v1/mobile/comed/bridge/transfers/${transfer.id}/api-step`, {
+          method: "POST", body: JSON.stringify({results: pending}),
+        });
+        pending = {};
+        if (step.done) {
+          const seconds = Math.round((Date.now() - startedAt) / 1000);
+          bridgeStatus(`${step.message} · ${seconds} sn · Kartı yenileyip kontrol edin; imza sizde`,
+            step.failed ? "bad" : "ok");
+          return;
+        }
+        bridgeStatus(`${step.message || "COMED'e aktarılıyor"} · ${round}. adım`);
+        // Bir turdaki çağrılar birbirinden bağımsızdır; COMED ekranı da
+        // isteklerini paralel atıyor.
+        const calls = step.calls || [];
+        const answers = await Promise.all(calls.map((call) => comedCall(call.path, call.body)));
+        calls.forEach((call, index) => { pending[call.id] = answers[index]; });
+      }
+      throw new Error(`API aktarımı ${API_MAX_ROUNDS} adımda bitmedi`);
+    } catch (error) {
+      await updateStatus(transfer.id, "failed", error.message, {
+        stage: "api", mode: "comed_api", message: error.message, auto_sign: false,
+      }).catch(() => {});
+      bridgeStatus(`Aktarım hatası: ${error.message}`, "bad");
+    } finally {
+      busy = false;
+    }
+  }
+
   async function pollTransfer() {
     const match = location.pathname.match(CARD_RE);
     if (!match || busy) return;
     try {
       const payload = await request(`/api/v1/mobile/comed/bridge/transfers?visit_id=${encodeURIComponent(match[1])}`);
-      if (payload.items?.length) await postTransfer(payload.items[0]);
+      const next = payload.items?.[0];
+      if (next?.bundle?.execution_mode === "comed_api") await runApiTransfer(next);
+      else if (next) await postTransfer(next);
     } catch (error) {
       if (!/bağlı değil/i.test(error.message)) bridgeStatus(error.message, "bad");
     }
@@ -3426,6 +3501,10 @@
        kuruyoruz; page_trace.js document_start'ta kurdugu dinleyiciyle bir
        sonraki cikisi sessizce geciriyor. Yonlendirme Klinot'un kendi
        istegidir, doktor veri kaybetmez: kart zaten ayni hastaya acilir. */
+    if (message?.type === "klinot-ping") {
+      sendResponse({ok: true});
+      return false;
+    }
     if (message?.type === "klinot-suppress-unload-prompt") {
       try {
         sessionStorage.setItem(SUPPRESS_RELOAD_PROMPT_KEY, String(Date.now()));
@@ -3447,6 +3526,32 @@
     childList: true, subtree: true, characterData: true,
   });
 
-  setTimeout(monitorRoute, 1500);
-  setInterval(monitorRoute, 5000);
+  /* Eklenti yenilenince bu kopya sahipsiz kalır (chrome.runtime gider).
+     Sahipsiz kopya çalışmayı sürdürürse yenisiyle aynı aktarımı ikinci kez
+     yürütebilir; bu yüzden kendini durdurur. */
+  function extensionAlive() {
+    try {
+      return Boolean(chrome.runtime?.id);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  let monitorTimer = null;
+  function monitorTick() {
+    if (!extensionAlive()) {
+      clearInterval(monitorTimer);
+      patientIdentityObserver.disconnect();
+      return;
+    }
+    try {
+      chrome.runtime.sendMessage({type: "klinot-dev-tick"}, () => void chrome.runtime.lastError);
+    } catch (_) {
+      // Arka plan uykudaysa bir sonraki turda yeniden denenir.
+    }
+    monitorRoute();
+  }
+
+  setTimeout(monitorTick, 1500);
+  monitorTimer = setInterval(monitorTick, 5000);
 })();

@@ -1,0 +1,87 @@
+{
+ "orders": [
+  {
+   "products": [
+    {
+     "dose": 500,
+     "doseUnit": "mg",
+     "quantity": 1,
+     "quantityUnit": "adet",
+     "volume": 0,
+     "id": 3640,
+     "doseCalculationType": 0,
+     "doseIntegrityType": 0,
+     "productName": "PAROL Tablet 500 mg 20 tabletlik ambalaj",
+     "amountType": 1,
+     "drugTypeId": 1,
+     "reportLink": "",
+     "inStock": true,
+     "dosePercent": 0
+    }
+   ],
+   "comment": "",
+   "antibioticStartReason": "",
+   "flowType": 0,
+   "weight": 60,
+   "height": 160,
+   "bsa": 1.62,
+   "weightSource": 0,
+   "activityState": 1,
+   "route": "Ağız Yoluyla",
+   "replicable": true,
+   "flowRate": 0,
+   "flowTime": 0,
+   "flowTimeScale": 1,
+   "plan": {
+    "executionType": 2,
+    "frequencyType": 0,
+    "dailyFrequencyType": 2,
+    "frequencyPeriod": 1,
+    "frequencyPeriodTimeScale": 3,
+    "treatmentPeriodTimeScale": 3,
+    "treatmentType": 0,
+    "treatmentPeriod": 1,
+    "treatmentTimes": 1,
+    "treatmentStartDate": "2026-11-11T18:39:00",
+    "treatmentTimeType": 0,
+    "orderType": 1,
+    "steps": [
+     {
+      "dose": 500,
+      "planDate": "2026-11-11T19:00:00",
+      "state": 1
+     },
+     {
+      "dose": 500,
+      "planDate": "2026-11-12T03:00:00",
+      "state": 1
+     },
+     {
+      "dose": 500,
+      "planDate": "2026-11-12T11:00:00",
+      "state": 1
+     }
+    ],
+    "materials": [],
+    "chemotherapyType": 0,
+    "necessityNoteCode": "",
+    "necessityNote": "",
+    "executionNote": "Ağrı kesici",
+    "referenceId": 22207362,
+    "visitId": 22207362,
+    "patientId": 1300013
+   },
+   "summarySteps": {},
+   "isPeriodicMedication": false,
+   "isNotDefaultFlowTimeScale": true,
+   "allergyInteractionExplanation": "",
+   "laboratoryInteractionDescription": "",
+   "cumulativeDoseDescription": "",
+   "cumulativeDoseDescriptionCode": ""
+  }
+ ],
+ "interactionInquiries": [
+  2199272
+ ],
+ "maximumDoseSteps": []
+}

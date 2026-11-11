@@ -1,0 +1,40 @@
+{
+ "data": [
+  {
+   "key": "sharp",
+   "value": "Keskin"
+  },
+  {
+   "key": "suppressor",
+   "value": "Bastırıcı"
+  },
+  {
+   "key": "colonic",
+   "value": "Kolik"
+  },
+  {
+   "key": "crushing",
+   "value": "Ezici"
+  },
+  {
+   "key": "saturity",
+   "value": "Dolgunluk"
+  },
+  {
+   "key": "stabbing",
+   "value": "Saplanıcı"
+  },
+  {
+   "key": "obtuse",
+   "value": "Künt"
+  },
+  {
+   "key": "burning",
+   "value": "Yanıcı"
+  },
+  {
+   "key": "stabilized",
+   "value": "Stabilize"
+  }
+ ]
+}

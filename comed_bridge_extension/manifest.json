@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Klinot",
+  "name": "Klinot v4 API (test)",
   "version": "3.0.0",
   "description": "Klinot klinik görüşme taslaklarını hekimin açık hastane bilgi sistemi oturumuna aktarır; kayıt ve imza hekimdedir.",
   "icons": {
@@ -11,12 +11,16 @@
   },
   "permissions": [
     "storage",
-    "tabs"
+    "tabs",
+    "scripting",
+    "alarms"
   ],
   "host_permissions": [
     "https://goztepetest.comed.mlpcare.com/*",
     "https://goztepetestapi.comed.mlpcare.com/*",
-    "https://doktor-hasta-gorusmesi.onrender.com/*"
+    "https://doktor-hasta-gorusmesi.onrender.com/*",
+    "http://localhost:8000/*",
+    "http://127.0.0.1:8000/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -34,7 +38,9 @@
   "content_scripts": [
     {
       "matches": [
-        "https://doktor-hasta-gorusmesi.onrender.com/*"
+        "https://doktor-hasta-gorusmesi.onrender.com/*",
+        "http://localhost:8000/*",
+        "http://127.0.0.1:8000/*"
       ],
       "js": [
         "doctor_bridge.js"

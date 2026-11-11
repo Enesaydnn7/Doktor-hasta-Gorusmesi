@@ -1,0 +1,112 @@
+{
+ "data": [
+  {
+   "checkPregnancy": false,
+   "code": "208",
+   "disabled": false,
+   "eK2A2RequiredForTriage": false,
+   "group": {
+    "children": [],
+    "code": "03",
+    "id": 21,
+    "name": "CR - RÖNTGEN",
+    "parentId": 27
+   },
+   "hasPastOrders": false,
+   "hasPendingOrders": false,
+   "id": 1680,
+   "isPackage": false,
+   "isServiceLocationMandatory": false,
+   "name": "Akciğer Grafisi (İki Yön)",
+   "pacsModalityType": "CR",
+   "requireEK2A2Note": false,
+   "requireSpecialApprove": false,
+   "service": {
+    "code": "11157",
+    "currentListType": 1,
+    "departments": [],
+    "disallowed": false,
+    "huvCode": "24.00691",
+    "id": 104085,
+    "name": "Akciğer radyografisi, iki yönlü",
+    "personnelMandatoryType": 1,
+    "physicians": [],
+    "price": 0.0,
+    "serviceGroupId": 113,
+    "serviceLocations": [],
+    "serviceMaterialType": 3,
+    "serviceNotes": {},
+    "servicePathologyProperty": {
+     "id": 0,
+     "serviceId": 0
+    },
+    "serviceProperties": [
+     70,
+     71
+    ],
+    "sutCode": "801690",
+    "sutListType": 18,
+    "ttbUnit": 28.0
+   },
+   "testClass": {
+    "id": 2,
+    "testClassType": 0
+   },
+   "warnings": []
+  },
+  {
+   "checkPregnancy": false,
+   "code": "206",
+   "disabled": false,
+   "eK2A2RequiredForTriage": false,
+   "group": {
+    "children": [],
+    "code": "03",
+    "id": 21,
+    "name": "CR - RÖNTGEN",
+    "parentId": 27
+   },
+   "hasPastOrders": false,
+   "hasPendingOrders": false,
+   "id": 1681,
+   "isPackage": false,
+   "isServiceLocationMandatory": false,
+   "name": "Akciğer Grafisi (Tek Yön)",
+   "pacsModalityType": "CR",
+   "requireEK2A2Note": false,
+   "requireSpecialApprove": false,
+   "service": {
+    "code": "11156",
+    "currentListType": 1,
+    "departments": [],
+    "disallowed": false,
+    "huvCode": "24.00461",
+    "id": 104092,
+    "name": "Akciğer radyografisi, PA, tek yönlü",
+    "personnelMandatoryType": 1,
+    "physicians": [],
+    "price": 0.0,
+    "serviceGroupId": 113,
+    "serviceLocations": [],
+    "serviceMaterialType": 3,
+    "serviceNotes": {},
+    "servicePathologyProperty": {
+     "id": 0,
+     "serviceId": 0
+    },
+    "serviceProperties": [
+     70,
+     71
+    ],
+    "sutCode": "801720",
+    "sutListType": 18,
+    "ttbUnit": 20.0
+   },
+   "testClass": {
+    "id": 2,
+    "testClassType": 0
+   },
+   "warnings": []
+  }
+ ]
+}

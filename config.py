@@ -19,6 +19,9 @@ COMED_API_BASE_URL = os.getenv(
     "COMED_API_BASE_URL",
     "https://goztepetestapi.comed.mlpcare.com/tr-tr/api/json",
 ).rstrip("/")
+# "api": aktarım COMED'in kendi JSON uçlarıyla yapılır (comed_api.py, v4).
+# "form": eski yol, eklenti COMED ekranını tıklayarak doldurur.
+COMED_TRANSFER_MODE = os.getenv("COMED_TRANSFER_MODE", "api").strip().lower()
 
 ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY", "")
 ELEVENLABS_STT_MODEL = os.getenv("ELEVENLABS_STT_MODEL", "scribe_v2")

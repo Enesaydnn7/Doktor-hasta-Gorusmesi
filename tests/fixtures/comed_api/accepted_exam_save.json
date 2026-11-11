@@ -1,0 +1,478 @@
+{
+ "documentProcesses": [
+  {
+   "document": "examination_v2",
+   "title": "Muayene DökümanıV2",
+   "documentDate": "2026-11-11T18:37:37",
+   "owner": {
+    "id": 44524
+   },
+   "client": {
+    "id": 701300013
+   },
+   "referenceId": 22207362,
+   "referenceType": "Visit",
+   "values": {
+    "patient_complaint": [
+     {
+      "values": [
+       {
+        "value": "Göğüs ağrısı ve nefes darlığı",
+        "text": "Göğüs ağrısı ve nefes darlığı",
+        "editable": true
+       }
+      ],
+      "children": {
+       "complaint_start_date": [
+        {
+         "values": [
+          {
+           "value": "2026-11-10T18:38:02",
+           "before": 1,
+           "type": 2
+          }
+         ]
+        }
+       ]
+      }
+     }
+    ],
+    "patient_story": [
+     {
+      "values": [
+       "İki gündür göğüs ortasında bastırıcı tarzda sıkışma hissi, nefes darlığı eşlik ediyor. Yürümekle artıyor, dinlenmekle hafifliyor. Sol kola yayılımı var. Ayrıca burun akıntısı ve hapşırık şikayeti mevcut.\nÖzgeçmiş (HBYS listesinde yok): Kullandığı ilaç: Amlodipin 5 mg Her gün; Özel durum: Tuzsuz Diyet; Cihaz: İşitme Cihazı; Kan nakli: Kan Nakli 2019; Terapi: Fizik Tedavi Haftada bir."
+      ]
+     }
+    ],
+    "patient_complaint_panel_summary": [
+     {
+      "values": [
+       {
+        "html": "<div><div>  <b>Ankesa: </b> <span>Göğüs ağrısı ve nefes darlığı, Başlangıç Tarihi : 1 gün Önce (10.11.2026)</span> </div><div>  <b>Öykü: </b> <span>İki gündür göğüs ortasında bastırıcı tarzda sıkışma hissi, nefes darlığı eşlik ediyor. Yürümekle artıyor, dinlenmekle hafifliyor. Sol kola yayılımı var. Ayrıca burun akıntısı ve hapşırık şikayeti mevcut.\nÖzgeçmiş (HBYS listesinde yok): Kullandığı ilaç: Amlodipin 5 mg Her gün; Özel durum: Tuzsuz Diyet; Cihaz: İşitme Cihazı; Kan nakli: Kan Nakli 2019; Terapi: Fizik Tedavi Haftada bir.</span> </div></div>",
+        "raw": "Ankesa:  Göğüs ağrısı ve nefes darlığı, Başlangıç Tarihi : 1 gün Önce (10.11.2026) \r\nÖykü:  İki gündür göğüs ortasında bastırıcı tarzda sıkışma hissi, nefes darlığı eşlik ediyor. Yürümekle artıyor, dinlenmekle hafifliyor. Sol kola yayılımı var. Ayrıca burun akıntısı ve hapşırık şikayeti mevcut.\nÖzgeçmiş (HBYS listesinde yok): Kullandığı ilaç: Amlodipin 5 mg Her gün; Özel durum: Tuzsuz Diyet; Cihaz: İşitme Cihazı; Kan nakli: Kan Nakli 2019; Terapi: Fizik Tedavi Haftada bir. \r\n"
+       }
+      ]
+     }
+    ],
+    "treatment_note_v2": [
+     {
+      "values": [
+       "Ayaktan takip ve tedavi planlandı. Ağrı artarsa acil servise başvurulması önerildi.\nVerilen ilaçlar: Parol 500 mg günde 3 kez; Allergodil burun spreyi günde 2 kez.\nKontrol notu: 1 hafta sonra kontrol, ağrı artarsa acil servise başvurun."
+      ]
+     }
+    ],
+    "treatment_plan": [
+     {
+      "values": [
+       "standing"
+      ]
+     }
+    ],
+    "is_control_suggested": [
+     {
+      "values": [
+       true
+      ],
+      "children": {
+       "control_date": [
+        {
+         "values": [
+          ""
+         ]
+        }
+       ],
+       "is_online_control": [
+        {
+         "values": []
+        }
+       ]
+      }
+     }
+    ],
+    "treatment_plan_panel_summary": [
+     {
+      "values": [
+       {
+        "html": "<div><div>  <b>Tedavi Notu: </b> <span>Ayaktan takip ve tedavi planlandı. Ağrı artarsa acil servise başvurulması önerildi.\nVerilen ilaçlar: Parol 500 mg günde 3 kez; Allergodil burun spreyi günde 2 kez.\nKontrol notu: 1 hafta sonra kontrol, ağrı artarsa acil servise başvurun.</span> </div><span>  <b>Tedavi Planı: </b> <span>Ayaktan takip ve tedavi</span> </span><span> ,  <span>Kontrol Önerildi</span> </span><span> , <b>Ameliyat Planlanacak mı: </b> <span>0</span> </span></div>",
+        "raw": "Tedavi Notu:  Ayaktan takip ve tedavi planlandı. Ağrı artarsa acil servise başvurulması önerildi.\nVerilen ilaçlar: Parol 500 mg günde 3 kez; Allergodil burun spreyi günde 2 kez.\nKontrol notu: 1 hafta sonra kontrol, ağrı artarsa acil servise başvurun. \r\nTedavi Planı:  Ayaktan takip ve tedavi \r\n Kontrol Önerildi \r\nAmeliyat Planlanacak mı:  0 \r\n"
+       }
+      ]
+     }
+    ],
+    "is_surgery_will_planned": [
+     {
+      "values": [
+       "0"
+      ]
+     }
+    ],
+    "patient_psychological_status_v2": [
+     {
+      "values": [
+       "k"
+      ]
+     }
+    ],
+    "patient_psychology_explanation": [
+     {
+      "values": [
+       "Ağrı nedeniyle kaygılı, bilinci açık."
+      ]
+     }
+    ],
+    "pain_existence": [
+     {
+      "values": [
+       true
+      ],
+      "children": {
+       "pain_description": [
+        {
+         "values": [
+          "Sıkışma hissi, sol kola yayılım"
+         ]
+        }
+       ]
+      }
+     }
+    ],
+    "pain_location": [
+     {
+      "values": [
+       "Göğüs ortası"
+      ]
+     }
+    ],
+    "pain_score": [
+     {
+      "values": [
+       7
+      ]
+     }
+    ],
+    "pain_startdate": [
+     {
+      "values": [
+       {
+        "value": "",
+        "before": "",
+        "type": 2
+       }
+      ]
+     }
+    ],
+    "pain_frequency": [
+     {
+      "values": [
+       "distent"
+      ]
+     }
+    ],
+    "pain_speciality": [
+     {
+      "values": [
+       {
+        "value": "suppressor",
+        "text": "Bastırıcı"
+       }
+      ]
+     }
+    ],
+    "pain_review_das": [
+     {
+      "values": []
+     }
+    ],
+    "pain_review_nips": [
+     {
+      "values": []
+     }
+    ],
+    "pain_review_pas": [
+     {
+      "values": []
+     }
+    ],
+    "pain_review_das_v2": [
+     {
+      "values": []
+     }
+    ],
+    "pain_review_nips_v2": [
+     {
+      "values": []
+     }
+    ],
+    "pain_review_pas_v2": [
+     {
+      "values": []
+     }
+    ],
+    "pain_review_type": [
+     {
+      "values": [
+       "nrs"
+      ]
+     }
+    ],
+    "height": [
+     {
+      "values": [
+       174
+      ]
+     }
+    ],
+    "weight": [
+     {
+      "values": [
+       82
+      ]
+     }
+    ],
+    "body_mass_index": [
+     {
+      "values": [
+       27.08
+      ]
+     }
+    ],
+    "body_surface_area": [
+     {
+      "values": [
+       1.97
+      ]
+     }
+    ],
+    "temperature_v2": [
+     {
+      "values": [
+       36.8
+      ],
+      "children": {
+       "deneme1": [
+        {
+         "values": []
+        }
+       ]
+      }
+     }
+    ],
+    "pulse": [
+     {
+      "values": [
+       98
+      ]
+     }
+    ],
+    "pressure_systolic": [
+     {
+      "values": [
+       145
+      ]
+     }
+    ],
+    "pressure_diastolic": [
+     {
+      "values": [
+       90
+      ]
+     }
+    ],
+    "spo2": [
+     {
+      "values": [
+       96
+      ]
+     }
+    ],
+    "exam_simple_textarea": [
+     {
+      "values": [
+       "Kilo: 82 kg, Boy: 174 cm, Ateş: 36.8 °C, Nabız: 98/dk, Tansiyon: 145/90 mmHg, Oksijen Saturasyonu: %96. Kalp ritmi düzenli, akciğer sesleri doğal, belirgin ödem yok."
+      ]
+     }
+    ],
+    "exam_panel_summary": [
+     {
+      "values": [
+       {
+        "raw": "Boy:  174 cm \r\nKilo:  82 kg \r\nVücut Kitle İndeksi:  27.08 \r\nVYA:  1.97 \r\nAteş:  36.8 °C \r\nNabız (Dk):  98 \r\nKB-S (mmHg):  145 \r\nKB-D (mmHg):  90 \r\nSpO2:  96 \r\nFizik Muayene Bulguları:  Kilo: 82 kg, Boy: 174 cm, Ateş: 36.8 °C, Nabız: 98/dk, Tansiyon: 145/90 mmHg, Oksijen Saturasyonu: %96. Kalp ritmi düzenli, akciğer sesleri doğal, belirgin ödem yok. \r\n",
+        "html": "<div><span>  <b>Boy: </b> <span>174 cm</span> </span><span> , <b>Kilo: </b> <span>82 kg</span> </span><span> , <b>Vücut Kitle İndeksi: </b> <span>27.08</span> </span><span> , <b>VYA: </b> <span>1.97</span> </span><span> , <b>Ateş: </b> <span>36.8 °C</span> </span><span> , <b>Nabız (Dk): </b> <span>98</span> </span><span> , <b>KB-S (mmHg): </b> <span>145</span> </span><span> , <b>KB-D (mmHg): </b> <span>90</span> </span><span> , <b>SpO2: </b> <span>96</span> </span><div>  <b>Fizik Muayene Bulguları: </b> <span>Kilo: 82 kg, Boy: 174 cm, Ateş: 36.8 °C, Nabız: 98/dk, Tansiyon: 145/90 mmHg, Oksijen Saturasyonu: %96. Kalp ritmi düzenli, akciğer sesleri doğal, belirgin ödem yok.</span> </div></div>",
+        "dontOverride": true
+       }
+      ]
+     }
+    ],
+    "discharge_type": [
+     {
+      "values": []
+     }
+    ],
+    "discharge_note": [
+     {
+      "values": [
+       ""
+      ]
+     }
+    ],
+    "review_of_system_simple": [
+     {
+      "values": [
+       "Halsizlik, sık idrara çıkma, kollarımda kaşıntı, merdiven çıkarken nefes darlığı, denge bozukluğu, bacaklarda kas ağrısı, çarpıntı, bulantı."
+      ]
+     }
+    ],
+    "review_of_system_panel_summary": [
+     {
+      "values": [
+       {
+        "raw": "\r\n Genel Sistem Sorgusu  \r\n Genel Sistem Sorgusu: Halsizlik \r\n Sinir Sistemi  \r\n Sinir Sistemi: Denge bozukluğu \r\n Genitoüriner Sistem  \r\n Genitoüriner Sistem: Sık idrara çıkma \r\n Kas - İskelet Sistemi  \r\n Kas - İskelet Sistemi: Kas ağrısı \r\n Deri  \r\n Deri: Kaşıntı \r\n Dolaşım Sistemi  \r\n Dolaşım Sistemi: Çarpıntı \r\n Solunum Sistemi  \r\n Solunum Sistemi: Nefes darlığı \r\n Gastrointestinal Sistem  \r\n Gastrointestinal Sistem: Bulantı \r\n Komplikasyon  \r\n : Komplikasyon Yok \r\n ",
+        "html": "<div style=\"padding:12px;font-size:13px;\">\n                  <h3 style=\"margin-bottom: 16px;text-align: center;\"></h3>\n                  <div><div ><div style=\"display: inline-block; width: 50%; padding-left:12px\"><h4 style=\"text-decoration: underline\">Genel Sistem Sorgusu</h4> <table style=\"width:100%; margin-bottom: 16px;margin-top:16px;\"><tr><td style=\"width:30%;vertical-align: top\"><b style=\"font-size: 12px\">Genel Sistem Sorgusu</b></td><td style=\"vertical-align: top\">:</td><td style=\"font-size: 11px;width:100%;\">Halsizlik</td></tr></table><h4 style=\"text-decoration: underline\">Genitoüriner Sistem</h4> <table style=\"width:100%; margin-bottom: 16px;margin-top:16px;\"><tr><td style=\"width:30%;vertical-align: top\"><b style=\"font-size: 12px\">Genitoüriner Sistem</b></td><td style=\"vertical-align: top\">:</td><td style=\"font-size: 11px;width:100%;\">Sık idrara çıkma</td></tr></table><h4 style=\"text-decoration: underline\">Deri</h4> <table style=\"width:100%; margin-bottom: 16px;margin-top:16px;\"><tr><td style=\"width:30%;vertical-align: top\"><b style=\"font-size: 12px\">Deri</b></td><td style=\"vertical-align: top\">:</td><td style=\"font-size: 11px;width:100%;\">Kaşıntı</td></tr></table><h4 style=\"text-decoration: underline\">Solunum Sistemi</h4> <table style=\"width:100%; margin-bottom: 16px;margin-top:16px;\"><tr><td style=\"width:30%;vertical-align: top\"><b style=\"font-size: 12px\">Solunum Sistemi</b></td><td style=\"vertical-align: top\">:</td><td style=\"font-size: 11px;width:100%;\">Nefes darlığı</td></tr></table></div><div style=\"display: inline-block; width: 50%; padding-left:12px\"><h4 style=\"text-decoration: underline\">Sinir Sistemi</h4> <table style=\"width:100%; margin-bottom: 16px;margin-top:16px;\"><tr><td style=\"width:30%;vertical-align: top\"><b style=\"font-size: 12px\">Sinir Sistemi</b></td><td style=\"vertical-align: top\">:</td><td style=\"font-size: 11px;width:100%;\">Denge bozukluğu</td></tr></table><h4 style=\"text-decoration: underline\">Kas - İskelet Sistemi</h4> <table style=\"width:100%; margin-bottom: 16px;margin-top:16px;\"><tr><td style=\"width:30%;vertical-align: top\"><b style=\"font-size: 12px\">Kas - İskelet Sistemi</b></td><td style=\"vertical-align: top\">:</td><td style=\"font-size: 11px;width:100%;\">Kas ağrısı</td></tr></table><h4 style=\"text-decoration: underline\">Dolaşım Sistemi</h4> <table style=\"width:100%; margin-bottom: 16px;margin-top:16px;\"><tr><td style=\"width:30%;vertical-align: top\"><b style=\"font-size: 12px\">Dolaşım Sistemi</b></td><td style=\"vertical-align: top\">:</td><td style=\"font-size: 11px;width:100%;\">Çarpıntı</td></tr></table><h4 style=\"text-decoration: underline\">Gastrointestinal Sistem</h4> <table style=\"width:100%; margin-bottom: 16px;margin-top:16px;\"><tr><td style=\"width:30%;vertical-align: top\"><b style=\"font-size: 12px\">Gastrointestinal Sistem</b></td><td style=\"vertical-align: top\">:</td><td style=\"font-size: 11px;width:100%;\">Bulantı</td></tr></table><h4 style=\"text-decoration: underline\">Komplikasyon</h4> <table style=\"width:100%; margin-bottom: 16px;margin-top:16px;\"><tr><td colspan=\"3\" style=\"font-size: 11px;width:100%;\">Komplikasyon Yok</td></tr></table></div></div></div>\n                </div>",
+        "dontOverride": true
+       }
+      ]
+     }
+    ]
+   },
+   "type": 0,
+   "contextId": 22207362,
+   "autoSign": false,
+   "autoSave": false,
+   "description": "",
+   "departmentId": 37,
+   "arguments": {
+    "isReviewOfSystemDocumentSaved": "true"
+   },
+   "protectionLevel": 3,
+   "childId": null,
+   "documentProcessState": 1,
+   "patientArrivalType": "A",
+   "children": [
+    {
+     "document": "system_query_v2",
+     "title": "Sistem Sorgulama",
+     "documentDate": "2026-11-11T18:37:37",
+     "owner": {
+      "id": 44524,
+      "nameSurname": "Prof.Dr. Personel Kaya",
+      "type": 1
+     },
+     "client": {
+      "id": 701300013
+     },
+     "referenceId": 22207362,
+     "referenceType": "Visit",
+     "values": {
+      "ss_genel_sistem_sorgusu": [
+       {
+        "values": [
+         {
+          "value": "hl",
+          "text": "Halsizlik"
+         }
+        ]
+       }
+      ],
+      "ss_sinir_sistemi": [
+       {
+        "values": [
+         {
+          "value": "db",
+          "text": "Denge bozukluğu"
+         }
+        ]
+       }
+      ],
+      "review_of_system_gus": [
+       {
+        "values": [
+         {
+          "value": "s",
+          "text": "Sık idrara çıkma"
+         }
+        ]
+       }
+      ],
+      "ss_kas_iskelet": [
+       {
+        "values": [
+         {
+          "value": "k",
+          "text": "Kas ağrısı"
+         }
+        ]
+       }
+      ],
+      "ss_deri": [
+       {
+        "values": [
+         {
+          "value": "k",
+          "text": "Kaşıntı"
+         }
+        ]
+       }
+      ],
+      "ss_dolasim_sistemi": [
+       {
+        "values": [
+         {
+          "value": "ç",
+          "text": "Çarpıntı"
+         }
+        ]
+       }
+      ],
+      "ss_solunum_sistemi": [
+       {
+        "values": [
+         {
+          "value": "ne",
+          "text": "Nefes darlığı"
+         }
+        ]
+       }
+      ],
+      "ss_gastrointestinal_sistem": [
+       {
+        "values": [
+         {
+          "value": "b",
+          "text": "Bulantı"
+         }
+        ]
+       }
+      ],
+      "basic_parameter_cf8ee45a-acc2-4d9c-aa4c-8ed789dbec98": [
+       {
+        "values": [
+         {
+          "value": "2",
+          "text": "Komplikasyon Yok"
+         }
+        ]
+       }
+      ]
+     },
+     "type": 0,
+     "contextId": 22207362,
+     "autoSign": false,
+     "autoSave": false,
+     "description": "",
+     "departmentId": 37,
+     "protectionLevel": 3,
+     "childId": null,
+     "documentProcessState": 1,
+     "printSummary": "<div style=\"padding:12px;font-size:13px;\">\n                  <h3 style=\"margin-bottom: 16px;text-align: center;\"></h3>\n                  <div><div ><div style=\"display: inline-block; width: 50%; padding-left:12px\"><h4 style=\"text-decoration: underline\">Genel Sistem Sorgusu</h4> <table style=\"width:100%; margin-bottom: 16px;margin-top:16px;\"><tr><td style=\"width:30%;vertical-align: top\"><b style=\"font-size: 12px\">Genel Sistem Sorgusu</b></td><td style=\"vertical-align: top\">:</td><td style=\"font-size: 11px;width:100%;\">Halsizlik</td></tr></table><h4 style=\"text-decoration: underline\">Genitoüriner Sistem</h4> <table style=\"width:100%; margin-bottom: 16px;margin-top:16px;\"><tr><td style=\"width:30%;vertical-align: top\"><b style=\"font-size: 12px\">Genitoüriner Sistem</b></td><td style=\"vertical-align: top\">:</td><td style=\"font-size: 11px;width:100%;\">Sık idrara çıkma</td></tr></table><h4 style=\"text-decoration: underline\">Deri</h4> <table style=\"width:100%; margin-bottom: 16px;margin-top:16px;\"><tr><td style=\"width:30%;vertical-align: top\"><b style=\"font-size: 12px\">Deri</b></td><td style=\"vertical-align: top\">:</td><td style=\"font-size: 11px;width:100%;\">Kaşıntı</td></tr></table><h4 style=\"text-decoration: underline\">Solunum Sistemi</h4> <table style=\"width:100%; margin-bottom: 16px;margin-top:16px;\"><tr><td style=\"width:30%;vertical-align: top\"><b style=\"font-size: 12px\">Solunum Sistemi</b></td><td style=\"vertical-align: top\">:</td><td style=\"font-size: 11px;width:100%;\">Nefes darlığı</td></tr></table></div><div style=\"display: inline-block; width: 50%; padding-left:12px\"><h4 style=\"text-decoration: underline\">Sinir Sistemi</h4> <table style=\"width:100%; margin-bottom: 16px;margin-top:16px;\"><tr><td style=\"width:30%;vertical-align: top\"><b style=\"font-size: 12px\">Sinir Sistemi</b></td><td style=\"vertical-align: top\">:</td><td style=\"font-size: 11px;width:100%;\">Denge bozukluğu</td></tr></table><h4 style=\"text-decoration: underline\">Kas - İskelet Sistemi</h4> <table style=\"width:100%; margin-bottom: 16px;margin-top:16px;\"><tr><td style=\"width:30%;vertical-align: top\"><b style=\"font-size: 12px\">Kas - İskelet Sistemi</b></td><td style=\"vertical-align: top\">:</td><td style=\"font-size: 11px;width:100%;\">Kas ağrısı</td></tr></table><h4 style=\"text-decoration: underline\">Dolaşım Sistemi</h4> <table style=\"width:100%; margin-bottom: 16px;margin-top:16px;\"><tr><td style=\"width:30%;vertical-align: top\"><b style=\"font-size: 12px\">Dolaşım Sistemi</b></td><td style=\"vertical-align: top\">:</td><td style=\"font-size: 11px;width:100%;\">Çarpıntı</td></tr></table><h4 style=\"text-decoration: underline\">Gastrointestinal Sistem</h4> <table style=\"width:100%; margin-bottom: 16px;margin-top:16px;\"><tr><td style=\"width:30%;vertical-align: top\"><b style=\"font-size: 12px\">Gastrointestinal Sistem</b></td><td style=\"vertical-align: top\">:</td><td style=\"font-size: 11px;width:100%;\">Bulantı</td></tr></table><h4 style=\"text-decoration: underline\">Komplikasyon</h4> <table style=\"width:100%; margin-bottom: 16px;margin-top:16px;\"><tr><td colspan=\"3\" style=\"font-size: 11px;width:100%;\">Komplikasyon Yok</td></tr></table></div></div></div>\n                </div>",
+     "printSummaryText": "\r\n Genel Sistem Sorgusu  \r\n Genel Sistem Sorgusu: Halsizlik \r\n Sinir Sistemi  \r\n Sinir Sistemi: Denge bozukluğu \r\n Genitoüriner Sistem  \r\n Genitoüriner Sistem: Sık idrara çıkma \r\n Kas - İskelet Sistemi  \r\n Kas - İskelet Sistemi: Kas ağrısı \r\n Deri  \r\n Deri: Kaşıntı \r\n Dolaşım Sistemi  \r\n Dolaşım Sistemi: Çarpıntı \r\n Solunum Sistemi  \r\n Solunum Sistemi: Nefes darlığı \r\n Gastrointestinal Sistem  \r\n Gastrointestinal Sistem: Bulantı \r\n Komplikasyon  \r\n : Komplikasyon Yok \r\n ",
+     "summary": "<div style=\"padding:12px;font-size:13px;\">\n                  <h3 style=\"margin-bottom: 16px;text-align: center;\"><h3 style=\"margin-bottom: 16px;text-align: center;\">Sistem Sorgulama</h3></h3>\n                  <div><div ><div style=\"display: inline-block; width: 50%; padding-left:12px\"><h4 style=\"text-decoration: underline\">Genel Sistem Sorgusu</h4> <table style=\"width:100%; margin-bottom: 16px;margin-top:16px;\"><tr><td colspan=\"3\" style=\"font-size: 11px;width:100%;\">Halsizlik</td></tr></table><h4 style=\"text-decoration: underline\">Deri</h4> <table style=\"width:100%; margin-bottom: 16px;margin-top:16px;\"><tr><td colspan=\"3\" style=\"font-size: 11px;width:100%;\">Kaşıntı</td></tr></table><h4 style=\"text-decoration: underline\">Solunum Sistemi</h4> <table style=\"width:100%; margin-bottom: 16px;margin-top:16px;\"><tr><td colspan=\"3\" style=\"font-size: 11px;width:100%;\">Nefes darlığı</td></tr></table></div><div style=\"display: inline-block; width: 50%; padding-left:12px\"><h4 style=\"text-decoration: underline\">Sinir Sistemi</h4> <table style=\"width:100%; margin-bottom: 16px;margin-top:16px;\"><tr><td colspan=\"3\" style=\"font-size: 11px;width:100%;\">Denge bozukluğu</td></tr></table><h4 style=\"text-decoration: underline\">Kas - İskelet Sistemi</h4> <table style=\"width:100%; margin-bottom: 16px;margin-top:16px;\"><tr><td colspan=\"3\" style=\"font-size: 11px;width:100%;\">Kas ağrısı</td></tr></table><h4 style=\"text-decoration: underline\">Dolaşım Sistemi</h4> <table style=\"width:100%; margin-bottom: 16px;margin-top:16px;\"><tr><td colspan=\"3\" style=\"font-size: 11px;width:100%;\">Çarpıntı</td></tr></table><h4 style=\"text-decoration: underline\">Gastrointestinal Sistem</h4> <table style=\"width:100%; margin-bottom: 16px;margin-top:16px;\"><tr><td colspan=\"3\" style=\"font-size: 11px;width:100%;\">Bulantı</td></tr></table></div></div></div>\n                </div>",
+     "summaryText": "Sistem Sorgulama\r\n Genel Sistem Sorgusu  \r\n : Halsizlik \r\n Sinir Sistemi  \r\n : Denge bozukluğu \r\n Kas - İskelet Sistemi  \r\n : Kas ağrısı \r\n Deri  \r\n : Kaşıntı \r\n Dolaşım Sistemi  \r\n : Çarpıntı \r\n Solunum Sistemi  \r\n : Nefes darlığı \r\n Gastrointestinal Sistem  \r\n : Bulantı \r\n "
+    }
+   ],
+   "printSummary": "<div style=\"padding:12px;font-size:13px;\">\n                  <h3 style=\"margin-bottom: 16px;text-align: center;\"><h3 style=\"margin-bottom: 16px;text-align: center;\">Muayene DökümanıV2</h3></h3>\n                  <div><div ><div style=\"display: inline-block; width: 100%; padding-left:12px\"><h4 style=\"text-decoration: underline\">Yakınması</h4> <table style=\"width:100%; margin-bottom: 16px;margin-top:16px;\"><tr><td style=\"width:30%;vertical-align: top\"><b style=\"font-size: 12px\">Ankesa</b></td><td style=\"vertical-align: top\">:</td><td style=\"font-size: 11px;width:100%;\">Göğüs ağrısı ve nefes darlığı, Başlangıç Tarihi : 1 gün Önce (10.11.2026)</td></tr><tr><td style=\"width:30%;vertical-align: top\"><b style=\"font-size: 12px\">Öykü</b></td><td style=\"vertical-align: top\">:</td><td style=\"font-size: 11px;width:100%;\">İki gündür göğüs ortasında bastırıcı tarzda sıkışma hissi, nefes darlığı eşlik ediyor. Yürümekle artıyor, dinlenmekle hafifliyor. Sol kola yayılımı var. Ayrıca burun akıntısı ve hapşırık şikayeti mevcut.</br>Özgeçmiş (HBYS listesinde yok): Kullandığı ilaç: Amlodipin 5 mg Her gün; Özel durum: Tuzsuz Diyet; Cihaz: İşitme Cihazı; Kan nakli: Kan Nakli 2019; Terapi: Fizik Tedavi Haftada bir.</td></tr></table><h4 style=\"text-decoration: underline\">Özgeçmiş</h4> <table style=\"width:100%; margin-bottom: 16px;margin-top:16px;\"><tr><td style=\"width:30%;\"><b style=\"font-size: 12px\">Alerji</b></td><td>:</td><td style=\"font-size: 11px;width:100%;\"><span>Penisilin</span></td></tr><tr><td style=\"width:30%;\"><b style=\"font-size: 12px\">Hastalık</b></td><td>:</td><td style=\"font-size: 11px;width:100%;\"><span>Hipertansiyon</span></td></tr><tr><td style=\"width:30%;\"><b style=\"font-size: 12px\">Ameliyat</b></td><td>:</td><td style=\"font-size: 11px;width:100%;\"><span>Apendektomi, akut</span></td></tr> <tr><td style=\"width:30%;\"><b style=\"font-size: 12px\">Alışkanlık</b></td><td>:</td><td style=\"font-size: 11px;width:100%;\"><span>Sigara</span></td></tr><tr><td style=\"width:30%;\"><b style=\"font-size: 12px\">Vücuda Takılan Cihazlar</b></td><td>:</td><td style=\"font-size: 11px;width:100%;\"><span>Kalp Pili</span></td></tr><tr><td style=\"width:30%;\"><b style=\"font-size: 12px\">Aşı</b></td><td>:</td><td style=\"font-size: 11px;width:100%;\"><span>MEVSİMSEL İNFLUENZA AŞISI (GRİP AŞISI)</span></td></tr></table><h4 style=\"text-decoration: underline\">İzlem ve Plan</h4> <table style=\"width:100%; margin-bottom: 16px;margin-top:16px;\"><tr><td style=\"width:30%;vertical-align: top\"><b style=\"font-size: 12px\">Tedavi Planı</b></td><td style=\"vertical-align: top\">:</td><td style=\"font-size: 11px;width:100%;\">Ayaktan takip ve tedavi</td></tr><tr><td style=\"width:30%;vertical-align: top\"><b style=\"font-size: 12px\">Ameliyat Planlanacak mı</b></td><td style=\"vertical-align: top\">:</td><td style=\"font-size: 11px;width:100%;\">0</td></tr></table><h4 style=\"text-decoration: underline\">Psikoloji</h4> <table style=\"width:100%; margin-bottom: 16px;margin-top:16px;\"><tr><td style=\"width:30%;vertical-align: top\"><b style=\"font-size: 12px\">Psikolojik Durum</b></td><td style=\"vertical-align: top\">:</td><td style=\"font-size: 11px;width:100%;\">Kaygılı</td></tr><tr><td style=\"width:30%;vertical-align: top\"><b style=\"font-size: 12px\">Piskoloji açıklaması</b></td><td style=\"vertical-align: top\">:</td><td style=\"font-size: 11px;width:100%;\">Ağrı nedeniyle kaygılı, bilinci açık.</td></tr></table><h4 style=\"text-decoration: underline\">Ağrı</h4> <table style=\"width:100%; margin-bottom: 16px;margin-top:16px;\"><tr><td style=\"width:30%;vertical-align: top\"><b style=\"font-size: 12px\">Ağrı</b></td><td style=\"vertical-align: top\">:</td><td style=\"font-size: 11px;width:100%;\">Evet, Ağrı Açıklaması : Sıkışma hissi, sol kola yayılım</td></tr><tr><td style=\"width:30%;vertical-align: top\"><b style=\"font-size: 12px\">Ağrı Bölgesi</b></td><td style=\"vertical-align: top\">:</td><td style=\"font-size: 11px;width:100%;\">Göğüs ortası</td></tr><tr><td style=\"width:30%;vertical-align: top\"><b style=\"font-size: 12px\">Ağrının Skoru</b></td><td style=\"vertical-align: top\">:</td><td style=\"font-size: 11px;width:100%;\">7</td></tr><tr><td style=\"width:30%;vertical-align: top\"><b style=\"font-size: 12px\">Ağrının Sıklığı</b></td><td style=\"vertical-align: top\">:</td><td style=\"font-size: 11px;width:100%;\">Aralıklı</td></tr><tr><td style=\"width:30%;vertical-align: top\"><b style=\"font-size: 12px\">Ağrının Özelliği</b></td><td style=\"vertical-align: top\">:</td><td style=\"font-size: 11px;width:100%;\">Bastırıcı</td></tr><tr><td style=\"width:30%;vertical-align: top\"><b style=\"font-size: 12px\">Değerlendirme Tipi</b></td><td style=\"vertical-align: top\">:</td><td style=\"font-size: 11px;width:100%;\">NRS</td></tr></table><h4 style=\"text-decoration: underline\">Sistem Sorgusu</h4> <table style=\"width:100%; margin-bottom: 16px;margin-top:16px;\"><tr><td style=\"width:30%;vertical-align: top\"><b style=\"font-size: 12px\">Sistem Sorgusu</b></td><td style=\"vertical-align: top\">:</td><td style=\"font-size: 11px;width:100%;\">Halsizlik, sık idrara çıkma, kollarımda kaşıntı, merdiven çıkarken nefes darlığı, denge bozukluğu, bacaklarda kas ağrısı, çarpıntı, bulantı.</td></tr></table><div style=\"padding:12px;font-size:13px;\">\n                  <h3 style=\"margin-bottom: 16px;text-align: center;\"></h3>\n                  <div><div ><div style=\"display: inline-block; width: 50%; padding-left:12px\"><h4 style=\"text-decoration: underline\">Genel Sistem Sorgusu</h4> <table style=\"width:100%; margin-bottom: 16px;margin-top:16px;\"><tr><td style=\"width:30%;vertical-align: top\"><b style=\"font-size: 12px\">Genel Sistem Sorgusu</b></td><td style=\"vertical-align: top\">:</td><td style=\"font-size: 11px;width:100%;\">Halsizlik</td></tr></table><h4 style=\"text-decoration: underline\">Genitoüriner Sistem</h4> <table style=\"width:100%; margin-bottom: 16px;margin-top:16px;\"><tr><td style=\"width:30%;vertical-align: top\"><b style=\"font-size: 12px\">Genitoüriner Sistem</b></td><td style=\"vertical-align: top\">:</td><td style=\"font-size: 11px;width:100%;\">Sık idrara çıkma</td></tr></table><h4 style=\"text-decoration: underline\">Deri</h4> <table style=\"width:100%; margin-bottom: 16px;margin-top:16px;\"><tr><td style=\"width:30%;vertical-align: top\"><b style=\"font-size: 12px\">Deri</b></td><td style=\"vertical-align: top\">:</td><td style=\"font-size: 11px;width:100%;\">Kaşıntı</td></tr></table><h4 style=\"text-decoration: underline\">Solunum Sistemi</h4> <table style=\"width:100%; margin-bottom: 16px;margin-top:16px;\"><tr><td style=\"width:30%;vertical-align: top\"><b style=\"font-size: 12px\">Solunum Sistemi</b></td><td style=\"vertical-align: top\">:</td><td style=\"font-size: 11px;width:100%;\">Nefes darlığı</td></tr></table></div><div style=\"display: inline-block; width: 50%; padding-left:12px\"><h4 style=\"text-decoration: underline\">Sinir Sistemi</h4> <table style=\"width:100%; margin-bottom: 16px;margin-top:16px;\"><tr><td style=\"width:30%;vertical-align: top\"><b style=\"font-size: 12px\">Sinir Sistemi</b></td><td style=\"vertical-align: top\">:</td><td style=\"font-size: 11px;width:100%;\">Denge bozukluğu</td></tr></table><h4 style=\"text-decoration: underline\">Kas - İskelet Sistemi</h4> <table style=\"width:100%; margin-bottom: 16px;margin-top:16px;\"><tr><td style=\"width:30%;vertical-align: top\"><b style=\"font-size: 12px\">Kas - İskelet Sistemi</b></td><td style=\"vertical-align: top\">:</td><td style=\"font-size: 11px;width:100%;\">Kas ağrısı</td></tr></table><h4 style=\"text-decoration: underline\">Dolaşım Sistemi</h4> <table style=\"width:100%; margin-bottom: 16px;margin-top:16px;\"><tr><td style=\"width:30%;vertical-align: top\"><b style=\"font-size: 12px\">Dolaşım Sistemi</b></td><td style=\"vertical-align: top\">:</td><td style=\"font-size: 11px;width:100%;\">Çarpıntı</td></tr></table><h4 style=\"text-decoration: underline\">Gastrointestinal Sistem</h4> <table style=\"width:100%; margin-bottom: 16px;margin-top:16px;\"><tr><td style=\"width:30%;vertical-align: top\"><b style=\"font-size: 12px\">Gastrointestinal Sistem</b></td><td style=\"vertical-align: top\">:</td><td style=\"font-size: 11px;width:100%;\">Bulantı</td></tr></table><h4 style=\"text-decoration: underline\">Komplikasyon</h4> <table style=\"width:100%; margin-bottom: 16px;margin-top:16px;\"><tr><td colspan=\"3\" style=\"font-size: 11px;width:100%;\">Komplikasyon Yok</td></tr></table></div></div></div>\n                </div></div></div></div>\n                </div>",
+   "printSummaryText": "Muayene DökümanıV2\r\n Yakınması  \r\n Ankesa: Göğüs ağrısı ve nefes darlığı, Başlangıç Tarihi : 1 gün Önce (10.11.2026) \r\nÖykü: İki gündür göğüs ortasında bastırıcı tarzda sıkışma hissi, nefes darlığı eşlik ediyor. Yürümekle artıyor, dinlenmekle hafifliyor. Sol kola yayılımı var. Ayrıca burun akıntısı ve hapşırık şikayeti mevcut.\nÖzgeçmiş (HBYS listesinde yok): Kullandığı ilaç: Amlodipin 5 mg Her gün; Özel durum: Tuzsuz Diyet; Cihaz: İşitme Cihazı; Kan nakli: Kan Nakli 2019; Terapi: Fizik Tedavi Haftada bir. \r\n İzlem ve Plan  \r\n Tedavi Planı: Ayaktan takip ve tedavi \r\nAmeliyat Planlanacak mı: 0 \r\n Psikoloji  \r\n Psikolojik Durum: Kaygılı \r\nPiskoloji açıklaması: Ağrı nedeniyle kaygılı, bilinci açık. \r\n Ağrı  \r\n Ağrı: Evet, Ağrı Açıklaması : Sıkışma hissi, sol kola yayılım \r\nAğrı Bölgesi: Göğüs ortası \r\nAğrının Skoru: 7 \r\nAğrının Sıklığı: Aralıklı \r\nAğrının Özelliği: Bastırıcı \r\nDeğerlendirme Tipi: NRS \r\n Sistem Sorgusu  \r\n Sistem Sorgusu: Halsizlik, sık idrara çıkma, kollarımda kaşıntı, merdiven çıkarken nefes darlığı, denge bozukluğu, bacaklarda kas ağrısı, çarpıntı, bulantı. \r\n \r\n Genel Sistem Sorgusu  \r\n Genel Sistem Sorgusu: Halsizlik \r\n Sinir Sistemi  \r\n Sinir Sistemi: Denge bozukluğu \r\n Genitoüriner Sistem  \r\n Genitoüriner Sistem: Sık idrara çıkma \r\n Kas - İskelet Sistemi  \r\n Kas - İskelet Sistemi: Kas ağrısı \r\n Deri  \r\n Deri: Kaşıntı \r\n Dolaşım Sistemi  \r\n Dolaşım Sistemi: Çarpıntı \r\n Solunum Sistemi  \r\n Solunum Sistemi: Nefes darlığı \r\n Gastrointestinal Sistem  \r\n Gastrointestinal Sistem: Bulantı \r\n Komplikasyon  \r\n : Komplikasyon Yok \r\n ",
+   "summary": "<div style=\"padding:12px;font-size:13px;\">\n                  <h3 style=\"margin-bottom: 16px;text-align: center;\"><h3 style=\"margin-bottom: 16px;text-align: center;\">Muayene DökümanıV2</h3></h3>\n                  <div><div ><div style=\"display: inline-block; width: 100%; padding-left:12px\"><h4 style=\"text-decoration: underline\">İzlem ve Plan</h4> <table style=\"width:100%; margin-bottom: 16px;margin-top:16px;\"><tr><td style=\"width:30%;vertical-align: top\"><b style=\"font-size: 12px\">Tedavi Planı</b></td><td style=\"vertical-align: top\">:</td><td style=\"font-size: 11px;width:100%;\">Ayaktan takip ve tedavi</td></tr></table><h4 style=\"text-decoration: underline\">Ağrı</h4> <table style=\"width:100%; margin-bottom: 16px;margin-top:16px;\"><tr><td style=\"width:30%;vertical-align: top\"><b style=\"font-size: 12px\">Ağrı</b></td><td style=\"vertical-align: top\">:</td><td style=\"font-size: 11px;width:100%;\">Evet, Ağrı Açıklaması : Sıkışma hissi, sol kola yayılım</td></tr><tr><td style=\"width:30%;vertical-align: top\"><b style=\"font-size: 12px\">Ağrı Bölgesi</b></td><td style=\"vertical-align: top\">:</td><td style=\"font-size: 11px;width:100%;\">Göğüs ortası</td></tr><tr><td style=\"width:30%;vertical-align: top\"><b style=\"font-size: 12px\">Ağrının Skoru</b></td><td style=\"vertical-align: top\">:</td><td style=\"font-size: 11px;width:100%;\">7</td></tr><tr><td style=\"width:30%;vertical-align: top\"><b style=\"font-size: 12px\">Ağrının Sıklığı</b></td><td style=\"vertical-align: top\">:</td><td style=\"font-size: 11px;width:100%;\">Aralıklı</td></tr><tr><td style=\"width:30%;vertical-align: top\"><b style=\"font-size: 12px\">Ağrının Özelliği</b></td><td style=\"vertical-align: top\">:</td><td style=\"font-size: 11px;width:100%;\">Bastırıcı</td></tr><tr><td colspan=\"3\" style=\"font-size: 11px;width:100%;\">NRS</td></tr></table><h4 style=\"text-decoration: underline\">Fizik Muayene Bulguları</h4> <table style=\"width:100%; margin-bottom: 16px;margin-top:16px;\"><tr><td style=\"width:30%;vertical-align: top\"><b style=\"font-size: 12px\">Fizik Muayene Bulguları</b></td><td style=\"vertical-align: top\">:</td><td style=\"font-size: 11px;width:100%;\">Kilo: 82 kg, Boy: 174 cm, Ateş: 36.8 °C, Nabız: 98/dk, Tansiyon: 145/90 mmHg, Oksijen Saturasyonu: %96. Kalp ritmi düzenli, akciğer sesleri doğal, belirgin ödem yok.</td></tr></table><h4 style=\"text-decoration: underline\">Sistem Sorgusu</h4> <table style=\"width:100%; margin-bottom: 16px;margin-top:16px;\"><tr><td style=\"width:30%;vertical-align: top\"><b style=\"font-size: 12px\">Sistem Sorgusu</b></td><td style=\"vertical-align: top\">:</td><td style=\"font-size: 11px;width:100%;\">Halsizlik, sık idrara çıkma, kollarımda kaşıntı, merdiven çıkarken nefes darlığı, denge bozukluğu, bacaklarda kas ağrısı, çarpıntı, bulantı.</td></tr></table><div style=\"padding:12px;font-size:13px;\">\n                  <h3 style=\"margin-bottom: 16px;text-align: center;\"><h3 style=\"margin-bottom: 16px;text-align: center;\">Sistem Sorgulama</h3></h3>\n                  <div><div ><div style=\"display: inline-block; width: 50%; padding-left:12px\"><h4 style=\"text-decoration: underline\">Genel Sistem Sorgusu</h4> <table style=\"width:100%; margin-bottom: 16px;margin-top:16px;\"><tr><td colspan=\"3\" style=\"font-size: 11px;width:100%;\">Halsizlik</td></tr></table><h4 style=\"text-decoration: underline\">Deri</h4> <table style=\"width:100%; margin-bottom: 16px;margin-top:16px;\"><tr><td colspan=\"3\" style=\"font-size: 11px;width:100%;\">Kaşıntı</td></tr></table><h4 style=\"text-decoration: underline\">Solunum Sistemi</h4> <table style=\"width:100%; margin-bottom: 16px;margin-top:16px;\"><tr><td colspan=\"3\" style=\"font-size: 11px;width:100%;\">Nefes darlığı</td></tr></table></div><div style=\"display: inline-block; width: 50%; padding-left:12px\"><h4 style=\"text-decoration: underline\">Sinir Sistemi</h4> <table style=\"width:100%; margin-bottom: 16px;margin-top:16px;\"><tr><td colspan=\"3\" style=\"font-size: 11px;width:100%;\">Denge bozukluğu</td></tr></table><h4 style=\"text-decoration: underline\">Kas - İskelet Sistemi</h4> <table style=\"width:100%; margin-bottom: 16px;margin-top:16px;\"><tr><td colspan=\"3\" style=\"font-size: 11px;width:100%;\">Kas ağrısı</td></tr></table><h4 style=\"text-decoration: underline\">Dolaşım Sistemi</h4> <table style=\"width:100%; margin-bottom: 16px;margin-top:16px;\"><tr><td colspan=\"3\" style=\"font-size: 11px;width:100%;\">Çarpıntı</td></tr></table><h4 style=\"text-decoration: underline\">Gastrointestinal Sistem</h4> <table style=\"width:100%; margin-bottom: 16px;margin-top:16px;\"><tr><td colspan=\"3\" style=\"font-size: 11px;width:100%;\">Bulantı</td></tr></table></div></div></div>\n                </div></div></div></div>\n                </div>",
+   "summaryText": "Muayene DökümanıV2\r\n İzlem ve Plan  \r\n Tedavi Planı: Ayaktan takip ve tedavi \r\n Ağrı  \r\n Ağrı: Evet, Ağrı Açıklaması : Sıkışma hissi, sol kola yayılım \r\nAğrı Bölgesi: Göğüs ortası \r\nAğrının Skoru: 7 \r\nAğrının Sıklığı: Aralıklı \r\nAğrının Özelliği: Bastırıcı \r\n: NRS \r\n Fizik Muayene Bulguları  \r\n Fizik Muayene Bulguları: Kilo: 82 kg, Boy: 174 cm, Ateş: 36.8 °C, Nabız: 98/dk, Tansiyon: 145/90 mmHg, Oksijen Saturasyonu: %96. Kalp ritmi düzenli, akciğer sesleri doğal, belirgin ödem yok. \r\n Sistem Sorgusu  \r\n Sistem Sorgusu: Halsizlik, sık idrara çıkma, kollarımda kaşıntı, merdiven çıkarken nefes darlığı, denge bozukluğu, bacaklarda kas ağrısı, çarpıntı, bulantı. \r\n Sistem Sorgulama\r\n Genel Sistem Sorgusu  \r\n : Halsizlik \r\n Sinir Sistemi  \r\n : Denge bozukluğu \r\n Kas - İskelet Sistemi  \r\n : Kas ağrısı \r\n Deri  \r\n : Kaşıntı \r\n Dolaşım Sistemi  \r\n : Çarpıntı \r\n Solunum Sistemi  \r\n : Nefes darlığı \r\n Gastrointestinal Sistem  \r\n : Bulantı \r\n "
+  }
+ ]
+}
