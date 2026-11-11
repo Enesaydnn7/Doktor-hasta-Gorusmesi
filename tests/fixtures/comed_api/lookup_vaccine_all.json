@@ -1,0 +1,200 @@
+{
+ "data": [
+  {
+   "key": "1",
+   "value": "BİVALAN OPA (ORAL POLİO AŞISI)"
+  },
+  {
+   "key": "3",
+   "value": "KKK (KIZAMIK KIZAMIKÇIK KABAKULAK AŞISI)"
+  },
+  {
+   "key": "4",
+   "value": "SARIHUMMA"
+  },
+  {
+   "key": "5",
+   "value": "KIZAMIK AŞISI"
+  },
+  {
+   "key": "6",
+   "value": "KIZAMIKÇIK AŞISI"
+  },
+  {
+   "key": "7",
+   "value": "TİFO"
+  },
+  {
+   "key": "8",
+   "value": "HEPATİT B AŞISI PEDİATRİK"
+  },
+  {
+   "key": "9",
+   "value": "TD ADULT (ERİŞKİN TİP TETANOZ DİFTERİ AŞISI)"
+  },
+  {
+   "key": "10",
+   "value": "KOLERA"
+  },
+  {
+   "key": "11",
+   "value": "MR (KIZAMIK KIZAMIKÇIK)"
+  },
+  {
+   "key": "12",
+   "value": "DİFTERİ ANTİSERUMU"
+  },
+  {
+   "key": "13",
+   "value": "İNSAN KAYNAKLI TETANOZ ANTİSERUMU"
+  },
+  {
+   "key": "14",
+   "value": "KENE KAYNAKLI ENSEFALİT"
+  },
+  {
+   "key": "15",
+   "value": "KONJUGE MENİNGOKOK AŞISI"
+  },
+  {
+   "key": "16",
+   "value": "BCG AŞISI"
+  },
+  {
+   "key": "17",
+   "value": "KPA 10"
+  },
+  {
+   "key": "18",
+   "value": "KUDUZ AŞISI"
+  },
+  {
+   "key": "21",
+   "value": "SUÇİÇEĞİ AŞISI"
+  },
+  {
+   "key": "28",
+   "value": "DT PEDİATRİK (PEDİATRİK TİP TETANOZ DİFTERİ AŞISI)"
+  },
+  {
+   "key": "32",
+   "value": "POLİSAKKARİT MENENGOKOK AŞISI"
+  },
+  {
+   "key": "33",
+   "value": "POLİSAKKARİT PNÖMOKOK AŞISI 23 VALANLI"
+  },
+  {
+   "key": "34",
+   "value": "İNSAN KAYNAKLI KUDUZ ANTİSERUMU"
+  },
+  {
+   "key": "35",
+   "value": "ADSORBE TETANOZ AŞISI"
+  },
+  {
+   "key": "39",
+   "value": "JAPON ENSAFALİTİ AŞISI"
+  },
+  {
+   "key": "43",
+   "value": "HEPATİT B ERİŞKİN"
+  },
+  {
+   "key": "46",
+   "value": "HAEMOPHİLUS İNFLUENZA TİP B AŞISI"
+  },
+  {
+   "key": "52",
+   "value": "HEPATİT A AŞISI ERİŞKİN"
+  },
+  {
+   "key": "60",
+   "value": "İNAKTİVE POLİO AŞISI"
+  },
+  {
+   "key": "62",
+   "value": "DÖRT VALANLI HPV AŞISI (HUMAN PAPİLLOMA VİRUS AŞISI)"
+  },
+  {
+   "key": "74",
+   "value": "TETRA VALAN ROTA VİRUS AŞISI"
+  },
+  {
+   "key": "83",
+   "value": "HEPATİT A AŞISI PEDİATRİK"
+  },
+  {
+   "key": "94",
+   "value": "KKKV AŞISI(KIZAMIK KIZAMIKÇIK KABAKULAK SUÇİÇEĞİ AŞISI)"
+  },
+  {
+   "key": "96",
+   "value": "PPD SOLÜSYONU"
+  },
+  {
+   "key": "116",
+   "value": "PENTEVALAN ROTAVİRUS AŞISI"
+  },
+  {
+   "key": "118",
+   "value": "İKİ VALANLI HPV AŞISI (HUMAN PAPİLLOMA VİRUS AŞISI)"
+  },
+  {
+   "key": "119",
+   "value": "MONOVALAN ROTAVİRUS AŞISI"
+  },
+  {
+   "key": "120",
+   "value": "DABT-İPA-HİB AŞISI (5 Lİ KARMA AŞI)"
+  },
+  {
+   "key": "130",
+   "value": "DABT-İPA AŞISI (4 LÜ KARMA AŞI)"
+  },
+  {
+   "key": "132",
+   "value": "DABT-İPA-HİB-HEP B (6 LI KOMBİNE AŞI)"
+  },
+  {
+   "key": "133",
+   "value": "KPA 13 VALANLI (KONJUGE PNÖMOKOK AŞISI 13 VALANLI)"
+  },
+  {
+   "key": "134",
+   "value": "Tdap (TETANOZ - Difteri - ASELÜLER BOĞMACA)"
+  },
+  {
+   "key": "141",
+   "value": "MEVSİMSEL İNFLUENZA AŞISI (GRİP AŞISI)"
+  },
+  {
+   "key": "201",
+   "value": "AT KAYNAKLI KUDUZ ANTİSERUMU"
+  },
+  {
+   "key": "202",
+   "value": "AT KAYNAKLI TETANOZ ANTİSERUMU"
+  },
+  {
+   "key": "203",
+   "value": "AKREP ANTİSERUMU"
+  },
+  {
+   "key": "204",
+   "value": "KONJUGE MENENGOKOK AŞISI (ACWY)"
+  },
+  {
+   "key": "205",
+   "value": "YILAN ANTİSERUMU"
+  },
+  {
+   "key": "206",
+   "value": "KONJUGE MENINGOKOK SEROGRUP B"
+  },
+  {
+   "key": "207",
+   "value": "İNOSINE PROBENEX"
+  }
+ ]
+}

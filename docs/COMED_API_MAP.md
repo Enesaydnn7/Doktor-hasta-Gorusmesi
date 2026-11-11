@@ -161,3 +161,27 @@ Eski ekran-doldurma yolu aynı kaydı 107 sn'de yapıyor ve EKO'yu ekleyemiyordu
 
 Açık konu: şikayet başlangıç tarihi COMED'de doğru saklanıyor (geri okuma
 `{"before": 2, "type": 2}`) ama ekranda "Başlangıç Tarihi" kutusu boş görünüyor.
+
+## 11 Kasım 21:28 — özgeçmiş, soygeçmiş, düşme riski, varsayılan doz (canlı)
+
+- Özgeçmiş: `core/public/getlookup` katalogları (`entity.vademecumDisease`,
+  `vademecumSubstance`, `entity.operation`, `vademecumVaccine`, `vademecumDevice`,
+  `vademecumAddiction`); mevcutlar `medical/examination/getPatientRecords`.
+  Kayıt `saveProfile*` — **tek kalem, sırayla**. Paralel gönderince COMED
+  "optimistic concurrency ... affected 0 row(s)" ile reddetti (7 kalemin 5'i).
+- Soygeçmiş: `saveProfileDiseases`, `closeness` (`closeness.familyHistory`: f=Babası,
+  m=Annesi...), `record.type = 14`.
+- Katalogda güvenle eşleşmeyen (Apendektomi: 7 aday) ya da listesi olmayan
+  (ilaç, özel durum, kan nakli, terapi) kalemler öyküye "Özgeçmiş (HBYS listesinde yok)".
+- Düşme riski `fall_risk_form`: Var/Evet=1, Yok/Hayır=0, Oryante/Normal=0; skor toplam.
+- İlaç: `pharmacy/medication/orderInquiry` → varsayılan `dosage/dosageUnit` ve
+  `pharmaceuticalForm.applicationMethod.name` (veriliş yolu); doz saatleri
+  `pharmacy/medication/calculateSteps`. Aynı ilaç zaten aktifse InteractionInquiry
+  `conflictingAtcCodes` döner (çift ilaç koruması).
+- Zaman birimi enum'u (`H_`): Tarih=1, Gün=2, Ay=3, Yıl=4, Saat=5, Dakika=6, Hafta=7.
+- İkinci aktarım (aynı kayıt): tanı/istem/özgeçmiş "mevcut", form ve düşme riski
+  güncellendi — gerçek yenilemeden sonra ekranda tam.
+
+Geliştirme notu: Claude'un tarayıcı aracıyla gönderilen F5 tuşu sayfayı gerçekten
+yenilemiyor (COMED yerinde kalıyor); doğrulama için sayfaya yeniden gidilmeli.
+Açık konu: "Başlangıç Tarihi" kutusu veri doğru saklandığı hâlde boş görünüyor.

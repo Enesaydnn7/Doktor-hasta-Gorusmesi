@@ -201,6 +201,8 @@ class ComedTransferStatusIn(BaseModel):
 class ComedApiStepIn(BaseModel):
     # Çağrı kimliği -> {"ok", "status", "data", "error"}; yalnız bu turun sonuçları.
     results: dict[str, Any] = {}
+    # Yürüten COMED sekmesinin kimliği: iki sekme aynı aktarımı yürütmesin.
+    claim: str | None = None
 
 
 class ComedTraceEventIn(BaseModel):
@@ -941,6 +943,9 @@ async def mobile_comed_bridge_status(
 # için sunucu yeniden başlarsa iş baştan okunur; yazmalar önce COMED'den
 # okunan durumla korunduğundan çift kayıt oluşmaz.
 _COMED_API_RESULTS: dict[int, dict] = {}
+# Aktarımı ilk alan sekme yürütür; aynı hastanın kartı iki sekmede açıksa
+# ikinci sekme 409 alıp çekilir (aynı istemin iki kez yazılmaması için).
+_COMED_API_CLAIMS: dict[int, str] = {}
 
 
 @app.post("/api/v1/mobile/comed/bridge/transfers/{transfer_id}/api-step")
@@ -958,11 +963,16 @@ async def mobile_comed_bridge_api_step(
         raise HTTPException(status_code=404, detail="COMED aktarımı bulunamadı")
     if transfer.get("status") not in {"queued", "filling"}:
         raise HTTPException(status_code=409, detail="Bu aktarım zaten bitti")
+    if body.claim:
+        owner = _COMED_API_CLAIMS.setdefault(transfer_id, body.claim)
+        if owner != body.claim:
+            raise HTTPException(status_code=409, detail="Bu aktarımı başka bir COMED sekmesi yürütüyor")
     results = _COMED_API_RESULTS.setdefault(transfer_id, {})
     results.update(body.results or {})
     step = comed_api.plan_next(transfer.get("bundle") or {}, results)
     if step["done"]:
         _COMED_API_RESULTS.pop(transfer_id, None)
+        _COMED_API_CLAIMS.pop(transfer_id, None)
         debug = {
             "mode": "comed_api",
             "finished_at": datetime.now().isoformat(timespec="seconds"),
@@ -1199,12 +1209,15 @@ async def dev_extension_version():
     return {"hash": digest.hexdigest()}
 
 
-@app.post("/dev/log")
-async def dev_log(request: Request):
-    """Yerel geliştirmede eklenti arka plan hatalarını sunucu günlüğüne yazar."""
+@app.api_route("/dev/log", methods=["GET", "POST"])
+async def dev_log(request: Request, m: str = ""):
+    """Yerel geliştirmede eklenti arka plan hatalarını sunucu günlüğüne yazar.
+
+    Eklentinin arka planından POST sunucuya ulaşmadı; GET (?m=...) ulaşıyor.
+    """
     if os.getenv("KLINOT_DEV") != "1":
         raise HTTPException(status_code=404, detail="Bulunamadı")
-    text = (await request.body()).decode("utf-8", errors="replace")[:2000]
+    text = (m or (await request.body()).decode("utf-8", errors="replace"))[:2000]
     logger.warning("[eklenti] %s", text)
     print(f"[eklenti] {text}", flush=True)
     return {"ok": True}

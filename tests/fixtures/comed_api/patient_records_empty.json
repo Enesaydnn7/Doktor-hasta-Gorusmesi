@@ -1,0 +1,29 @@
+{
+ "data": {
+  "addictions": [],
+  "allergies": [],
+  "devices": [],
+  "disabilities": [],
+  "diseases": [],
+  "education": "edu-lisans",
+  "hasDisability": 1,
+  "hasItem": 1,
+  "hasPharmacyProduct": 1,
+  "hasSymptom": 1,
+  "hasTherapy": 1,
+  "id": 0,
+  "items": [],
+  "modifiedAt": "2026-11-06T13:42:15",
+  "occupation": "occ-ogretmen",
+  "operations": [],
+  "overall": 1,
+  "patientId": 1300013,
+  "pharmacyProducts": [],
+  "profilePersonnelSeens": [],
+  "setEducationNone": false,
+  "setNotWorking": false,
+  "symptoms": [],
+  "transfusionProducts": [],
+  "vaccines": []
+ }
+}

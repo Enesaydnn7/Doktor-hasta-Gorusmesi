@@ -1,0 +1,135 @@
+{
+ "data": {
+  "actCodeTests": [],
+  "activeOrders": [],
+  "alternativeGroupCode": "637463100611512860",
+  "amountType": 3,
+  "atcCode": "R01AC03",
+  "barcode": "8698856540249",
+  "barcodes": [
+   "8698856540249"
+  ],
+  "baseProduct": true,
+  "category": 0,
+  "chemotherapyProduct": false,
+  "companyId": 404,
+  "cupSize": 1,
+  "defaultAmountType": 0,
+  "documents": [
+   {
+    "notice": 0,
+    "url": "https://files.vademecumonline.com.tr/PictureFile/middle/Allergodil_nazal_sprey_08052012.png"
+   },
+   {
+    "notice": 0,
+    "url": "https://files.vademecumonline.com.tr/InstructionsFile/6101_8698856540249_1542021335.pdf"
+   },
+   {
+    "notice": 0,
+    "url": "https://files.vademecumonline.com.tr/HandbillFile/6101_8698856540249_1542021322.pdf"
+   },
+   {
+    "notice": 0,
+    "url": "https://files.vademecumonline.com.tr/ProspectusFile/Allergodil_nazal_sprey_prosp_02122011.pdf"
+   }
+  ],
+  "dosage": 10.0,
+  "dosageUnit": "ml",
+  "drugFormId": 207,
+  "drugId": 129,
+  "drugName": "ALLERGODIL",
+  "drugTypeId": 1,
+  "equivalentGroupCode": "637463018528653825",
+  "formerBSAList": [
+   {
+    "bodyMassIndex": 23.44,
+    "height": 160.0,
+    "sourceDate": "2024-04-19T11:58:27",
+    "type": 3,
+    "weight": 55.43
+   },
+   {
+    "bodyMassIndex": 23.44,
+    "height": 160.0,
+    "sourceDate": "2024-04-19T11:58:27",
+    "type": 1,
+    "weight": 52.38
+   },
+   {
+    "bodyMassIndex": 23.44,
+    "height": 160.0,
+    "sourceDate": "2024-04-19T11:58:27",
+    "type": 2,
+    "weight": 60.0
+   }
+  ],
+  "genericStatusId": 1,
+  "id": 6101,
+  "ingredients": [
+   {
+    "amount": 0.14,
+    "chemicalFormId": 25,
+    "name": "Azelastin",
+    "showAtTitle": true,
+    "substanceId": 163,
+    "unit": "mg/püskürtme"
+   }
+  ],
+  "inStock": true,
+  "isMedulaReport": false,
+  "link": "https://iframe.vademecumonline.com.tr/product/6101?token=9f75a79e7e29ad25cb8801fe790494f6",
+  "literallyLikeCodes": {},
+  "materialId": 397679,
+  "medicationTimes": [],
+  "missingBSA": false,
+  "missingGFR": false,
+  "name": "ALLERGODIL Burun Spreyi, Çözelti %0.14 mg/10 ml 10 ml'lik sise",
+  "nfcCode": "QGC",
+  "notices": [],
+  "packageAmount": 1.0,
+  "packageAmountUnit": "adet",
+  "parenteralConflictItems": [],
+  "pharmaceuticalForm": {
+   "affectingBodyPart": {
+    "id": 6,
+    "name": "Burun"
+   },
+   "applicationMethod": {
+    "id": 2,
+    "name": "İnhalasyon Yoluyla Uygulananlar"
+   },
+   "id": 22,
+   "name": "Nazal Sprey"
+  },
+  "pregnancyData": [
+   {
+    "categoryId": 3,
+    "periodId": 4
+   }
+  ],
+  "prescriptionType": {
+   "colorId": 6,
+   "id": 1,
+   "name": "Beyaz Reçete"
+  },
+  "publicNumber": "A00569",
+  "routes": [],
+  "sendToCentralDrugPreparationUnit": false,
+  "slug": "allergodil-burun-spreyi-cozelti-0-14-mg-10-ml-10-ml-lik-sise",
+  "specialities": [
+   {
+    "description": "Lüzum Halinde",
+    "speciality": 126,
+    "status": true
+   },
+   {
+    "description": "Sözel Order",
+    "speciality": 133,
+    "status": true
+   }
+  ],
+  "titckName": "ALLERGODIL %0,14 MG 10 ML BURUN SPREYI, COZELTI (10 ML)",
+  "updatedAt": 1572047612,
+  "visuallyLikeCodes": {}
+ }
+}

@@ -1,9 +1,13 @@
 (() => {
-  // Arka plan, canlı kopya yoksa bu betiği açık sekmeye yeniden enjekte eder;
-  // manifest de sayfa yüklenince koyar. Aynı eklenti ömründe iki kopya
-  // aynı aktarımı iki kez yürütmesin.
-  if (globalThis.__klinotContentLoaded) return;
-  globalThis.__klinotContentLoaded = true;
+  // Arka plan, canlı kopya yoksa bu betiği açık sekmeye yeniden enjekte eder.
+  // Eklenti yenilenince Chrome eski ve yeni kopyayı AYNI ortamda çalıştırıyor:
+  // "zaten yüklendim" bayrağı yeni kopyayı engelliyor, eski kopya ise durmuş
+  // oluyordu ve hiçbir kopya aktarım yoklamıyordu. Artık her kopya kendi
+  // jetonunu yazar; en son gelen çalışır, eskiler bunu görünce kendini durdurur.
+  const INSTANCE_TOKEN = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  globalThis.__klinotContentToken = INSTANCE_TOKEN;
+  const isCurrentInstance = () => globalThis.__klinotContentToken === INSTANCE_TOKEN;
+  const HEARTBEAT_ATTR = "data-klinot-content-beat";
   // Some COMED cards are opened before a clinical-card id is assigned. Both
   // /patient-clinical-card/ and /patient-clinical-card/<id>/ are valid cards.
   const CARD_RE = /\/hasta-tibbi-karti\/(\d+)\/patient-clinical-card(?:\/(\d+))?\/?/;
@@ -65,7 +69,13 @@
       await request("/api/v1/mobile/comed/request-log", {
         method: "POST", body: JSON.stringify({events}),
       });
-    } catch (_) {
+    } catch (error) {
+      try {
+        chrome.runtime.sendMessage({type: "klinot-dev-log", text: `iz gönderilemedi (${events.length}): ${error?.message || error}`},
+          () => void chrome.runtime.lastError);
+      } catch (_) {
+        // Arka plan yoksa sessiz geç.
+      }
       traceQueue.unshift(...events);
       if (traceQueue.length > 250) traceQueue.splice(0, traceQueue.length - 250);
       scheduleTraceFlush(10000);
@@ -3211,7 +3221,9 @@
      Bu betik yalnız kuryedir: kararların hepsi sunucuda (comed_api.py). */
   const EXEC_SOURCE = "klinot-comed-exec-v4";
   const EXEC_RESULT_SOURCE = "klinot-comed-exec-result-v4";
-  const API_MAX_ROUNDS = 15;
+  // Özgeçmiş kalemleri COMED'e tek tek ve sırayla gittiği için tur sayısı
+  // kalem sayısıyla artar (demo: 12 tur). Bu yalnız sonsuz döngü sigortası.
+  const API_MAX_ROUNDS = 60;
 
   function comedCall(path, body) {
     return new Promise((resolve) => {
@@ -3233,20 +3245,29 @@
     });
   }
 
+  // Başka bir sekmenin yürüttüğü aktarımlar: tekrar tekrar denenmesin.
+  const transfersOwnedElsewhere = new Set();
+
   async function runApiTransfer(transfer) {
-    if (busy) return;
+    if (busy || transfersOwnedElsewhere.has(transfer.id)) return;
     busy = true;
     const startedAt = Date.now();
     try {
+      // Önce sahiplik: ilk adım isteği aktarımı bu sekmeye kilitler.
+      let pending = {};
+      let step = await request(`/api/v1/mobile/comed/bridge/transfers/${transfer.id}/api-step`, {
+        method: "POST", body: JSON.stringify({results: pending, claim: INSTANCE_TOKEN}),
+      });
       await updateStatus(transfer.id, "filling", null, {
         started_at: new Date(startedAt).toISOString(), stage: "api", mode: "comed_api",
       });
       bridgeStatus("COMED'e API ile aktarılıyor");
-      let pending = {};
       for (let round = 1; round <= API_MAX_ROUNDS; round += 1) {
-        const step = await request(`/api/v1/mobile/comed/bridge/transfers/${transfer.id}/api-step`, {
-          method: "POST", body: JSON.stringify({results: pending}),
-        });
+        if (round > 1) {
+          step = await request(`/api/v1/mobile/comed/bridge/transfers/${transfer.id}/api-step`, {
+            method: "POST", body: JSON.stringify({results: pending, claim: INSTANCE_TOKEN}),
+          });
+        }
         pending = {};
         if (step.done) {
           const seconds = Math.round((Date.now() - startedAt) / 1000);
@@ -3263,6 +3284,11 @@
       }
       throw new Error(`API aktarımı ${API_MAX_ROUNDS} adımda bitmedi`);
     } catch (error) {
+      if (/başka bir COMED sekmesi/.test(error.message)) {
+        // Aynı hasta başka sekmede de açık ve aktarımı o sekme yürütüyor.
+        transfersOwnedElsewhere.add(transfer.id);
+        return;
+      }
       await updateStatus(transfer.id, "failed", error.message, {
         stage: "api", mode: "comed_api", message: error.message, auto_sign: false,
       }).catch(() => {});
@@ -3501,6 +3527,8 @@
        kuruyoruz; page_trace.js document_start'ta kurdugu dinleyiciyle bir
        sonraki cikisi sessizce geciriyor. Yonlendirme Klinot'un kendi
        istegidir, doktor veri kaybetmez: kart zaten ayni hastaya acilir. */
+    // Eski (durmuş) kopyalar mesajlara cevap vermez; yalnız güncel kopya.
+    if (!isCurrentInstance()) return false;
     if (message?.type === "klinot-ping") {
       sendResponse({ok: true});
       return false;
@@ -3539,11 +3567,14 @@
 
   let monitorTimer = null;
   function monitorTick() {
-    if (!extensionAlive()) {
+    if (!extensionAlive() || !isCurrentInstance()) {
       clearInterval(monitorTimer);
       patientIdentityObserver.disconnect();
       return;
     }
+    // Arka plan bu kalp atışına bakarak sekmede çalışan bir kopya olup
+    // olmadığına karar verir (bkz. background.js ensureComedScripts).
+    document.documentElement.setAttribute(HEARTBEAT_ATTR, String(Date.now()));
     try {
       chrome.runtime.sendMessage({type: "klinot-dev-tick"}, () => void chrome.runtime.lastError);
     } catch (_) {
@@ -3551,6 +3582,17 @@
     }
     monitorRoute();
   }
+
+  function devLog(text) {
+    try {
+      chrome.runtime.sendMessage({type: "klinot-dev-log", text: String(text)}, () => void chrome.runtime.lastError);
+    } catch (_) {
+      // Arka plan yoksa sessiz geç.
+    }
+  }
+  devLog(`içerik betiği başladı ${INSTANCE_TOKEN} ${location.pathname}`);
+  // Sayfa açılışındaki (bu betikten önce giden) COMED isteklerinin izlerini iste.
+  window.postMessage({source: "klinot-comed-trace-replay-v4"}, location.origin);
 
   setTimeout(monitorTick, 1500);
   monitorTimer = setInterval(monitorTick, 5000);

@@ -53,10 +53,39 @@ ROS_GROUPS = {
 }
 NO_FINDING = "Özellik Yok"
 DIAGNOSIS_TYPES = {"preliminary": 1, "definitive": 2, "differential": 3}
-TIME_UNITS = {"hour": 1, "day": 2, "week": 3, "month": 4, "year": 5}
+# COMED DateTimeCalculateType (app.js, "H_" enum): _0=0, Date=1, Day=2,
+# Month=3, Year=4, Hour=5, Minute=6, Week=7.
+TIME_UNITS = {"minute": 6, "hour": 5, "day": 2, "week": 7, "month": 3, "year": 4}
+_UNIT_DAYS = {6: 1 / 1440, 5: 1 / 24, 2: 1, 7: 7, 3: 30, 4: 365}
 # Şimdilik yalnız "taraf yok" ölçüldü; diğer taraflar doktora bırakılır.
 SIDE_TYPES = {"none": 3}
 ORDER_TYPES_ALL = [1, 31, 33, 32, 60, 52, 54]
+FALL_DOCUMENT = "fall_risk_form"
+FALL_TITLE = "Düşme Riski Formu"
+# Özgeçmiş listeleri (ölçüldü, 11 Kasım): taslak anahtarı -> (COMED katalog
+# türü, kayıt ucu, gövde/kayıt listesi anahtarı, kimlik alanı, record.type,
+# önemli mi, onSetType). Katalogda güvenle eşleşmeyen kalem öyküye yazılır.
+PROFILE_LISTS = {
+    "diseases": ("entity.vademecumDisease", "medical/examination/saveProfileDiseases",
+                 "diseases", "diseaseId", 5, True, 2),
+    "allergies": ("entity.vademecumSubstance", "medical/examination/saveProfileAllergies",
+                  "allergies", "allergyId", 2, True, 2),
+    "operations": ("entity.operation", "medical/examination/saveProfileOperations",
+                   "operations", "operationId", 7, False, 4),
+    "vaccines": ("entity.vademecumVaccine", "medical/examination/saveProfileVaccines",
+                 "vaccines", "vaccineId", 11, False, 2),
+    "devices": ("entity.vademecumDevice", "medical/examination/saveProfileDevices",
+                "devices", "deviceId", 3, False, 2),
+    "addictions": ("entity.vademecumAddiction", "medical/examination/saveProfileAddictions",
+                   "addictions", "addictionId", 1, False, 2),
+}
+PROFILE_LABELS = {
+    "diseases": "Kronik hastalık", "operations": "Ameliyat", "pharmacy_products": "Kullandığı ilaç",
+    "allergies": "Alerji", "addictions": "Alışkanlık", "special_conditions": "Özel durum",
+    "vaccines": "Aşı", "devices": "Cihaz", "transfusions": "Kan nakli", "therapies": "Terapi",
+    "disabilities": "Engellilik",
+}
+FAMILY_RECORD_TYPE = 14
 # İlaç adında markadan sonra gelebilen ve "farklı ürün" anlamına GELMEYEN
 # kelimeler. Bunların dışında bir kelime (COLD, HOT, PLUS, IV...) söylenmediyse
 # o ürün elenir: "Parol" denince PAROL COLD seçilmesi klinik hataydı.
@@ -168,6 +197,11 @@ def match_by_name(wanted: str, candidates: list[dict], name_keys=("name",)) -> t
         abbr = [c for c in candidates if any(_parenthetical(n) == target_abbr for n in names(c))]
         if len(abbr) == 1:
             return abbr[0], "kısaltma eşleşmesi"
+    # Söylenen ad katalogda parantez içinde geçiyorsa: "Grip Aşısı" ->
+    # "MEVSİMSEL İNFLUENZA AŞISI (GRİP AŞISI)", "AKŞ" -> "Açlık Kan Şekeri (AKŞ)".
+    inner = [c for c in candidates if any(_parenthetical(n) == target_bare for n in names(c))]
+    if len(inner) == 1:
+        return inner[0], "parantez içi ad eşleşmesi"
     if len(bare) > 1:
         return None, f"{len(bare)} benzer kayıt var, emin olunamadı"
     return None, "katalogda bulunamadı"
@@ -278,7 +312,7 @@ def _relative_date(value: Any, now: datetime) -> dict | None:
     unit = TIME_UNITS.get(str(value.get("unit") or "day"))
     if not unit:
         return None
-    days = {1: 1 / 24, 2: 1, 3: 7, 4: 30, 5: 365}[unit] * amount
+    days = _UNIT_DAYS[unit] * amount
     return {"value": _stamp(now - timedelta(days=days)), "before": amount, "type": unit}
 
 
@@ -308,33 +342,44 @@ def _lookup_value(lookup_payload: Any, label: Any) -> str | None:
 
 
 # ------------------------------------------------------------ metinler ---
-def _profile_text(profile: dict) -> str:
-    """Özgeçmiş listeleri henüz API ile ayrı uçlara yazılmıyor; öyküye eklenir."""
+def _profile_entries(profile: dict, key: str) -> list[dict]:
+    return [e for e in (profile or {}).get(key) or [] if isinstance(e, dict) and e.get("name")]
+
+
+def _entry_text(entry: dict) -> str:
+    desc = entry.get("description")
+    return f"{entry['name']} ({desc})" if desc else str(entry["name"])
+
+
+def profile_leftover_text(profile: dict, saved: set[tuple[str, int]] | None = None,
+                          family_saved: set[int] | None = None) -> str:
+    """COMED listelerine yazılamayan özgeçmiş kalemleri, öyküye eklenecek metin.
+
+    ``saved``: listeye yazılan (kategori, sıra) çiftleri; None ise hiçbiri
+    yazılmamış sayılır (özgeçmiş okunamadıysa her şey öyküye gider).
+    """
     if not isinstance(profile, dict):
         return ""
-
-    def items(key: str) -> list[str]:
-        out = []
-        for entry in profile.get(key) or []:
-            if isinstance(entry, dict) and entry.get("name"):
-                desc = entry.get("description")
-                out.append(f"{entry['name']} ({desc})" if desc else str(entry["name"]))
-        return out
-
+    saved = saved or set()
+    family_saved = family_saved or set()
     parts = []
-    for key, label in (("diseases", "Kronik hastalık"), ("operations", "Ameliyat"),
-                       ("pharmacy_products", "Kullandığı ilaç"), ("allergies", "Alerji"),
-                       ("addictions", "Alışkanlık"), ("special_conditions", "Özel durum"),
-                       ("vaccines", "Aşı"), ("devices", "Cihaz"), ("transfusions", "Kan nakli"),
-                       ("therapies", "Terapi"), ("disabilities", "Engellilik")):
-        values = items(key)
+    for key, label in PROFILE_LABELS.items():
+        values = [_entry_text(e) for j, e in enumerate(_profile_entries(profile, key))
+                  if (key, j) not in saved]
         if values:
             parts.append(f"{label}: {', '.join(values)}")
-    family = [f"{f.get('relationship')}: {f.get('condition')}" for f in profile.get("family_history") or []
-              if isinstance(f, dict) and f.get("condition")]
+    family = [f"{f.get('relationship')}: {f.get('condition')}"
+              for j, f in enumerate(profile.get("family_history") or [])
+              if isinstance(f, dict) and f.get("condition") and j not in family_saved]
     if family:
         parts.append("Soygeçmiş: " + ", ".join(family))
-    return ("Özgeçmiş: " + "; ".join(parts) + ".") if parts else ""
+    for key, label in (("occupation", "Meslek"), ("education", "Eğitim"), ("marital_status", "Medeni durum")):
+        if profile.get(key):
+            parts.append(f"{label}: {profile[key]}")
+    if not parts:
+        return ""
+    title = "Özgeçmiş (HBYS listesinde yok)" if saved or family_saved else "Özgeçmiş"
+    return f"{title}: " + "; ".join(parts) + "."
 
 
 def _treatment_text(fields: dict) -> str:
@@ -358,7 +403,8 @@ def _treatment_text(fields: dict) -> str:
 
 # ------------------------------------------------------- muayene belgesi ---
 def build_exam_values(fields: dict, *, options: dict, pain_frequency: Any,
-                      pain_speciality: Any, now: datetime, notes: list) -> dict:
+                      pain_speciality: Any, now: datetime, notes: list,
+                      profile_text: str | None = None) -> dict:
     """Taslaktan COMED examination_v2 değerleri (kabul edilen paketle aynı biçim)."""
     values: dict[str, Any] = {}
 
@@ -373,8 +419,14 @@ def build_exam_values(fields: dict, *, options: dict, pain_frequency: Any,
         start = _relative_date(fields.get("complaint_start_date"), now)
         put("patient_complaint", {"value": complaint, "text": complaint, "editable": True},
             children={"complaint_start_date": [{"values": [start] if start else []}]})
-    story = "\n".join(t for t in (str(fields.get("patient_story") or "").strip(),
-                                  _profile_text(fields.get("profile") or {})) if t)
+        # COMED ekranı "Başlangıç Tarihi" kutusunu formun ÜST düzeyindeki
+        # complaint_start_date alanından okuyor (examination bileşeni,
+        # clearComplaintStartDate); yalnız şikayetin altına yazınca kutu boş kalıyordu.
+        if start:
+            put("complaint_start_date", start)
+    if profile_text is None:
+        profile_text = profile_leftover_text(fields.get("profile") or {})
+    story = "\n".join(t for t in (str(fields.get("patient_story") or "").strip(), profile_text) if t)
     if story:
         put("patient_story", story)
     treatment = _treatment_text(fields)
@@ -520,13 +572,118 @@ def build_exam_document(*, visit: dict, open_doc: dict | None, exam_values: dict
     return doc
 
 
-def open_exam_document(documents: Any) -> dict | None:
+def open_document(documents: Any, document: str = EXAM_DOCUMENT) -> dict | None:
+    """Ekranda düzenlenen (açık, imzasız, silinmemiş) belge; yoksa None."""
     for doc in _rows(documents):
-        if (isinstance(doc, dict) and doc.get("document") == EXAM_DOCUMENT
+        if (isinstance(doc, dict) and doc.get("document") == document
                 and doc.get("documentProcessState") == 1 and not doc.get("deleteNote")
                 and not (doc.get("signedVersions") or [])):
             return doc
     return None
+
+
+def open_exam_document(documents: Any) -> dict | None:
+    return open_document(documents, EXAM_DOCUMENT)
+
+
+# ------------------------------------------------------------ düşme riski ---
+def _age_on(birth_date: Any, now: datetime) -> int | None:
+    try:
+        born = datetime.fromisoformat(str(birth_date)[:19])
+    except (TypeError, ValueError):
+        return None
+    return now.year - born.year - ((now.month, now.day) < (born.month, born.day))
+
+
+def build_fall_values(fall: Any, birth_date: Any, now: datetime) -> dict | None:
+    """Taslaktaki düşme riski -> COMED fall_risk_form değerleri (ölçülen kodlar).
+
+    Var/Evet = "1" (risk), Yok/Hayır = "0"; Oryante ve Normal "0", değilse "1";
+    skor riskli maddelerin toplamı (COMED'in kaydettiği 3 puanla aynı hesap).
+    """
+    if not isinstance(fall, dict) or fall.get("exists") is None:
+        return None
+
+    def code(value: Any, risky_when: bool = True) -> str | None:
+        if value is None:
+            return None
+        return "1" if bool(value) == risky_when else "0"
+
+    age = _age_on(birth_date, now)
+    above_65 = 1 if (age is not None and age >= 65) else 0
+    if fall.get("age_group") in ("65+", "above_65", "over_65"):
+        above_65 = 1
+    if not fall["exists"]:
+        values = {key: [{"values": [None]}] for key in (
+            "fall_risk_fall_history", "fall_risk_used_products", "fall_risk_addiction",
+            "fall_risk_balance_disorder", "fall_risk_defect_of_vision", "fall_risk_mental_state",
+            "fall_risk_state_of_health", "fall_risk_form_description", "score")}
+        values["fall_risk_form_is_exist"] = [{"values": ["0"]}]
+        values["fall_risk_above_sixty_five"] = [{"values": [above_65]}]
+        return values
+    answers = {
+        "fall_risk_fall_history": code(fall.get("history")),
+        "fall_risk_used_products": code(fall.get("medications")),
+        "fall_risk_addiction": code(fall.get("addiction")),
+        "fall_risk_balance_disorder": code(fall.get("gait_balance_disorder")),
+        "fall_risk_defect_of_vision": code(fall.get("vision_disorder")),
+        "fall_risk_mental_state": code(fall.get("oriented"), risky_when=False),
+        "fall_risk_state_of_health": code(fall.get("general_health_normal"), risky_when=False),
+    }
+    score = above_65 + sum(1 for v in answers.values() if v == "1")
+    values = {key: [{"values": [value]}] for key, value in answers.items()}
+    values["fall_risk_form_is_exist"] = [{"values": ["1"]}]
+    values["fall_risk_above_sixty_five"] = [{"values": [above_65]}]
+    values["fall_risk_form_description"] = [{"values": [None]}]
+    values["score"] = [{"values": [score]}]
+    return values
+
+
+def build_fall_document(*, visit: dict, open_doc: dict | None, values: dict, now: datetime) -> dict:
+    visit_id = visit.get("id")
+    doc = {
+        "document": FALL_DOCUMENT, "title": FALL_TITLE, "documentDate": _stamp(now),
+        "owner": {"id": visit.get("doctorId")}, "client": {"id": visit.get("clientId")},
+        "referenceId": visit_id, "referenceType": "Visit", "contextId": visit_id, "type": 0,
+        "values": values, "autoSign": False, "autoSave": False, "description": "",
+        "protectionLevel": 3, "documentProcessState": 1,
+    }
+    if open_doc:
+        doc.update({
+            "id": open_doc.get("id"), "documentDate": open_doc.get("documentDate") or doc["documentDate"],
+            "values": {**(open_doc.get("values") or {}), **values},
+            "owner": {"id": (open_doc.get("owner") or {}).get("id") or visit.get("doctorId")},
+            "client": {"id": (open_doc.get("client") or {}).get("id") or visit.get("clientId")},
+        })
+    return doc
+
+
+# --------------------------------------------------------------- özgeçmiş ---
+def _catalog_id(key: Any, keep_text: bool = False) -> Any:
+    text = str(key)
+    return text if keep_text or not text.isdigit() else int(text)
+
+
+def profile_record(*, kind: str, catalog_key: Any, title: str, comment: str,
+                   visit: dict, closeness: str = "") -> dict:
+    """Özgeçmiş/soygeçmiş kaydı: COMED'in kabul ettiği paketle aynı biçim."""
+    patient_id, visit_id = visit.get("patientId"), visit.get("id")
+    if kind == "family":
+        return {
+            "diseaseId": _catalog_id(catalog_key), "patientId": patient_id, "visitId": visit_id,
+            "closeness": closeness,
+            "record": {"comment": comment or "", "isImportant": False, "isActive": True,
+                       "patientId": patient_id, "visitId": visit_id, "type": FAMILY_RECORD_TYPE,
+                       "title": title, "severity": ""},
+        }
+    _, _, _, id_field, record_type, important, onset_type = PROFILE_LISTS[kind]
+    return {
+        "record": {"comment": comment or "", "isImportant": important, "isActive": True,
+                   "patientId": patient_id, "visitId": visit_id, "type": record_type,
+                   "title": title, "severity": "", "onSet": "", "onSetType": onset_type},
+        id_field: _catalog_id(catalog_key, keep_text=(kind == "addictions")),
+        "patientId": patient_id, "visitId": visit_id, "closeness": "",
+    }
 
 
 # ---------------------------------------------------------------- istemler ---
@@ -685,6 +842,17 @@ def plan_next(bundle: dict, results: dict, *, now: datetime | None = None) -> di
         want(f"drug_search:{i}", "pharmacy/searchProducts", {
             "search": _words(drug["name"])[0] if _words(drug["name"]) else drug["name"],
             "hasMaterial": True, "model": {"baseProduct": True}, "searchType": 3, "visitId": visit_id})
+    profile = fields.get("profile") or {}
+    for kind, (lookup_type, *_rest) in PROFILE_LISTS.items():
+        for j, entry in enumerate(_profile_entries(profile, kind)):
+            want(f"plk:{kind}:{j}", "core/public/getlookup",
+                 {"type": lookup_type, "filter": search_term(entry["name"])})
+    family = [f for f in profile.get("family_history") or [] if isinstance(f, dict) and f.get("condition")]
+    for j, member in enumerate(family):
+        want(f"plk:family:{j}", "core/public/getlookup",
+             {"type": "entity.vademecumDisease", "filter": search_term(member["condition"])})
+    if family:
+        want("lookup:closeness", "core/public/getlookup", {"type": "closeness.familyHistory", "filter": ""})
     if "visit" not in results:
         return {"calls": calls, "done": False, "message": "COMED kaydı okunuyor", "report": {}}
 
@@ -713,6 +881,9 @@ def plan_next(bundle: dict, results: dict, *, now: datetime | None = None) -> di
             want(f"rad_search:{i}", "radiology/getTests", {
                 "patientId": patient_id, "take": 50, "skip": 0,
                 "search": search_term(service["name"]), "isOnline": True})
+    if any(_profile_entries(profile, kind) for kind in PROFILE_LISTS) or family:
+        want("patient_records", "medical/examination/getPatientRecords",
+             {"patientId": patient_id, "forSeenVisitId": visit_id})
     if calls:
         return {"calls": calls, "done": False, "message": "COMED katalogları okunuyor", "report": {}}
 
@@ -815,32 +986,115 @@ def plan_next(bundle: dict, results: dict, *, now: datetime | None = None) -> di
         if not product:
             report.append({"section": "İlaç", "item": label, "status": "atlandı", "detail": why})
             continue
-        if fold(product.get("title")) in existing_titles:
+        # İstem listesinde ilaç adı uzun yazılıyor ("PAROL Tablet 500 mg 20
+        # tabletlik ambalaj [Parasetamol] 1 adet, 500 mg"): ürün adıyla başlıyorsa aynı ilaç.
+        product_key = fold(product.get("title"))
+        if any(title == product_key or title.startswith(product_key + " ") for title in existing_titles):
             report.append({"section": "İlaç", "item": label, "status": "mevcut"})
             continue
-        dose_value, dose_unit = _parse_dose(drug.get("dose"))
-        if dose_value is None:
-            report.append({"section": "İlaç", "item": label, "status": "atlandı",
-                           "detail": "doz söylenmedi; doz doktor tarafından girilmeli"})
+        # COMED ilaç seçilince ürün ayrıntısını (varsayılan doz, veriliş yolu)
+        # ve etkileşim kontrolünü birlikte çağırıyor; biz de aynısını yapıyoruz.
+        detail_ready = want(f"drug_inq:{i}", "pharmacy/medication/orderInquiry",
+                            {"productId": product.get("id"), "visitId": visit_id, "patientId": patient_id})
+        check_ready = want(f"ddi:{i}", "pharmacy/medication/InteractionInquiry",
+                           {"products": [product.get("id")], "visitId": visit_id})
+        if not (detail_ready and check_ready):
             continue
-        route = drug_route(product.get("title", ""))
+        detail = _payload(results, f"drug_inq:{i}") or {}
+        dose_value, dose_unit = _parse_dose(drug.get("dose"))
+        default_dose = False
+        if dose_value is None and detail.get("dosage"):
+            number = float(detail["dosage"])
+            dose_value = int(number) if number.is_integer() else number
+            dose_unit = detail.get("dosageUnit")
+            default_dose = True
+        if dose_value is None or not dose_unit:
+            report.append({"section": "İlaç", "item": label, "status": "atlandı",
+                           "detail": "doz bilinmiyor; doz doktor tarafından girilmeli"})
+            continue
+        route = (((detail.get("pharmaceuticalForm") or {}).get("applicationMethod") or {}).get("name")
+                 or drug_route(product.get("title", "")))
         if not route:
             report.append({"section": "İlaç", "item": label, "status": "atlandı",
-                           "detail": "veriliş yolu ürün adından çıkarılamadı"})
+                           "detail": "veriliş yolu bilinmiyor"})
             continue
-        if want(f"ddi:{i}", "pharmacy/medication/InteractionInquiry",
-                {"products": [product.get("id")], "visitId": visit_id}):
-            problems = interaction_problems(_payload(results, f"ddi:{i}"), product.get("id"))
-            if problems:
-                report.append({"section": "İlaç", "item": label, "status": "atlandı",
-                               "detail": "COMED güvenlik kontrolü: " + ", ".join(problems)})
-                continue
-            drug_ready.append((i, product, {"dose": dose_value, "unit": dose_unit,
-                                            "route": route, "inquiry": _payload(results, f"ddi:{i}")}))
+        problems = interaction_problems(_payload(results, f"ddi:{i}"), product.get("id"))
+        if problems:
+            report.append({"section": "İlaç", "item": label, "status": "atlandı",
+                           "detail": "COMED güvenlik kontrolü: " + ", ".join(problems)})
+            continue
+        order = drug_order(visit, product, dose=dose_value, unit=dose_unit,
+                           per_day=int(drug.get("frequency_per_day") or 1), route=route,
+                           note=drug.get("reason") or "", vitals=vitals, now=now)
+        # Doz saatlerini COMED kendisi hesaplıyor (ekran da calculateSteps çağırıyor).
+        if want(f"drug_calc:{i}", "pharmacy/medication/calculateSteps", {
+                "products": order["products"], "plan": {**order["plan"], "steps": []}, "summarySteps": {}}):
+            calc = _payload(results, f"drug_calc:{i}") or {}
+            if calc.get("steps"):
+                order["plan"]["steps"] = calc["steps"]
+                order["summarySteps"] = calc.get("summarySteps") or {}
+            drug_ready.append((i, product, {
+                "order": order, "inquiry": _payload(results, f"ddi:{i}"),
+                "note": f"COMED varsayılan dozu {dose_value} {dose_unit}" if default_dose else ""}))
     if calls:
         return {"calls": calls, "done": False, "message": "COMED ön kontrolleri yapılıyor", "report": {}}
 
     # ---- 4. tur: kayıtlar ----
+    # Özgeçmiş: katalogda güvenle eşleşen kalem COMED listesine, eşleşmeyen
+    # (ya da COMED'de listesi olmayan) kalem öyküye yazılır. Zaten listede
+    # olan kalem ikinci kez eklenmez.
+    profile_writes: list[tuple[str, str, dict, list[str]]] = []
+    profile_text = None
+    if any(_profile_entries(profile, kind) for kind in PROFILE_LISTS) or family:
+        records = _payload(results, "patient_records")
+        if not isinstance(records, dict):
+            report.append({"section": "Özgeçmiş", "item": "Özgeçmiş listeleri", "status": "atlandı",
+                           "detail": "COMED'deki mevcut özgeçmiş okunamadı; öyküye yazıldı"})
+        else:
+            saved_entries: set[tuple[str, int]] = set()
+            saved_family: set[int] = set()
+            for kind, (_lookup, path, list_key, id_field, *_rest) in PROFILE_LISTS.items():
+                existing = {str(x.get(id_field)) for x in records.get(list_key) or []
+                            if isinstance(x, dict) and not x.get("closeness")}
+                new_items = []
+                for j, entry in enumerate(_profile_entries(profile, kind)):
+                    candidates = [{"name": c.get("value"), "id": c.get("key")}
+                                  for c in _rows(_payload(results, f"plk:{kind}:{j}")) if isinstance(c, dict)]
+                    item, _why = match_by_name(entry["name"], candidates)
+                    if not item:
+                        continue
+                    saved_entries.add((kind, j))
+                    if str(item["id"]) in existing:
+                        report.append({"section": "Özgeçmiş", "item": entry["name"], "status": "mevcut"})
+                        continue
+                    new_items.append((j, entry, item))
+                for j, entry, item in new_items:
+                    profile_writes.append((f"profile:{kind}:{j}", path, {
+                        list_key: [profile_record(kind=kind, catalog_key=item["id"], title=item["name"],
+                                                  comment=entry.get("description") or "", visit=visit)],
+                        "forSeenVisitId": visit_id}, [entry["name"]]))
+            closeness = _payload(results, "lookup:closeness")
+            existing_family = {(str(x.get("diseaseId")), x.get("closeness")) for x in records.get("diseases") or []
+                               if isinstance(x, dict) and x.get("closeness")}
+            for j, member in enumerate(family):
+                relation = _lookup_value(closeness, member.get("relationship"))
+                candidates = [{"name": c.get("value"), "id": c.get("key")}
+                              for c in _rows(_payload(results, f"plk:family:{j}")) if isinstance(c, dict)]
+                item, _why = match_by_name(member["condition"], candidates)
+                if not (relation and item):
+                    continue
+                saved_family.add(j)
+                if (str(item["id"]), relation) in existing_family:
+                    report.append({"section": "Soygeçmiş", "item": f"{member.get('relationship')}: {member['condition']}",
+                                   "status": "mevcut"})
+                    continue
+                profile_writes.append((f"profile:family:{j}", "medical/examination/saveProfileDiseases", {
+                    "diseases": [profile_record(kind="family", catalog_key=item["id"], title=item["name"],
+                                                comment=member.get("description") or "", visit=visit,
+                                                closeness=relation)],
+                    "forSeenVisitId": visit_id}, [f"{member.get('relationship')}: {member['condition']}"]))
+            profile_text = profile_leftover_text(profile, saved_entries, saved_family)
+
     options = {**_option_index(_payload(results, "params:exam")),
                **_option_index(_payload(results, "params:ros"))}
     open_doc = open_exam_document(_payload(results, "documents"))
@@ -850,7 +1104,8 @@ def plan_next(bundle: dict, results: dict, *, now: datetime | None = None) -> di
     else:
         exam_values = build_exam_values(
             fields, options=options, pain_frequency=_payload(results, "lookup:pain_frequency"),
-            pain_speciality=_payload(results, "lookup:pain_speciality"), now=now, notes=notes)
+            pain_speciality=_payload(results, "lookup:pain_speciality"), now=now, notes=notes,
+            profile_text=profile_text)
         ros_values = build_ros_values(fields.get("review_of_system") or {}, options, notes)
         document = build_exam_document(visit=visit, open_doc=open_doc, exam_values=exam_values,
                                        ros_values=ros_values, now=now)
@@ -889,17 +1144,37 @@ def plan_next(bundle: dict, results: dict, *, now: datetime | None = None) -> di
                            "detail": None if ok else _error_text(results, f"proc_save:{i}")})
     for i, product, info in drug_ready:
         drug = drugs[i]
-        order = drug_order(visit, product, dose=info["dose"], unit=info["unit"],
-                           per_day=int(drug.get("frequency_per_day") or 1), route=info["route"],
-                           note=drug.get("reason") or "", vitals=vitals, now=now)
         inquiry_id = (info["inquiry"] or {}).get("id")
         if want(f"drug_save:{i}", "pharmacy/medication/saveOrders", {
-                "orders": [order], "interactionInquiries": [inquiry_id] if inquiry_id else [],
+                "orders": [info["order"]], "interactionInquiries": [inquiry_id] if inquiry_id else [],
                 "maximumDoseSteps": []}):
             ok = _result_ok(results, f"drug_save:{i}")
+            detail = f"COMED: {product.get('title')}" + (f" · {info['note']}" if info["note"] else "")
             report.append({"section": "İlaç", "item": f"{drug['name']} {drug.get('dose') or ''}".strip(),
                            "status": "eklendi" if ok else "hata",
-                           "detail": f"COMED: {product.get('title')}" if ok else _error_text(results, f"drug_save:{i}")})
+                           "detail": detail if ok else _error_text(results, f"drug_save:{i}")})
+    # Özgeçmiş kayıtları SIRAYLA ve tek tek gider: hepsi hastanın aynı profil
+    # kaydını güncelliyor; aynı turda paralel gönderilince COMED iyimser
+    # eşzamanlılık hatası veriyor (11 Kasım canlı: 7 kalemin 5'i reddedildi).
+    for call_id, path, body, names in profile_writes:
+        if call_id not in results:
+            want(call_id, path, body)
+            break
+        ok = _result_ok(results, call_id)
+        section = "Soygeçmiş" if call_id.startswith("profile:family") else "Özgeçmiş"
+        for name in names:
+            report.append({"section": section, "item": name, "status": "eklendi" if ok else "hata",
+                           "detail": None if ok else _error_text(results, call_id)})
+    fall_values = build_fall_values(fields.get("fall_risk"), (visit.get("patient") or {}).get("birthDate"), now)
+    if fall_values:
+        fall_open = open_document(_payload(results, "documents"), FALL_DOCUMENT)
+        fall_doc = build_fall_document(visit=visit, open_doc=fall_open, values=fall_values, now=now)
+        if want("fall_save", "forms/document/saveDocumentProcesses", {"documentProcesses": [fall_doc]}):
+            ok = _result_ok(results, "fall_save")
+            score = fall_values["score"][0]["values"][0]
+            report.append({"section": "Düşme riski", "item": FALL_TITLE,
+                           "status": ("güncellendi" if fall_open else "oluşturuldu") if ok else "hata",
+                           "detail": f"skor {score}" if ok else _error_text(results, "fall_save")})
     if calls:
         return {"calls": calls, "done": False, "message": "COMED'e kaydediliyor", "report": {}}
 

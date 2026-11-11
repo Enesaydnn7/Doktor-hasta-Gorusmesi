@@ -8,7 +8,7 @@
   // ikinci kez kurulmaz. Değiştiyse yenisi kurulur ve "sahip" işaretini
   // alır: iz kaydı ve POST yürütücüsü yalnız sahip kopyada çalışır, eski
   // kopyalar sessizce susar (aynı isteği iki kez göndermemek için).
-  const SCRIPT_VERSION = "4.0.0-api-1";
+  const SCRIPT_VERSION = "4.0.0-api-2";
   const TRACE_MARKER = "data-klinot-comed-trace-v4";
   const OWNER_MARKER = "data-klinot-comed-exec-owner";
   const markerHost = document.documentElement || document;
@@ -19,6 +19,7 @@
   const isOwner = () => markerHost.getAttribute?.(OWNER_MARKER) === INSTALL_ID;
 
   const TRACE_SOURCE = "klinot-comed-trace-v4";
+  const TRACE_REPLAY_SOURCE = "klinot-comed-trace-replay-v4";
   const EXEC_SOURCE = "klinot-comed-exec-v4";
   const EXEC_RESULT_SOURCE = "klinot-comed-exec-result-v4";
   const API_PREFIX = "/tr-tr/api/json/";
@@ -326,6 +327,17 @@
       clearTimeout(timer);
     }
   }
+
+  // Sayfa açılırken COMED'in ilk istekleri içerik betiği (document_idle)
+  // dinlemeye başlamadan gidiyor ve iz kaydına hiç düşmüyordu. İçerik betiği
+  // başlayınca isterse bellekteki son istekleri yeniden yayınla.
+  window.addEventListener("message", (event) => {
+    if (event.source !== window || event.origin !== location.origin) return;
+    if (event.data?.source !== TRACE_REPLAY_SOURCE || !isOwner()) return;
+    for (const traced of traceEvents) {
+      window.postMessage({source: TRACE_SOURCE, event: traced}, location.origin);
+    }
+  });
 
   window.addEventListener("message", async (event) => {
     if (event.source !== window || event.origin !== location.origin) return;

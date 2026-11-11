@@ -188,7 +188,7 @@ async function devLog(message) {
   try {
     const {apiBase} = await settings();
     if (!/^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(apiBase)) return;
-    await fetch(`${apiBase}/dev/log`, {method: "POST", body: String(message).slice(0, 2000)});
+    await fetch(`${apiBase}/dev/log?m=${encodeURIComponent(String(message).slice(0, 1500))}`, {cache: "no-store"});
   } catch (_) {
     // Günlük yazılamazsa sessiz geç.
   }
@@ -222,6 +222,10 @@ async function devReloadCheck() {
     koymaz; sayfa yenilenene kadar köprü yoktur. COMED sekmesini yenilemek
     doktorun doldurulmuş formunu riske attığı için betikleri burada koyuyoruz.
     Canlı bir betik "klinot-ping"e cevap verir; veremeyen sekmeye konur. */
+// Aynı sekmeye dakikada en çok bir kez enjekte et (yavaş sekmede üst üste
+// kopya birikmesin).
+const lastInjectAt = new Map();
+
 async function ensureComedScripts() {
   let tabs = [];
   try {
@@ -230,18 +234,42 @@ async function ensureComedScripts() {
     devLog(`COMED sekmeleri sorgulanamadı: ${error?.message || error}`);
     return;
   }
-  if (!tabs.length) devLog("Açık COMED sekmesi bulunamadı");
+  devLog(`ensureComedScripts: ${tabs.length} COMED sekmesi`);
+  // Arka plandaki (dondurulmuş) sekmede executeScript hiç dönmeyebiliyor;
+  // beklemeyi sınırla ki bir sekme diğerlerini de kilitlemesin.
+  const withTimeout = (promise, ms, label) => Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(`${label} ${ms / 1000} sn'de dönmedi`)), ms)),
+  ]);
   for (const tab of tabs) {
-    const alive = await chrome.tabs
-      .sendMessage(tab.id, {type: "klinot-ping"})
-      .then((response) => Boolean(response?.ok))
-      .catch(() => false);
-    if (alive) continue;
+    // Canlılık mesaja cevapla değil kalp atışıyla ölçülür: eklenti
+    // yenilenince durmuş eski kopyanın dinleyicisi hâlâ cevap verebiliyordu.
+    let alive = false;
     try {
-      await chrome.scripting.executeScript({
-        target: {tabId: tab.id}, files: ["page_trace.js"], world: "MAIN",
-      });
-      await chrome.scripting.executeScript({target: {tabId: tab.id}, files: ["content.js"]});
+      const [probe] = await withTimeout(chrome.scripting.executeScript({
+        target: {tabId: tab.id},
+        injectImmediately: true,
+        func: () => Number(document.documentElement.getAttribute("data-klinot-content-beat") || 0),
+      }), 4000, "kalp atışı sorgusu");
+      // Arka plandaki sekmede Chrome zamanlayıcıları dakikada bire indiriyor;
+      // kalp atışı 5 sn yerine ~60 sn'de bir gelebilir.
+      alive = Date.now() - Number(probe?.result || 0) < 90000;
+      devLog(`sekme ${tab.id} ${new URL(tab.url).pathname.slice(0, 60)} kalp atışı ${
+        probe?.result ? Math.round((Date.now() - probe.result) / 1000) + " sn önce" : "yok"}`);
+    } catch (error) {
+      devLog(`kalp atışı okunamadı (sekme ${tab.id}): ${error?.message || error}`);
+      alive = false;
+    }
+    if (alive) continue;
+    if (Date.now() - (lastInjectAt.get(tab.id) || 0) < 60000) continue;
+    lastInjectAt.set(tab.id, Date.now());
+    try {
+      await withTimeout(chrome.scripting.executeScript({
+        target: {tabId: tab.id}, files: ["page_trace.js"], world: "MAIN", injectImmediately: true,
+      }), 8000, "page_trace enjeksiyonu");
+      await withTimeout(chrome.scripting.executeScript({
+        target: {tabId: tab.id}, files: ["content.js"], injectImmediately: true,
+      }), 8000, "content enjeksiyonu");
       devLog(`COMED sekmesine betikler enjekte edildi (sekme ${tab.id})`);
     } catch (error) {
       // Sekme o an erişilemezse bir sonraki denetimde tekrar denenir.
@@ -262,6 +290,11 @@ devReloadCheck();
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message?.type === "klinot-dev-tick") {
     devReloadCheck();
+    sendResponse({ok: true});
+    return false;
+  }
+  if (message?.type === "klinot-dev-log") {
+    devLog(`[içerik sekme ${_sender?.tab?.id}] ${message.text}`);
     sendResponse({ok: true});
     return false;
   }

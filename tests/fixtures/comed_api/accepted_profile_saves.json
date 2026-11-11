@@ -1,0 +1,236 @@
+[
+ {
+  "addictions": [
+   {
+    "record": {
+     "comment": "Günde 15 adet",
+     "isImportant": false,
+     "isActive": true,
+     "patientId": 1300013,
+     "visitId": 22207362,
+     "type": 1,
+     "title": "Sigara",
+     "severity": "",
+     "onSet": "",
+     "onSetType": 2
+    },
+    "addictionId": "1",
+    "patientId": 1300013,
+    "visitId": 22207362,
+    "closeness": ""
+   }
+  ],
+  "forSeenVisitId": 22207362
+ },
+ {
+  "diseases": [
+   {
+    "record": {
+     "comment": "",
+     "isImportant": true,
+     "isActive": true,
+     "patientId": 1300013,
+     "visitId": 22207362,
+     "type": 5,
+     "title": "Hipertansiyon",
+     "severity": "",
+     "onSet": "",
+     "onSetType": 2
+    },
+    "diseaseId": 44,
+    "patientId": 1300013,
+    "visitId": 22207362,
+    "closeness": ""
+   }
+  ],
+  "forSeenVisitId": 22207362
+ },
+ {
+  "allergies": [
+   {
+    "record": {
+     "comment": "",
+     "isImportant": true,
+     "isActive": true,
+     "patientId": 1300013,
+     "visitId": 22207362,
+     "type": 2,
+     "title": "Penisilin",
+     "severity": "",
+     "onSet": "",
+     "onSetType": 2
+    },
+    "allergyId": 5422,
+    "patientId": 1300013,
+    "visitId": 22207362,
+    "closeness": ""
+   }
+  ],
+  "forSeenVisitId": 22207362
+ },
+ {
+  "operations": [
+   {
+    "record": {
+     "comment": "",
+     "isImportant": false,
+     "isActive": true,
+     "patientId": 1300013,
+     "visitId": 22207362,
+     "type": 7,
+     "title": "Apendektomi, akut",
+     "severity": "",
+     "onSet": "",
+     "onSetType": 4
+    },
+    "operationId": 101719,
+    "patientId": 1300013,
+    "visitId": 22207362,
+    "closeness": ""
+   }
+  ],
+  "forSeenVisitId": 22207362
+ },
+ {
+  "vaccines": [
+   {
+    "record": {
+     "comment": "",
+     "isImportant": false,
+     "isActive": true,
+     "patientId": 1300013,
+     "visitId": 22207362,
+     "type": 11,
+     "title": "MEVSİMSEL İNFLUENZA AŞISI (GRİP AŞISI)",
+     "severity": "",
+     "onSet": "",
+     "onSetType": 2
+    },
+    "vaccineId": 141,
+    "patientId": 1300013,
+    "visitId": 22207362,
+    "closeness": ""
+   }
+  ],
+  "forSeenVisitId": 22207362
+ },
+ {
+  "devices": [
+   {
+    "record": {
+     "comment": "",
+     "isImportant": false,
+     "isActive": true,
+     "patientId": 1300013,
+     "visitId": 22207362,
+     "type": 3,
+     "title": "Kalp Pili",
+     "severity": "",
+     "onSet": "",
+     "onSetType": 2
+    },
+    "deviceId": 1,
+    "patientId": 1300013,
+    "visitId": 22207362,
+    "closeness": ""
+   }
+  ],
+  "forSeenVisitId": 22207362
+ },
+ {
+  "patientId": 1300013,
+  "forSeenVisitId": 22207362,
+  "payload": "edu-lisans",
+  "recordType": 17
+ },
+ {
+  "diseases": [
+   {
+    "diseaseId": 10004,
+    "patientId": 1300013,
+    "visitId": 22207362,
+    "closeness": "f",
+    "record": {
+     "comment": "",
+     "isImportant": false,
+     "isActive": true,
+     "patientId": 1300013,
+     "visitId": 22207362,
+     "type": 14,
+     "title": "Koroner arter hastalığı (KAH)",
+     "severity": ""
+    }
+   }
+  ],
+  "forSeenVisitId": 22207362
+ },
+ {
+  "diseases": [
+   {
+    "closeness": "f",
+    "diseaseId": 10004,
+    "id": 284149,
+    "patientId": 1300013,
+    "record": {
+     "comment": "",
+     "createdAt": "2026-11-11T18:38:46",
+     "createdBy": 53011568,
+     "id": 284149,
+     "isActive": true,
+     "isImportant": false,
+     "patientId": 1300013,
+     "title": "Koroner arter hastalığı (KAH)",
+     "type": 14,
+     "visitId": 22207362
+    },
+    "visitId": 22207362
+   }
+  ],
+  "forSeenVisitId": 22207362
+ },
+ {
+  "diseases": [
+   {
+    "diseaseId": 43,
+    "patientId": 1300013,
+    "visitId": 22207362,
+    "closeness": "m",
+    "record": {
+     "comment": "",
+     "isImportant": false,
+     "isActive": true,
+     "patientId": 1300013,
+     "visitId": 22207362,
+     "type": 14,
+     "title": "Diyabet",
+     "severity": ""
+    }
+   }
+  ],
+  "forSeenVisitId": 22207362
+ },
+ {
+  "diseases": [
+   {
+    "closeness": "m",
+    "diseaseId": 43,
+    "id": 284150,
+    "patientId": 1300013,
+    "record": {
+     "comment": "",
+     "createdAt": "2026-11-11T18:38:46",
+     "createdBy": 53011568,
+     "id": 284150,
+     "isActive": true,
+     "isImportant": false,
+     "patientId": 1300013,
+     "title": "Diyabet",
+     "type": 14,
+     "visitId": 22207362
+    },
+    "visitId": 22207362
+   }
+  ],
+  "forSeenVisitId": 22207362
+ }
+]

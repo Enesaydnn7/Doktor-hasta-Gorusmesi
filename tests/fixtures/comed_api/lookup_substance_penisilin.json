@@ -1,0 +1,40 @@
+{
+ "data": [
+  {
+   "key": "211",
+   "value": "Benzilpenisilin"
+  },
+  {
+   "key": "1637",
+   "value": "Fenoksimetilpenisilin"
+  },
+  {
+   "key": "1733",
+   "value": "Penisilin G prokain"
+  },
+  {
+   "key": "2304",
+   "value": "Benzatin benzilpenisilin"
+  },
+  {
+   "key": "2305",
+   "value": "Benzatin fenoksimetilpenisilin"
+  },
+  {
+   "key": "2998",
+   "value": "Penisilin G benzatin"
+  },
+  {
+   "key": "2999",
+   "value": "Penisilin G potasyum"
+  },
+  {
+   "key": "3050",
+   "value": "Penisilin G sodyum"
+  },
+  {
+   "key": "5422",
+   "value": "Penisilin"
+  }
+ ]
+}

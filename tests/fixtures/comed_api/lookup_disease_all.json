@@ -1,0 +1,1192 @@
+{
+ "data": [
+  {
+   "key": "81",
+   "value": "Addison hastalığı"
+  },
+  {
+   "key": "183",
+   "value": "Adrenal bozukluk"
+  },
+  {
+   "key": "154",
+   "value": "Adrenal yetmezlik"
+  },
+  {
+   "key": "191",
+   "value": "Agamaglobulinemi"
+  },
+  {
+   "key": "323",
+   "value": "Agranülositoz"
+  },
+  {
+   "key": "315",
+   "value": "Akciger hastalıkları, kronik"
+  },
+  {
+   "key": "364",
+   "value": "Akciger yetmezliği"
+  },
+  {
+   "key": "144",
+   "value": "Akciğer ödemi"
+  },
+  {
+   "key": "352",
+   "value": "Akolizm"
+  },
+  {
+   "key": "298",
+   "value": "Akut promyelositik lösemi"
+  },
+  {
+   "key": "299",
+   "value": "Akut solunum yetmezliği"
+  },
+  {
+   "key": "174",
+   "value": "Albinizm"
+  },
+  {
+   "key": "248",
+   "value": "Alkaloz"
+  },
+  {
+   "key": "1",
+   "value": "Alkol Bağımlılığı"
+  },
+  {
+   "key": "358",
+   "value": "Alkolik hepatit"
+  },
+  {
+   "key": "284",
+   "value": "Alt solunum yollari hastalıkları"
+  },
+  {
+   "key": "21",
+   "value": "Anemi"
+  },
+  {
+   "key": "226",
+   "value": "Angina pektoris"
+  },
+  {
+   "key": "148",
+   "value": "Anjioödem"
+  },
+  {
+   "key": "225",
+   "value": "Apandisit"
+  },
+  {
+   "key": "209",
+   "value": "Apopleksi"
+  },
+  {
+   "key": "365",
+   "value": "Aritmi"
+  },
+  {
+   "key": "127",
+   "value": "Arter hastalığı"
+  },
+  {
+   "key": "319",
+   "value": "Arter hastalığı, periferik"
+  },
+  {
+   "key": "198",
+   "value": "Artritis"
+  },
+  {
+   "key": "178",
+   "value": "Asit-baz bozukluğu"
+  },
+  {
+   "key": "22",
+   "value": "Aspirasyon pnömonisi"
+  },
+  {
+   "key": "45",
+   "value": "Astım"
+  },
+  {
+   "key": "280",
+   "value": "Aşırı duyarlılık"
+  },
+  {
+   "key": "247",
+   "value": "Ateş"
+  },
+  {
+   "key": "24",
+   "value": "Atopi"
+  },
+  {
+   "key": "158",
+   "value": "Bağırsak hastalıkları"
+  },
+  {
+   "key": "268",
+   "value": "Bakır eksikliği"
+  },
+  {
+   "key": "59",
+   "value": "Benign prostat hiperplazisi"
+  },
+  {
+   "key": "117",
+   "value": "Beyin hastalığı"
+  },
+  {
+   "key": "362",
+   "value": "Beyin kanaması"
+  },
+  {
+   "key": "293",
+   "value": "Bipolar bozukluk"
+  },
+  {
+   "key": "15",
+   "value": "Böbrek hastalığı"
+  },
+  {
+   "key": "14",
+   "value": "Böbrek yetmezliği"
+  },
+  {
+   "key": "312",
+   "value": "Böbrek yetmezliği, kronik"
+  },
+  {
+   "key": "273",
+   "value": "Bulimi"
+  },
+  {
+   "key": "166",
+   "value": "Cerrahi müdahale"
+  },
+  {
+   "key": "318",
+   "value": "Çölyak hastalığı"
+  },
+  {
+   "key": "314",
+   "value": "Dalak disfonksiyonu"
+  },
+  {
+   "key": "804",
+   "value": "Deliryum"
+  },
+  {
+   "key": "184",
+   "value": "Demans"
+  },
+  {
+   "key": "242",
+   "value": "Demir metabolizmasi bozuklukları"
+  },
+  {
+   "key": "46",
+   "value": "Depresyon"
+  },
+  {
+   "key": "186",
+   "value": "Deri hastalıkları"
+  },
+  {
+   "key": "175",
+   "value": "Dermatoz"
+  },
+  {
+   "key": "311",
+   "value": "Dikkat eksikligi, hiperaktivite bozukluğu"
+  },
+  {
+   "key": "291",
+   "value": "Disfonksiyonel uterus kanamaları"
+  },
+  {
+   "key": "239",
+   "value": "Dispepsi"
+  },
+  {
+   "key": "145",
+   "value": "Dissemine intravasküler koagülasyon"
+  },
+  {
+   "key": "43",
+   "value": "Diyabet"
+  },
+  {
+   "key": "111",
+   "value": "Diyaliz"
+  },
+  {
+   "key": "47",
+   "value": "Doğum dönemi"
+  },
+  {
+   "key": "106",
+   "value": "Dolaşım bozukluğu"
+  },
+  {
+   "key": "108",
+   "value": "Duodenum ülseri"
+  },
+  {
+   "key": "199",
+   "value": "Düşük"
+  },
+  {
+   "key": "207",
+   "value": "Eklampsi"
+  },
+  {
+   "key": "307",
+   "value": "Eklem enfeksiyonu"
+  },
+  {
+   "key": "103",
+   "value": "Enfeksiyon"
+  },
+  {
+   "key": "153",
+   "value": "Enterit"
+  },
+  {
+   "key": "42",
+   "value": "Epilepsi"
+  },
+  {
+   "key": "150",
+   "value": "Fenilketonüri"
+  },
+  {
+   "key": "72",
+   "value": "Feokromositoma"
+  },
+  {
+   "key": "130",
+   "value": "Galaktore"
+  },
+  {
+   "key": "141",
+   "value": "Galaktoz intoleransı"
+  },
+  {
+   "key": "269",
+   "value": "Gangren"
+  },
+  {
+   "key": "155",
+   "value": "Gastroduedonal ülser"
+  },
+  {
+   "key": "211",
+   "value": "Gastrointestinal hastalık"
+  },
+  {
+   "key": "345",
+   "value": "Geçirilmiş koroner bypass ameliyatı"
+  },
+  {
+   "key": "67",
+   "value": "Glokom"
+  },
+  {
+   "key": "180",
+   "value": "Glukagonoma"
+  },
+  {
+   "key": "228",
+   "value": "Glukoz-6-fosfat dehidrogenaz eksikligi"
+  },
+  {
+   "key": "160",
+   "value": "Göz hastalıkları"
+  },
+  {
+   "key": "290",
+   "value": "Granülositopeni"
+  },
+  {
+   "key": "10002",
+   "value": "GSBL (Genişlemiş spektrumlu beta-laktamaz)"
+  },
+  {
+   "key": "205",
+   "value": "Guatr"
+  },
+  {
+   "key": "194",
+   "value": "Gut"
+  },
+  {
+   "key": "162",
+   "value": "Hematopoetik bozukluklar"
+  },
+  {
+   "key": "240",
+   "value": "Hemofili"
+  },
+  {
+   "key": "344",
+   "value": "Hemorajik bozukluk"
+  },
+  {
+   "key": "220",
+   "value": "Hemorajik diyatez"
+  },
+  {
+   "key": "321",
+   "value": "Hemoroid"
+  },
+  {
+   "key": "357",
+   "value": "Hepatit C"
+  },
+  {
+   "key": "57",
+   "value": "Hepatit, kronik"
+  },
+  {
+   "key": "79",
+   "value": "Herediter dejeneratif retinal bozukluk"
+  },
+  {
+   "key": "136",
+   "value": "Herpes virüs enfeksiyonu"
+  },
+  {
+   "key": "303",
+   "value": "Herpes zoster"
+  },
+  {
+   "key": "100",
+   "value": "HIV enfeksiyonu ve hastalığı"
+  },
+  {
+   "key": "88",
+   "value": "Hipereozinofili"
+  },
+  {
+   "key": "143",
+   "value": "Hiperhidratasyon"
+  },
+  {
+   "key": "231",
+   "value": "Hiperkalemi"
+  },
+  {
+   "key": "245",
+   "value": "Hiperkalsemi"
+  },
+  {
+   "key": "190",
+   "value": "Hiperkloremi"
+  },
+  {
+   "key": "222",
+   "value": "Hiperkolesterolemi"
+  },
+  {
+   "key": "260",
+   "value": "Hiperlipidemi"
+  },
+  {
+   "key": "134",
+   "value": "Hiperlipoproteinemi"
+  },
+  {
+   "key": "279",
+   "value": "Hipermagnezemi"
+  },
+  {
+   "key": "189",
+   "value": "Hipernatremi"
+  },
+  {
+   "key": "125",
+   "value": "Hiperoksalüri"
+  },
+  {
+   "key": "301",
+   "value": "Hiperparatiroidi"
+  },
+  {
+   "key": "264",
+   "value": "Hiperprolaktinemi"
+  },
+  {
+   "key": "44",
+   "value": "Hipertansiyon"
+  },
+  {
+   "key": "204",
+   "value": "Hipertermi"
+  },
+  {
+   "key": "138",
+   "value": "Hipertiroidizm"
+  },
+  {
+   "key": "350",
+   "value": "Hiperürisemi"
+  },
+  {
+   "key": "297",
+   "value": "Hipervitaminoz D"
+  },
+  {
+   "key": "244",
+   "value": "Hipervitaminozis A"
+  },
+  {
+   "key": "142",
+   "value": "Hipervolemi"
+  },
+  {
+   "key": "271",
+   "value": "Hipoalbuminemi"
+  },
+  {
+   "key": "212",
+   "value": "Hipofosfatemi"
+  },
+  {
+   "key": "192",
+   "value": "Hipogamaglobulinemi"
+  },
+  {
+   "key": "249",
+   "value": "Hipoglisemi"
+  },
+  {
+   "key": "213",
+   "value": "Hipokalemi"
+  },
+  {
+   "key": "169",
+   "value": "Hipokalsemi"
+  },
+  {
+   "key": "187",
+   "value": "Hipomagnezemi"
+  },
+  {
+   "key": "229",
+   "value": "Hiponatremi"
+  },
+  {
+   "key": "77",
+   "value": "Hipotansiyon"
+  },
+  {
+   "key": "139",
+   "value": "Hipotirodizm"
+  },
+  {
+   "key": "203",
+   "value": "Hipovolemi"
+  },
+  {
+   "key": "121",
+   "value": "Homosisteinemi"
+  },
+  {
+   "key": "221",
+   "value": "Hormonlara bağlı tümör"
+  },
+  {
+   "key": "309",
+   "value": "Iktiyoz"
+  },
+  {
+   "key": "274",
+   "value": "Insomni"
+  },
+  {
+   "key": "65",
+   "value": "Iskemik kalp hastalığı"
+  },
+  {
+   "key": "94",
+   "value": "İdrar retansiyonu"
+  },
+  {
+   "key": "349",
+   "value": "İleti bozuklukları, kalp"
+  },
+  {
+   "key": "101",
+   "value": "İmmün yetmezlik"
+  },
+  {
+   "key": "373",
+   "value": "İnfantil kolik"
+  },
+  {
+   "key": "294",
+   "value": "İnflamatuar bağırsak hastalığı"
+  },
+  {
+   "key": "286",
+   "value": "İnme"
+  },
+  {
+   "key": "179",
+   "value": "İnsülinoma"
+  },
+  {
+   "key": "93",
+   "value": "İntestinal obstrüksiyon"
+  },
+  {
+   "key": "374",
+   "value": "İşitme kaybı"
+  },
+  {
+   "key": "140",
+   "value": "Jinekolojik hastalıklar"
+  },
+  {
+   "key": "256",
+   "value": "K vitamini eksikliği"
+  },
+  {
+   "key": "367",
+   "value": "Kabızlık"
+  },
+  {
+   "key": "363",
+   "value": "Kafa travması"
+  },
+  {
+   "key": "74",
+   "value": "Kalp hastalığı"
+  },
+  {
+   "key": "361",
+   "value": "Kalp hastalığı (QT aralığında uzama)"
+  },
+  {
+   "key": "316",
+   "value": "Kalp hastalıkları, kronik"
+  },
+  {
+   "key": "55",
+   "value": "Kalp yetmezliği"
+  },
+  {
+   "key": "105",
+   "value": "Kan diskrazisi"
+  },
+  {
+   "key": "10005",
+   "value": "Kan Hastalığı"
+  },
+  {
+   "key": "210",
+   "value": "Kanama "
+  },
+  {
+   "key": "107",
+   "value": "Kanama riski"
+  },
+  {
+   "key": "83",
+   "value": "Kanda üre seviyesi artışı"
+  },
+  {
+   "key": "313",
+   "value": "Kanser"
+  },
+  {
+   "key": "58",
+   "value": "Kapalı açılı glokom"
+  },
+  {
+   "key": "17",
+   "value": "Karaciger hastalığı"
+  },
+  {
+   "key": "18",
+   "value": "Karaciger yetmezliği"
+  },
+  {
+   "key": "63",
+   "value": "Karaciğer fonksiyon bozukluğu"
+  },
+  {
+   "key": "120",
+   "value": "Karaciğer sirozu"
+  },
+  {
+   "key": "219",
+   "value": "Kararsız anjina pektoris"
+  },
+  {
+   "key": "10001",
+   "value": "Karbapenemaz üreten bakteri"
+  },
+  {
+   "key": "224",
+   "value": "Karsinom"
+  },
+  {
+   "key": "257",
+   "value": "Kas hastalıkları"
+  },
+  {
+   "key": "233",
+   "value": "Kas hipotonisi"
+  },
+  {
+   "key": "173",
+   "value": "Katarakt"
+  },
+  {
+   "key": "353",
+   "value": "Kauda equina sendromu"
+  },
+  {
+   "key": "86",
+   "value": "Kemik iliği yetmezliği"
+  },
+  {
+   "key": "116",
+   "value": "Kemoterapi"
+  },
+  {
+   "key": "75",
+   "value": "Ketoasidoz"
+  },
+  {
+   "key": "236",
+   "value": "Kırık"
+  },
+  {
+   "key": "348",
+   "value": "Kistik fibroz"
+  },
+  {
+   "key": "296",
+   "value": "KOAH"
+  },
+  {
+   "key": "325",
+   "value": "Kolera"
+  },
+  {
+   "key": "157",
+   "value": "Kolit"
+  },
+  {
+   "key": "2",
+   "value": "Kolorektal karsinom"
+  },
+  {
+   "key": "176",
+   "value": "Koma"
+  },
+  {
+   "key": "265",
+   "value": "Kornea zedelenmesi"
+  },
+  {
+   "key": "10004",
+   "value": "Koroner arter hastalığı (KAH)"
+  },
+  {
+   "key": "300",
+   "value": "Kronik solunum yetmezliği"
+  },
+  {
+   "key": "310",
+   "value": "Kseroderma"
+  },
+  {
+   "key": "351",
+   "value": "Lenfoma"
+  },
+  {
+   "key": "254",
+   "value": "Lenfopeni"
+  },
+  {
+   "key": "96",
+   "value": "Lökopeni "
+  },
+  {
+   "key": "181",
+   "value": "Lösemi"
+  },
+  {
+   "key": "10006",
+   "value": "Malignite"
+  },
+  {
+   "key": "370",
+   "value": "Malnütrisyon"
+  },
+  {
+   "key": "122",
+   "value": "Mani"
+  },
+  {
+   "key": "251",
+   "value": "Melanoma"
+  },
+  {
+   "key": "197",
+   "value": "Meme kanseri"
+  },
+  {
+   "key": "217",
+   "value": "Menenjit"
+  },
+  {
+   "key": "151",
+   "value": "Menopoz"
+  },
+  {
+   "key": "227",
+   "value": "Metabolizma bozuklukları"
+  },
+  {
+   "key": "356",
+   "value": "Metisilin dirençli S.aureus (MRSA)"
+  },
+  {
+   "key": "95",
+   "value": "Mide retansiyonu"
+  },
+  {
+   "key": "128",
+   "value": "Migren"
+  },
+  {
+   "key": "214",
+   "value": "Miyeloid malignite"
+  },
+  {
+   "key": "202",
+   "value": "Miyelomatozis"
+  },
+  {
+   "key": "89",
+   "value": "Miyeloproliferatif Hastalık"
+  },
+  {
+   "key": "61",
+   "value": "Miyelosüpresyon"
+  },
+  {
+   "key": "78",
+   "value": "Miyokard infarktüsü"
+  },
+  {
+   "key": "241",
+   "value": "Miyopati"
+  },
+  {
+   "key": "10003",
+   "value": "MRSA (Metisilin dirençli S.aureus)"
+  },
+  {
+   "key": "201",
+   "value": "Multipl miyeloma"
+  },
+  {
+   "key": "85",
+   "value": "Myastenia gravis"
+  },
+  {
+   "key": "147",
+   "value": "Nazal polip"
+  },
+  {
+   "key": "324",
+   "value": "Nefrotik sendrom"
+  },
+  {
+   "key": "137",
+   "value": "Nevrit"
+  },
+  {
+   "key": "124",
+   "value": "Nöbet"
+  },
+  {
+   "key": "246",
+   "value": "Nörolojik rahatsızlıklar"
+  },
+  {
+   "key": "66",
+   "value": "Nöromüsküler hastalık"
+  },
+  {
+   "key": "113",
+   "value": "Nötropeni"
+  },
+  {
+   "key": "10009",
+   "value": "Obezite"
+  },
+  {
+   "key": "375",
+   "value": "Optik nörit"
+  },
+  {
+   "key": "317",
+   "value": "Orak hücreli anemi"
+  },
+  {
+   "key": "118",
+   "value": "Oral mukoza hasarı"
+  },
+  {
+   "key": "102",
+   "value": "Organ transplantasyonu"
+  },
+  {
+   "key": "159",
+   "value": "Osteoporoz"
+  },
+  {
+   "key": "188",
+   "value": "Osteosarkom"
+  },
+  {
+   "key": "243",
+   "value": "Otoimmün hastalık"
+  },
+  {
+   "key": "253",
+   "value": "Ödem"
+  },
+  {
+   "key": "168",
+   "value": "Özofagus anormallikleri"
+  },
+  {
+   "key": "360",
+   "value": "Paget hastalığı"
+  },
+  {
+   "key": "123",
+   "value": "Panik bozukluk"
+  },
+  {
+   "key": "170",
+   "value": "Pankreas hastalığı"
+  },
+  {
+   "key": "60",
+   "value": "Paralitik ileus"
+  },
+  {
+   "key": "327",
+   "value": "Paratifo"
+  },
+  {
+   "key": "109",
+   "value": "Parkinson hastalığı"
+  },
+  {
+   "key": "216",
+   "value": "Penis anomalileri"
+  },
+  {
+   "key": "91",
+   "value": "Peptik ülser"
+  },
+  {
+   "key": "87",
+   "value": "Periferik nöropati"
+  },
+  {
+   "key": "10007",
+   "value": "Perkütan Translüminal Koroner Anjiyoplasti"
+  },
+  {
+   "key": "126",
+   "value": "Pıhtılaşma bozukluğu"
+  },
+  {
+   "key": "372",
+   "value": "Pilor stenozu"
+  },
+  {
+   "key": "295",
+   "value": "Plasenta bozuklukları"
+  },
+  {
+   "key": "289",
+   "value": "Porfiria"
+  },
+  {
+   "key": "132",
+   "value": "Porfiria"
+  },
+  {
+   "key": "208",
+   "value": "Pre-eklampsi"
+  },
+  {
+   "key": "76",
+   "value": "Prekoma"
+  },
+  {
+   "key": "196",
+   "value": "Progestogenlere bağımlı tümör"
+  },
+  {
+   "key": "322",
+   "value": "Proktit"
+  },
+  {
+   "key": "305",
+   "value": "Prolaktinoma"
+  },
+  {
+   "key": "71",
+   "value": "Prostat hipertrofisi"
+  },
+  {
+   "key": "306",
+   "value": "Prostat kanseri"
+  },
+  {
+   "key": "135",
+   "value": "Pruritus"
+  },
+  {
+   "key": "156",
+   "value": "Psikiyatrik hastalık"
+  },
+  {
+   "key": "64",
+   "value": "Psoriazis"
+  },
+  {
+   "key": "215",
+   "value": "Quincke ödemi"
+  },
+  {
+   "key": "115",
+   "value": "Radyoterapi"
+  },
+  {
+   "key": "278",
+   "value": "Reflü, gastroözofagial"
+  },
+  {
+   "key": "62",
+   "value": "Renal arter stenozu"
+  },
+  {
+   "key": "82",
+   "value": "Respiratuar yetmezlik"
+  },
+  {
+   "key": "235",
+   "value": "Rinit"
+  },
+  {
+   "key": "193",
+   "value": "Safra kanalı obstrüksiyonu"
+  },
+  {
+   "key": "185",
+   "value": "Safra taşı"
+  },
+  {
+   "key": "343",
+   "value": "Salmonella enteriti"
+  },
+  {
+   "key": "346",
+   "value": "Salmonella septisemisi"
+  },
+  {
+   "key": "10008",
+   "value": "Sedanter yaşam"
+  },
+  {
+   "key": "161",
+   "value": "Senkop"
+  },
+  {
+   "key": "104",
+   "value": "Sepsis"
+  },
+  {
+   "key": "320",
+   "value": "Serebrovasküler hastalık"
+  },
+  {
+   "key": "73",
+   "value": "Serebrovasküler yetmezlik"
+  },
+  {
+   "key": "258",
+   "value": "Sezeryan"
+  },
+  {
+   "key": "171",
+   "value": "Sistemik lupus eritamatozus"
+  },
+  {
+   "key": "110",
+   "value": "Sistit"
+  },
+  {
+   "key": "20",
+   "value": "Sol ventrikül yetmezliği"
+  },
+  {
+   "key": "308",
+   "value": "Solunum depresyonu"
+  },
+  {
+   "key": "163",
+   "value": "Solunum yolu hastaliklari"
+  },
+  {
+   "key": "354",
+   "value": "Spondilolistezis"
+  },
+  {
+   "key": "369",
+   "value": "Stres inkontinans"
+  },
+  {
+   "key": "218",
+   "value": "Şizofreni"
+  },
+  {
+   "key": "80",
+   "value": "Şok"
+  },
+  {
+   "key": "152",
+   "value": "Talasemi"
+  },
+  {
+   "key": "164",
+   "value": "Tendinit"
+  },
+  {
+   "key": "326",
+   "value": "Tifo"
+  },
+  {
+   "key": "182",
+   "value": "Tiroid bozukluğu"
+  },
+  {
+   "key": "68",
+   "value": "Tirotoksikoz"
+  },
+  {
+   "key": "302",
+   "value": "Tirotoksikoz"
+  },
+  {
+   "key": "90",
+   "value": "Torsades de pointes"
+  },
+  {
+   "key": "288",
+   "value": "Tourette sendromu"
+  },
+  {
+   "key": "19",
+   "value": "Travma"
+  },
+  {
+   "key": "347",
+   "value": "Trigeminal nevralji"
+  },
+  {
+   "key": "97",
+   "value": "Trombositopeni"
+  },
+  {
+   "key": "281",
+   "value": "Trombositoz"
+  },
+  {
+   "key": "56",
+   "value": "Tüberküloz"
+  },
+  {
+   "key": "129",
+   "value": "Tümör"
+  },
+  {
+   "key": "119",
+   "value": "Tümör"
+  },
+  {
+   "key": "131",
+   "value": "Tümör (Estrojene bagimli)"
+  },
+  {
+   "key": "368",
+   "value": "Uygunsuz ADH sendromu"
+  },
+  {
+   "key": "277",
+   "value": "Uyku apnesi"
+  },
+  {
+   "key": "99",
+   "value": "Ülseratif kolit"
+  },
+  {
+   "key": "366",
+   "value": "Üretral obstrüksiyon"
+  },
+  {
+   "key": "223",
+   "value": "Üriner sistem hastalığı"
+  },
+  {
+   "key": "167",
+   "value": "Ürolitiasis"
+  },
+  {
+   "key": "149",
+   "value": "Ürtiker"
+  },
+  {
+   "key": "230",
+   "value": "Varisella "
+  },
+  {
+   "key": "371",
+   "value": "Venöz tromboembolik olay"
+  },
+  {
+   "key": "10000",
+   "value": "VRE (Vankomisine Dirençli Enterokok)"
+  },
+  {
+   "key": "200",
+   "value": "Waldenström makroglubülinemisi"
+  },
+  {
+   "key": "359",
+   "value": "Wegener granülomatozu"
+  },
+  {
+   "key": "803",
+   "value": "Wolff-Parkinson-White Sendromu"
+  }
+ ]
+}

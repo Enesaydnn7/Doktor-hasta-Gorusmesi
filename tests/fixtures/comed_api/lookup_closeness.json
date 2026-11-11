@@ -1,0 +1,72 @@
+{
+ "data": [
+  {
+   "key": "b",
+   "value": "Erkek Kardeşi"
+  },
+  {
+   "key": "f",
+   "value": "Babası"
+  },
+  {
+   "key": "fb",
+   "value": "Amcası"
+  },
+  {
+   "key": "fc",
+   "value": "Kızı"
+  },
+  {
+   "key": "ff",
+   "value": "Dede (Baba)"
+  },
+  {
+   "key": "fm",
+   "value": "Babaannesi"
+  },
+  {
+   "key": "fs",
+   "value": "Halası"
+  },
+  {
+   "key": "m",
+   "value": "Annesi"
+  },
+  {
+   "key": "mb",
+   "value": "Dayısı"
+  },
+  {
+   "key": "mc",
+   "value": "Oğlu"
+  },
+  {
+   "key": "mf",
+   "value": "Dede (Anne)"
+  },
+  {
+   "key": "mm",
+   "value": "Anneannesi"
+  },
+  {
+   "key": "ms",
+   "value": "Teyzesi"
+  },
+  {
+   "key": "o",
+   "value": "Diğer"
+  },
+  {
+   "key": "s",
+   "value": "Kız Kardeşi"
+  },
+  {
+   "key": "t",
+   "value": "Donörü"
+  },
+  {
+   "key": "wh",
+   "value": "Eşi"
+  }
+ ]
+}

@@ -1,0 +1,428 @@
+{
+ "data": [
+  {
+   "allowHistory": false,
+   "allowTemplate": false,
+   "attributes": {},
+   "category": "documents.folder4",
+   "children": [],
+   "class": 1,
+   "code": "score",
+   "defaultValueMode": 1,
+   "defaultValueSource": 1,
+   "id": 1,
+   "isOffline": false,
+   "isSealed": false,
+   "items": [],
+   "itemType": 0,
+   "name": "Skor",
+   "reusable": false,
+   "rulesOnSave": {},
+   "rulesOnSign": {},
+   "showAtEpicrisis": true,
+   "showAtFollowUp": true,
+   "showAtPrint": true,
+   "showAtSummary": true,
+   "streamable": true,
+   "type": 9,
+   "uiElementType": 0,
+   "unitType": 0
+  },
+  {
+   "allowHistory": false,
+   "allowTemplate": false,
+   "attributes": {},
+   "category": "documents.examination",
+   "children": [],
+   "class": 1,
+   "code": "fall_risk_above_sixty_five",
+   "conditions": [
+    {
+     "action": 9,
+     "actionDelay": 0,
+     "groups": [
+      {
+       "filterType": 1,
+       "items": [
+        {
+         "leftValueSourceId": 4,
+         "operator": 6,
+         "rightValue": 65,
+         "rightValueSourceId": 0
+        }
+       ],
+       "joinType": 1
+      }
+     ],
+     "repeatPeriod": 0,
+     "scheme": 0,
+     "value": "1",
+     "valueParameter": ""
+    }
+   ],
+   "defaultValue": "\"0\"",
+   "defaultValueMode": 1,
+   "defaultValueSource": 1,
+   "id": 8223,
+   "isOffline": false,
+   "isSealed": false,
+   "items": [
+    {
+     "item": "Evet",
+     "score": 1.0,
+     "value": "1"
+    },
+    {
+     "item": "Hayır",
+     "score": 0.0,
+     "value": "0"
+    }
+   ],
+   "itemType": 0,
+   "name": "65 yaş üstü",
+   "reusable": true,
+   "rulesOnSave": {
+    "required": "true"
+   },
+   "rulesOnSign": {},
+   "showAtEpicrisis": false,
+   "showAtPrint": false,
+   "showAtSummary": false,
+   "streamable": false,
+   "type": 6,
+   "uiElementType": 12,
+   "unitType": 0
+  },
+  {
+   "allowHistory": false,
+   "allowTemplate": false,
+   "attributes": {},
+   "category": "documents.examination",
+   "children": [],
+   "class": 1,
+   "code": "fall_risk_addiction",
+   "defaultValueMode": 1,
+   "defaultValueSource": 1,
+   "id": 8224,
+   "isOffline": false,
+   "isSealed": false,
+   "items": [
+    {
+     "item": "Var",
+     "score": 1.0,
+     "value": "1"
+    },
+    {
+     "item": "Yok",
+     "score": 0.0,
+     "value": "0"
+    }
+   ],
+   "itemType": 0,
+   "name": "Alkol / Madde Bağımlılığı",
+   "reusable": true,
+   "rulesOnSave": {},
+   "rulesOnSign": {},
+   "showAtEpicrisis": true,
+   "showAtPrint": true,
+   "showAtSummary": false,
+   "streamable": false,
+   "type": 6,
+   "uiElementType": 12,
+   "unitType": 0
+  },
+  {
+   "allowHistory": false,
+   "allowTemplate": false,
+   "attributes": {},
+   "category": "documents.examination",
+   "children": [],
+   "class": 1,
+   "code": "fall_risk_balance_disorder",
+   "defaultValueMode": 1,
+   "defaultValueSource": 1,
+   "id": 8225,
+   "isOffline": false,
+   "isSealed": false,
+   "items": [
+    {
+     "item": "Var",
+     "score": 1.0,
+     "value": "1"
+    },
+    {
+     "item": "Yok",
+     "score": 0.0,
+     "value": "0"
+    }
+   ],
+   "itemType": 0,
+   "name": "Yürüyüş ve Denge Bozuklukları",
+   "reusable": true,
+   "rulesOnSave": {},
+   "rulesOnSign": {},
+   "showAtEpicrisis": true,
+   "showAtPrint": true,
+   "showAtSummary": false,
+   "streamable": false,
+   "type": 6,
+   "uiElementType": 12,
+   "unitType": 0
+  },
+  {
+   "allowHistory": false,
+   "allowTemplate": false,
+   "attributes": {},
+   "category": "documents.examination",
+   "children": [],
+   "class": 1,
+   "code": "fall_risk_defect_of_vision",
+   "defaultValueMode": 1,
+   "defaultValueSource": 1,
+   "id": 8226,
+   "isOffline": false,
+   "isSealed": false,
+   "items": [
+    {
+     "item": "Var",
+     "score": 1.0,
+     "value": "1"
+    },
+    {
+     "item": "Yok",
+     "score": 0.0,
+     "value": "0"
+    }
+   ],
+   "itemType": 0,
+   "name": "Görme Bozukluğu",
+   "reusable": true,
+   "rulesOnSave": {},
+   "rulesOnSign": {},
+   "showAtEpicrisis": true,
+   "showAtPrint": true,
+   "showAtSummary": false,
+   "streamable": false,
+   "type": 6,
+   "uiElementType": 12,
+   "unitType": 0
+  },
+  {
+   "allowHistory": false,
+   "allowTemplate": false,
+   "attributes": {},
+   "category": "documents.examination",
+   "children": [],
+   "class": 1,
+   "code": "fall_risk_fall_history",
+   "defaultValueMode": 1,
+   "defaultValueSource": 1,
+   "id": 8227,
+   "isOffline": false,
+   "isSealed": false,
+   "items": [
+    {
+     "item": "Var",
+     "score": 1.0,
+     "value": "1"
+    },
+    {
+     "item": "Yok",
+     "score": 0.0,
+     "value": "0"
+    }
+   ],
+   "itemType": 0,
+   "name": "Düşme hikayesi",
+   "reusable": true,
+   "rulesOnSave": {},
+   "rulesOnSign": {},
+   "showAtEpicrisis": true,
+   "showAtPrint": true,
+   "showAtSummary": false,
+   "streamable": false,
+   "type": 6,
+   "uiElementType": 12,
+   "unitType": 0
+  },
+  {
+   "allowHistory": false,
+   "allowTemplate": false,
+   "attributes": {},
+   "category": "documents.examination",
+   "children": [],
+   "class": 1,
+   "code": "fall_risk_form_description",
+   "defaultValueMode": 1,
+   "defaultValueSource": 1,
+   "id": 8228,
+   "isOffline": false,
+   "isSealed": false,
+   "items": [],
+   "itemType": 0,
+   "name": "Açıklama",
+   "reusable": true,
+   "rulesOnSave": {},
+   "rulesOnSign": {},
+   "showAtEpicrisis": true,
+   "showAtPrint": true,
+   "showAtSummary": false,
+   "streamable": false,
+   "type": 8,
+   "uiElementType": 1,
+   "unitType": 0
+  },
+  {
+   "allowHistory": false,
+   "allowTemplate": false,
+   "attributes": {},
+   "category": "documents.examination",
+   "children": [],
+   "class": 1,
+   "code": "fall_risk_form_is_exist",
+   "defaultValueMode": 1,
+   "defaultValueSource": 1,
+   "id": 8229,
+   "isOffline": false,
+   "isSealed": false,
+   "items": [
+    {
+     "item": "Var",
+     "score": 0.0,
+     "value": "1"
+    },
+    {
+     "item": "Yok",
+     "score": 0.0,
+     "value": "0"
+    }
+   ],
+   "itemType": 0,
+   "name": "Düşme Riski Formu",
+   "reusable": true,
+   "rulesOnSave": {},
+   "rulesOnSign": {},
+   "showAtEpicrisis": true,
+   "showAtPrint": true,
+   "showAtSummary": false,
+   "streamable": false,
+   "type": 6,
+   "uiElementType": 12,
+   "unitType": 0
+  },
+  {
+   "allowHistory": false,
+   "allowTemplate": false,
+   "attributes": {},
+   "category": "documents.examination",
+   "children": [],
+   "class": 1,
+   "code": "fall_risk_mental_state",
+   "defaultValueMode": 1,
+   "defaultValueSource": 1,
+   "id": 8230,
+   "isOffline": false,
+   "isSealed": false,
+   "items": [
+    {
+     "item": "Oryante",
+     "score": 0.0,
+     "value": "0"
+    },
+    {
+     "item": "Oryante Değil",
+     "score": 1.0,
+     "value": "1"
+    }
+   ],
+   "itemType": 0,
+   "name": "Ruhsal Durum",
+   "reusable": true,
+   "rulesOnSave": {},
+   "rulesOnSign": {},
+   "showAtEpicrisis": true,
+   "showAtPrint": true,
+   "showAtSummary": false,
+   "streamable": false,
+   "type": 6,
+   "uiElementType": 12,
+   "unitType": 0
+  },
+  {
+   "allowHistory": false,
+   "allowTemplate": false,
+   "attributes": {},
+   "category": "documents.examination",
+   "children": [],
+   "class": 1,
+   "code": "fall_risk_state_of_health",
+   "defaultValueMode": 1,
+   "defaultValueSource": 1,
+   "id": 8231,
+   "isOffline": false,
+   "isSealed": false,
+   "items": [
+    {
+     "item": "Normal",
+     "score": 0.0,
+     "value": "0"
+    },
+    {
+     "item": "Normal Değil",
+     "score": 1.0,
+     "value": "1"
+    }
+   ],
+   "itemType": 0,
+   "name": "Genel Sağlık Durumu",
+   "reusable": true,
+   "rulesOnSave": {},
+   "rulesOnSign": {},
+   "showAtEpicrisis": true,
+   "showAtPrint": true,
+   "showAtSummary": false,
+   "streamable": false,
+   "type": 6,
+   "uiElementType": 12,
+   "unitType": 0
+  },
+  {
+   "allowHistory": false,
+   "allowTemplate": false,
+   "attributes": {},
+   "category": "documents.examination",
+   "children": [],
+   "class": 1,
+   "code": "fall_risk_used_products",
+   "defaultValueMode": 1,
+   "defaultValueSource": 1,
+   "id": 8232,
+   "isOffline": false,
+   "isSealed": false,
+   "items": [
+    {
+     "item": "Var",
+     "score": 1.0,
+     "value": "1"
+    },
+    {
+     "item": "Yok",
+     "score": 0.0,
+     "value": "0"
+    }
+   ],
+   "itemType": 0,
+   "name": "Kullandığı ilaçlar",
+   "reusable": true,
+   "rulesOnSave": {},
+   "rulesOnSign": {},
+   "showAtEpicrisis": true,
+   "showAtPrint": true,
+   "showAtSummary": false,
+   "streamable": false,
+   "type": 6,
+   "uiElementType": 12,
+   "unitType": 0
+  }
+ ]
+}

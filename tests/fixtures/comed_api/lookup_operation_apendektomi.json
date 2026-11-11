@@ -1,0 +1,32 @@
+{
+ "data": [
+  {
+   "key": "101719",
+   "value": "Apendektomi, akut"
+  },
+  {
+   "key": "101720",
+   "value": "Apendektomi, perfore veya periapendiküler apse drenajı ile"
+  },
+  {
+   "key": "101721",
+   "value": "Laparoskopik, apendektomi"
+  },
+  {
+   "key": "109397",
+   "value": "Apendektomi, komplike"
+  },
+  {
+   "key": "115301",
+   "value": "Apendektomi, akut"
+  },
+  {
+   "key": "115302",
+   "value": "Apendektomi, perfore veya periapendiküler apse drenajı ile"
+  },
+  {
+   "key": "115303",
+   "value": "Laparoskopik, apendektomi"
+  }
+ ]
+}

@@ -1,0 +1,141 @@
+{
+ "data": {
+  "actCodeTests": [],
+  "activeOrders": [],
+  "alternativeGroupCode": "637463100564176590",
+  "amountType": 3,
+  "atcCode": "N02BE01",
+  "barcode": "8699717010109",
+  "barcodes": [
+   "8699560010370",
+   "8699717010109"
+  ],
+  "baseProduct": true,
+  "category": 0,
+  "chemotherapyProduct": false,
+  "companyId": 78,
+  "cupSize": 1,
+  "defaultAmountType": 0,
+  "documents": [
+   {
+    "notice": 0,
+    "url": "https://files.vademecumonline.com.tr/PictureFile/middle/parol-tablet-500-mg-20-tabletlik-ambalaj--img-22092015.png"
+   },
+   {
+    "notice": 0,
+    "url": "https://files.vademecumonline.com.tr/InstructionsFile/parol-tablet-500-mg-20-tabletlik-ambalaj--kt-07082017.pdf"
+   },
+   {
+    "notice": 0,
+    "url": "https://files.vademecumonline.com.tr/HandbillFile/parol-tablet-500-mg-20-tabletlik-ambalaj--kub-07082017.pdf"
+   },
+   {
+    "notice": 0,
+    "url": "https://files.vademecumonline.com.tr/ProspectusFile/8699560010370.pdf"
+   }
+  ],
+  "dosage": 500.0,
+  "dosageUnit": "mg",
+  "drugFormId": 4036,
+  "drugId": 2485,
+  "drugName": "PAROL",
+  "drugTypeId": 1,
+  "equivalentGroupCode": "637463018491495163",
+  "formerBSAList": [
+   {
+    "bodyMassIndex": 23.44,
+    "height": 160.0,
+    "sourceDate": "2024-04-19T11:58:27",
+    "type": 3,
+    "weight": 55.43
+   },
+   {
+    "bodyMassIndex": 23.44,
+    "height": 160.0,
+    "sourceDate": "2024-04-19T11:58:27",
+    "type": 1,
+    "weight": 52.38
+   },
+   {
+    "bodyMassIndex": 23.44,
+    "height": 160.0,
+    "sourceDate": "2024-04-19T11:58:27",
+    "type": 2,
+    "weight": 60.0
+   }
+  ],
+  "genericStatusId": 3,
+  "id": 3640,
+  "ingredients": [
+   {
+    "amount": 500.0,
+    "name": "Parasetamol",
+    "showAtTitle": true,
+    "substanceId": 1565,
+    "unit": "mg"
+   }
+  ],
+  "inStock": true,
+  "isMedulaReport": false,
+  "link": "https://iframe.vademecumonline.com.tr/product/3640?token=9f75a79e7e29ad25cb8801fe790494f6",
+  "literallyLikeCodes": {},
+  "materialId": 398742,
+  "medicationTimeId": 3,
+  "medicationTimes": [],
+  "missingBSA": false,
+  "missingGFR": false,
+  "name": "PAROL Tablet 500 mg 20 tabletlik ambalaj",
+  "nfcCode": "AAA",
+  "notices": [],
+  "packageAmount": 1.0,
+  "packageAmountUnit": "adet",
+  "parenteralConflictItems": [],
+  "pharmaceuticalForm": {
+   "affectingBodyPart": {
+    "id": 1,
+    "name": "Sistemik"
+   },
+   "applicationMethod": {
+    "id": 1,
+    "name": "Ağız Yoluyla"
+   },
+   "id": 2,
+   "name": "Tablet"
+  },
+  "pregnancyData": [
+   {
+    "categoryId": 2,
+    "periodId": 4
+   }
+  ],
+  "prescriptionType": {
+   "colorId": 6,
+   "id": 1,
+   "name": "Beyaz Reçete"
+  },
+  "publicNumber": "A05960",
+  "routes": [],
+  "sendToCentralDrugPreparationUnit": false,
+  "slug": "parol-tablet-500-mg-20-tabletlik-ambalaj",
+  "specialities": [
+   {
+    "description": "Lüzum Halinde",
+    "speciality": 126,
+    "status": true
+   },
+   {
+    "description": "Sözel Order",
+    "speciality": 133,
+    "status": true
+   },
+   {
+    "description": "",
+    "speciality": 145,
+    "status": true
+   }
+  ],
+  "titckName": "PAROL 500 MG 20 TABLET",
+  "updatedAt": 1565480980,
+  "visuallyLikeCodes": {}
+ }
+}

@@ -43,11 +43,12 @@ def extension_allowlist():
 class FakeComed:
     """Yakalanan gerçek COMED yanıtlarıyla çalışan sahte COMED."""
 
-    def __init__(self, *, documents=None, visit_diagnoses=None, plans=None, interaction=None):
+    def __init__(self, *, documents=None, visit_diagnoses=None, plans=None, interaction=None, records=None):
         self.documents = documents if documents is not None else []
         self.visit_diagnoses = visit_diagnoses if visit_diagnoses is not None else []
         self.plans = plans if plans is not None else []
         self.interaction = interaction
+        self.records = records
         self.calls = []
 
     @staticmethod
@@ -69,7 +70,28 @@ class FakeComed:
             name = "params_ros" if "ss_deri" in body["parameters"] else "params_exam"
             return self.ok(fx(name)["data"])
         if path == "core/public/getlookup":
+            catalogs = {
+                "entity.vademecumDisease": "lookup_disease_all",
+                "entity.vademecumSubstance": "lookup_substance_penisilin",
+                "entity.operation": "lookup_operation_apendektomi",
+                "entity.vademecumVaccine": "lookup_vaccine_all",
+                "entity.vademecumDevice": "lookup_device_all",
+                "entity.vademecumAddiction": "lookup_addiction_all",
+                "closeness.familyHistory": "lookup_closeness",
+            }
+            if body["type"] in catalogs:
+                wanted = comed_api.fold(body.get("filter", ""))
+                rows = fx(catalogs[body["type"]])["data"]
+                return self.ok([r for r in rows if not wanted or wanted in comed_api.fold(r["value"])])
             return self.ok(fx(f"lookup_{body['type']}")["data"])
+        if path == "medical/examination/getPatientRecords":
+            return self.ok(self.records if self.records is not None else fx("patient_records_empty")["data"])
+        if path == "pharmacy/medication/orderInquiry":
+            name = {3640: "drug_inquiry_parol", 6101: "drug_inquiry_allergodil"}[body["productId"]]
+            return self.ok(fx(name)["data"])
+        if path == "pharmacy/medication/calculateSteps":
+            name = {3640: "calc_steps_parol", 6101: "calc_steps_allergodil"}[body["products"][0]["id"]]
+            return self.ok(fx(name)["data"])
         if path == "shared/order/getCatalogs":
             return self.ok(fx("catalogs")["data"])
         if path == "shared/lookups/geticds":
@@ -100,17 +122,19 @@ class FakeComed:
         raise AssertionError(f"beklenmeyen COMED çağrısı: {path}")
 
 
-def run(bundle, comed, rounds=12):
+def run(bundle, comed, rounds=30):
     results = {}
+    comed.rounds = []
     for _ in range(rounds):
         step = comed_api.plan_next(bundle, results, now=NOW)
         if step["done"]:
             return step
         assert step["calls"], "iş bitmeden boş tur"
+        comed.rounds.append([call["path"] for call in step["calls"]])
         for call in step["calls"]:
             assert call["id"] not in results, f"aynı çağrı iki kez istendi: {call['id']}"
             results[call["id"]] = comed(call)
-    raise AssertionError("planlayıcı 12 turda bitmedi")
+    raise AssertionError(f"planlayıcı {rounds} turda bitmedi")
 
 
 def saved(comed, path):
@@ -159,7 +183,19 @@ class PlannerFullDemoTests(unittest.TestCase):
         self.assertEqual(complaint["value"], self.accepted["values"]["patient_complaint"][0]["values"][0]["value"])
         story = self.exam["values"]["patient_story"][0]["values"][0]
         self.assertTrue(story.startswith("İki gündür göğüs ortasında"))
-        self.assertIn("Alerji: Penisilin", story)
+        # COMED listesine yazılanlar öyküde tekrar edilmez; yazılamayanlar öyküde.
+        self.assertIn("Özgeçmiş (HBYS listesinde yok)", story)
+        self.assertNotIn("Penisilin", story)
+        for leftover in ("Apendektomi (2012)", "Amlodipin 5 mg (Her gün)", "Tuzsuz Diyet",
+                         "İşitme Cihazı", "Kan Nakli (2019)", "Fizik Tedavi (Haftada bir)"):
+            self.assertIn(leftover, story)
+
+    def test_complaint_start_date_is_also_top_level(self):
+        """COMED ekranı Başlangıç Tarihi kutusunu üst düzey alandan okuyor."""
+        top = self.exam["values"]["complaint_start_date"][0]["values"][0]
+        child = self.exam["values"]["patient_complaint"][0]["children"]["complaint_start_date"][0]["values"][0]
+        self.assertEqual(top, child)
+        self.assertEqual((top["before"], top["type"]), (2, 2))  # 2 gün önce
 
     def test_system_query_codes_match_what_comed_accepted(self):
         ours = self.exam["children"][0]["values"]
@@ -214,10 +250,59 @@ class PlannerFullDemoTests(unittest.TestCase):
         self.assertLess(order.index("pharmacy/medication/InteractionInquiry"),
                         order.index("pharmacy/medication/saveOrders"))
 
-    def test_drug_without_dose_is_left_to_doctor(self):
-        self.assertEqual(len(saved(self.comed, "pharmacy/medication/saveOrders")), 1)
-        allergodil = [r for r in self.step["report"]["items"] if r["item"].startswith("Allergodil")]
-        self.assertEqual(allergodil[0]["status"], "atlandı")
+    def test_drug_without_dose_uses_comed_default_dose_route_and_steps(self):
+        bodies = saved(self.comed, "pharmacy/medication/saveOrders")
+        allergodil = next(b["orders"][0] for b in bodies if b["orders"][0]["products"][0]["id"] == 6101)
+        accepted = fx("accepted_drug_save")  # COMED ekranının Parol için kabul ettiği paket
+        self.assertEqual((allergodil["products"][0]["dose"], allergodil["products"][0]["doseUnit"]), (10, "ml"))
+        self.assertEqual(allergodil["route"], "İnhalasyon Yoluyla Uygulananlar")
+        self.assertEqual(allergodil["plan"]["steps"], fx("calc_steps_allergodil")["data"]["steps"])
+        parol = next(b["orders"][0] for b in bodies if b["orders"][0]["products"][0]["id"] == 3640)
+        self.assertEqual(parol["route"], accepted["orders"][0]["route"])
+        self.assertEqual(parol["plan"]["steps"], fx("calc_steps_parol")["data"]["steps"])
+        report = [r for r in self.step["report"]["items"] if r["item"].startswith("Allergodil")][0]
+        self.assertEqual(report["status"], "eklendi")
+        self.assertIn("varsayılan dozu 10 ml", report["detail"])
+
+    def test_profile_lists_match_what_comed_accepted(self):
+        ours = {}
+        for path in ("medical/examination/saveProfileDiseases", "medical/examination/saveProfileAllergies",
+                     "medical/examination/saveProfileVaccines", "medical/examination/saveProfileDevices",
+                     "medical/examination/saveProfileAddictions"):
+            for body in saved(self.comed, path):
+                for key, items in body.items():
+                    if key != "forSeenVisitId":
+                        ours.setdefault(key, []).extend(items)
+        accepted = {}
+        for body in fx("accepted_profile_saves"):
+            for key, items in body.items():
+                if isinstance(items, list) and not any("id" in i for i in items):
+                    accepted.setdefault(key, []).extend(items)
+        id_fields = {"diseases": "diseaseId", "allergies": "allergyId", "vaccines": "vaccineId",
+                     "devices": "deviceId", "addictions": "addictionId"}
+        for key, id_field in id_fields.items():
+            mine = sorted((str(i[id_field]), i.get("closeness", ""), i["record"]["type"]) for i in ours.get(key, []))
+            theirs = sorted((str(i[id_field]), i.get("closeness", ""), i["record"]["type"]) for i in accepted.get(key, []))
+            self.assertEqual(mine, theirs, key)
+        # "Apendektomi" katalogda 7 farklı kayıtla geçiyor: tahminle seçilmez.
+        self.assertEqual(saved(self.comed, "medical/examination/saveProfileOperations"), [])
+
+    def test_profile_writes_go_one_at_a_time(self):
+        """Canlıda paralel özgeçmiş yazmaları COMED eşzamanlılık hatası verdi."""
+        for round_paths in self.comed.rounds:
+            profile = [p for p in round_paths if p.startswith("medical/examination/saveProfile")]
+            self.assertLessEqual(len(profile), 1, round_paths)
+        for body in [c["body"] for c in self.comed.calls if c["path"].startswith("medical/examination/saveProfile")]:
+            items = [v for k, v in body.items() if isinstance(v, list)][0]
+            self.assertEqual(len(items), 1)
+
+    def test_fall_risk_form_matches_what_comed_accepted(self):
+        docs = [b["documentProcesses"][0] for b in saved(self.comed, "forms/document/saveDocumentProcesses")]
+        fall = next(d for d in docs if d["document"] == "fall_risk_form")
+        accepted = fx("accepted_fall_save")["documentProcesses"][0]["values"]
+        for code, value in accepted.items():
+            self.assertEqual(fall["values"][code][0]["values"], value[0]["values"], code)
+        self.assertFalse(fall["autoSign"])
 
     def test_report_lists_everything(self):
         statuses = {(r["section"], r["status"]) for r in self.step["report"]["items"]}
@@ -228,6 +313,32 @@ class PlannerFullDemoTests(unittest.TestCase):
 
 
 class PlannerSafetyTests(unittest.TestCase):
+    def test_existing_profile_items_are_not_added_twice(self):
+        records = copy.deepcopy(fx("patient_records_empty")["data"])
+        records["allergies"] = [{"allergyId": 5422, "record": {"title": "Penisilin"}}]
+        records["diseases"] = [{"diseaseId": 10004, "closeness": "f", "record": {"title": "KAH"}}]
+        comed = FakeComed(records=records)
+        run(demo_bundle(), comed)
+        self.assertEqual(saved(comed, "medical/examination/saveProfileAllergies"), [])
+        family = [i for b in saved(comed, "medical/examination/saveProfileDiseases")
+                  for i in b["diseases"] if i.get("closeness")]
+        self.assertEqual([(i["diseaseId"], i["closeness"]) for i in family], [(43, "m")])
+
+    def test_existing_drug_order_is_reported_as_existing(self):
+        comed = FakeComed(plans=[{
+            "title": "PAROL Tablet 500 mg 20 tabletlik ambalaj [Parasetamol] 1 adet, 500 mg", "orderType": 1}])
+        step = run(demo_bundle(), comed)
+        products = [b["orders"][0]["products"][0]["id"] for b in saved(comed, "pharmacy/medication/saveOrders")]
+        self.assertNotIn(3640, products)
+        parol = [r for r in step["report"]["items"] if r["item"].startswith("Parol")][0]
+        self.assertEqual(parol["status"], "mevcut")
+
+    def test_time_units_use_comed_enum(self):
+        start = comed_api._relative_date({"value": 3, "unit": "week"}, NOW)
+        self.assertEqual((start["before"], start["type"]), (3, 7))
+        self.assertEqual(comed_api._relative_date({"value": 1, "unit": "month"}, NOW)["type"], 3)
+        self.assertEqual(comed_api._relative_date({"value": 5, "unit": "hour"}, NOW)["type"], 5)
+
     def test_existing_diagnosis_and_order_are_not_added_twice(self):
         comed = FakeComed(
             visit_diagnoses=[{"icd": {"code": "I20.9", "id": 5409}}],
@@ -268,7 +379,9 @@ class PlannerSafetyTests(unittest.TestCase):
                                        "conflictingAtcCodes": [], "cumulativeDosage": [],
                                        "id": 7, "maximumDosages": []})
         step = run(demo_bundle(), comed)
-        self.assertEqual(saved(comed, "pharmacy/medication/saveOrders"), [])
+        products = [b["orders"][0]["products"][0]["id"] for b in saved(comed, "pharmacy/medication/saveOrders")]
+        self.assertNotIn(3640, products)   # uyarı alan Parol eklenmedi
+        self.assertIn(6101, products)      # uyarısız Allergodil eklendi
         parol = [r for r in step["report"]["items"] if r["item"].startswith("Parol")][0]
         self.assertIn("alerji", parol["detail"])
 
@@ -277,7 +390,9 @@ class PlannerSafetyTests(unittest.TestCase):
         bundle["requests"][0]["fields"]["diagnoses"] = []
         comed = FakeComed()
         step = run(bundle, comed)
-        self.assertEqual(saved(comed, "forms/document/saveDocumentProcesses"), [])
+        documents = [b["documentProcesses"][0]["document"]
+                     for b in saved(comed, "forms/document/saveDocumentProcesses")]
+        self.assertNotIn("examination_v2", documents)  # düşme riski formu tanıya bağlı değil
         muayene = [r for r in step["report"]["items"] if r["section"] == "Muayene"][0]
         self.assertIn("tanı", muayene["detail"])
 
