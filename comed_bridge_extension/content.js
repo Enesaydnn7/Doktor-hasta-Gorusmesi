@@ -3582,6 +3582,7 @@
     // Arka plan bu kalp atışına bakarak sekmede çalışan bir kopya olup
     // olmadığına karar verir (bkz. background.js ensureComedScripts).
     document.documentElement.setAttribute(HEARTBEAT_ATTR, String(Date.now()));
+    ensureBridgeVisible();
     try {
       chrome.runtime.sendMessage({type: "klinot-dev-tick"}, () => void chrome.runtime.lastError);
     } catch (_) {
@@ -3601,14 +3602,17 @@
   // Sayfa açılışındaki (bu betikten önce giden) COMED isteklerinin izlerini iste.
   window.postMessage({source: "klinot-comed-trace-replay-v4"}, location.origin);
 
-  // Balon yalnız yeni bir durum mesajında çiziliyordu; API aktarımından sonra
-  // kart yenilenince mesaj gelmediği için balon hiç görünmüyordu. Hasta
-  // kartında son durumu (aynı sekmenin günlüğünden) yeniden çiz.
-  if (CARD_RE.test(location.pathname) && !document.getElementById("klinot-comed-bridge")) {
+  // Balon HER ZAMAN görünür (kullanıcı kuralı). Eskiden yalnız yeni bir durum
+  // mesajında çiziliyordu; API aktarımından sonra kart yenilenince hiç
+  // görünmüyordu. Yoksa (ilk açılış ya da COMED sayfayı yeniden çizip
+  // sildiyse) son durumuyla yeniden çiz; monitorTick her turda bunu çağırır.
+  function ensureBridgeVisible() {
+    if (document.getElementById("klinot-comed-bridge") || !document.body) return;
     const last = bridgeLogs().at(-1);
     if (last) renderBridgeStatus(last.text, last.state);
     else ensureBridgeBox();
   }
+  ensureBridgeVisible();
 
   setTimeout(monitorTick, 1500);
   monitorTimer = setInterval(monitorTick, 5000);
