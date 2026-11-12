@@ -79,7 +79,7 @@ chrome.storage.local.get(
   (saved) => {
     if (saved.apiBase) api.value = saved.apiBase;
     if (saved.username) user.value = saved.username;
-    traceEnabled.checked = saved.traceEnabled !== false;
+    traceEnabled.checked = saved.traceEnabled === true;
     paintSpeed(saved.fillSpeed);
     connected = saved.token ? saved : null;
     paint();

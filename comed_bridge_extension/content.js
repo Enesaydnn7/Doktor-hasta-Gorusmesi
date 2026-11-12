@@ -42,7 +42,10 @@
   let identityPanelTried = false;
   let identitySyncTimer = null;
   let openingVisitId = null;
-  let traceEnabled = true;
+  // COMED istek kaydedici ("kara kutu") VARSAYILAN KAPALI: doktorun COMED'de
+  // baktığı her şeyi sunucuya yazıyordu. Yalnız sorun ararken eklenti
+  // penceresinden elle açılır. Aktarımın kendisi buna ihtiyaç duymaz.
+  let traceEnabled = false;
   let traceFlushTimer = null;
   const traceQueue = [];
 
@@ -97,11 +100,11 @@
   }
 
   chrome.storage.local.get(["traceEnabled"], (value) => {
-    traceEnabled = value.traceEnabled !== false;
+    traceEnabled = value.traceEnabled === true;
   });
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== "local" || !changes.traceEnabled) return;
-    traceEnabled = changes.traceEnabled.newValue !== false;
+    traceEnabled = changes.traceEnabled.newValue === true;
     if (traceEnabled && traceQueue.length) scheduleTraceFlush(100);
   });
 
