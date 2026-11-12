@@ -370,16 +370,23 @@
     if (!orb) return;
     const panelOpen = box.querySelector("[data-klinot-log-panel]")
       ?.getAttribute("aria-hidden") === "false";
-    const isFinal = String(text).startsWith(BRIDGE_FINAL_TEXT);
+    // Ekran doldurma yolunun son mesajı BRIDGE_FINAL_TEXT ile, API yolununki
+    // "Aktarım bitti · 15 kayıt …" ile başlıyor; ikisi de son mesajdır ve
+    // balon açık kalmalı (eskiden API mesajı tanınmayıp 6 sn sonra kapanıyordu).
+    const API_HINT = " · Kartı yenileyip kontrol edin; imza sizde";
+    const isApiFinal = String(text).startsWith("Aktarım bitti") && String(text).includes(API_HINT);
+    const isFinal = String(text).startsWith(BRIDGE_FINAL_TEXT) || isApiFinal;
     // Uzun baglam metni tek satirda kalmali.
     const context = bridgeContext() || "COMED aktarımı";
     // Son mesajin sonunda "· 19 sn · 1× hız" olabilir; balonda da gorunsun
     // ki doktor hiz ayarinin etkisini rakamla karsilastirabilsin.
-    const olcum = isFinal ? String(text).slice(BRIDGE_FINAL_TEXT.length) : "";
+    const olcum = !isFinal ? ""
+      : isApiFinal ? String(text).replace(API_HINT, "").slice("Aktarım bitti".length)
+      : String(text).slice(BRIDGE_FINAL_TEXT.length);
     orb.querySelector("[data-klinot-caption-text]").textContent =
       isFinal ? `Aktarım bitti${olcum}` : text;
     orb.querySelector("[data-klinot-caption-sub]").textContent = isFinal
-      ? "Lütfen kontrol edip Kaydet ve İmzala"
+      ? (isApiFinal ? "Kartı yenileyip kontrol edin; imza sizde" : "Lütfen kontrol edip Kaydet ve İmzala")
       : (context.length > 54 ? `${context.slice(0, 53)}…` : context);
     orb.dataset.live = panelOpen ? "0" : "1";
 
@@ -3593,6 +3600,15 @@
   devLog(`içerik betiği başladı ${INSTANCE_TOKEN} ${location.pathname}`);
   // Sayfa açılışındaki (bu betikten önce giden) COMED isteklerinin izlerini iste.
   window.postMessage({source: "klinot-comed-trace-replay-v4"}, location.origin);
+
+  // Balon yalnız yeni bir durum mesajında çiziliyordu; API aktarımından sonra
+  // kart yenilenince mesaj gelmediği için balon hiç görünmüyordu. Hasta
+  // kartında son durumu (aynı sekmenin günlüğünden) yeniden çiz.
+  if (CARD_RE.test(location.pathname) && !document.getElementById("klinot-comed-bridge")) {
+    const last = bridgeLogs().at(-1);
+    if (last) renderBridgeStatus(last.text, last.state);
+    else ensureBridgeBox();
+  }
 
   setTimeout(monitorTick, 1500);
   monitorTimer = setInterval(monitorTick, 5000);
